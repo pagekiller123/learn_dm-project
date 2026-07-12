@@ -12,6 +12,12 @@ DreamMaker(DM)是网易互娱内部的 AI 美术平台,把市面上的 AI 模型
 
 各仓库的细节、模块划分,以各自仓库根的 `CLAUDE.md` / `AGENTS.md` / `openspec/project.md` 为准。
 
+**环境链接**：
+| 环境 | 主站 URL |
+|------|----------|
+| 测试 | https://dreammaker-test.netease.com |
+| 生产 | https://dreammaker.netease.com |
+
 ---
 
 ## 二、跨仓库共识
@@ -45,7 +51,7 @@ DreamMaker(DM)是网易互娱内部的 AI 美术平台,把市面上的 AI 模型
 
 1. **明确要改哪个仓库** — 确定目标仓库（`dreammaker-scheduler` / `dreammaker-gateway` / `dm-monet-agent`）。
 2. **（可选）用 `superpowers:brainstorming` 梳理思路** — 需求模糊、方案不确定、或涉及多模块协作时，先用 brainstorming 理清设计方向。
-3. **在目标仓库目录下用 openspec 写 spec** — 进入对应仓库的工作目录，使用 `/opsx:propose` 生成 spec 到该仓库的 `openspec/changes/` 下。spec 通过后用 `/opsx:apply` 归档到 `openspec/specs/`。
+3. **必须在目标仓库目录下用 openspec 写 spec** — 进入对应仓库的工作目录，使用 `/opsx:propose` 生成 spec 到该仓库的 `openspec/changes/` 下。spec 通过后用 `/opsx:apply` 归档到 `openspec/specs/`。
 4. **spec 就绪后才开始写代码。**
 
 示例：要给 `dreammaker-scheduler` 接入新能力 →

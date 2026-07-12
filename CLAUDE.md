@@ -36,10 +36,27 @@ DreamMaker(DM)是网易互娱内部的 AI 美术平台,把市面上的 AI 模型
 
 ## 三、开发流程约定
 
-### 3.1 SDD(Spec-Driven Development)
+### 3.1 SDD（Spec-Driven Development）
 
-- **每个改动都必须有关联 spec**,无 spec 不进 MR。
-- 例外:spec 文档自身的改动豁免。
+- **每个改动都必须有关联 spec**，无 spec 不进 MR。
+- 例外：spec 文档自身的改动豁免。
+
+#### 开发前必须执行的流程
+
+1. **明确要改哪个仓库** — 确定目标仓库（`dreammaker-scheduler` / `dreammaker-gateway` / `dm-monet-agent`）。
+2. **（可选）用 `superpowers:brainstorming` 梳理思路** — 需求模糊、方案不确定、或涉及多模块协作时，先用 brainstorming 理清设计方向。
+3. **在目标仓库目录下用 openspec 写 spec** — 进入对应仓库的工作目录，使用 `/opsx:propose` 生成 spec 到该仓库的 `openspec/changes/` 下。spec 通过后用 `/opsx:apply` 归档到 `openspec/specs/`。
+4. **spec 就绪后才开始写代码。**
+
+示例：要给 `dreammaker-scheduler` 接入新能力 →
+```
+cd current_project/dreammaker_scheduler/
+# 用 openspec skill 在这个仓库的 openspec/ 下生成 spec
+/opsx:propose
+# spec 审核通过后
+/opsx:apply
+# 然后才开始写代码
+```
 
 ### 3.2 质量门禁
 

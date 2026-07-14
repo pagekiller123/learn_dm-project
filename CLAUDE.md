@@ -163,3 +163,4 @@ cd current_project/dreammaker_scheduler/
 |------|------|--------|
 | [docs/guide-new-ai-capability.md](docs/guide-new-ai-capability.md) | 基于 dreammaker-scheduler 接入新 AI 能力的完整链路、代码产物清单、编译测试流程、踩坑清单 | 需要在 scheduler 仓库给 DM 接入新的 AI 供应商能力时 |
 | [docs/guide-mongo-app-config.md](docs/guide-mongo-app-config.md) | 小程序商城"配置即界面"机制、dreamworker_apps 文档结构、params 类型系统、静态图片上传 | 需要写 mongo 商城登记脚本或理解前端表单渲染逻辑时 |
+| [docs/guide-dreammaker-docs.md](docs/guide-dreammaker-docs.md) | `dreammaker-docs` 文档站项目、`/dreammaker-doc-gen` skill 完整流程(以 `volcengine-seed-audio` 为端到端示例)、发布上线、常见踩坑 | 需要给 DM 新接入的 AI 能力生成 API 文档、或排查文档站相关问题时 |

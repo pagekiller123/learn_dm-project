@@ -149,6 +149,26 @@ cd current_project/dreammaker_scheduler/
 
 - POPO 团队空间:`dreammaker`,team space ID = `332e46c02522490f9856818cc0668462`。具体文档随项目阶段会变,需要时用 popo-doc skill 在团队空间内现查,不在本文写死 docId 清单。
 
+### Agent 官方技术方案（用户秋招简历核心背书来源）
+
+`docs/resume-reference/learning/RESOURCES.md` 里维护了 POPO 团队空间"Agent"目录下 9 篇官方技术文档的 docId 索引（如"DreamMaker Agent 技术方案"`793c642c8ae94c94baa5f8e99ecacbe7`、"AI Agent 框架深度选型对比报告"`af805de3582d4fbda67ad60b6dbf1a36` 等）。
+
+**AI session 处理 Monet 相关话题时**:
+- 讲整体架构、设计意图、产品愿景 → 优先引这些文档（用 popo-doc skill 读取，稳定不变）
+- 讲具体实现、"我做了什么" → 以 `current_project/dm-monet-agent/src/` 代码为准（易变）
+- 两者冲突时 → 按 [docs/resume-reference/learning/learning-records/0004-tech-spec-vs-actual-code-strategy.md](docs/resume-reference/learning/learning-records/0004-tech-spec-vs-actual-code-strategy.md) 的双层策略处理
+
+### 简历学习工作区
+
+`docs/resume-reference/` 是学员秋招简历的所有落盘素材。**AI session 帮学员做简历相关任务时,必读 [docs/resume-reference/README.md](docs/resume-reference/README.md) 作为入口**——它索引了：
+
+- **04-monet-full-tech-report.md**: POPO Agent 目录 9 篇文档整合报告,含 7 大简历亮点池、面试防守金句、亮点池代码锚点
+- **05-monet-resume-bullets-draft.md**: Monet 项目 4 条简历条目初稿(等量化数据回填)
+- **01-03**: 简历案例、写作指南、整体设计方案
+- **learning/**: teach skill 建立的学习工作区,含 HTML 课程和学习记录
+
+**不要重新探索这些内容**;直接读 README 定位到具体文件。
+
 ---
 
 ## 八、用户背景

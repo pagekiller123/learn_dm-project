@@ -21,7 +21,7 @@ body {
   font-family: var(--serif);
   color: var(--text);
   background: var(--bg);
-  max-width: 780px;
+  max-width: 1100px;
   margin: 3rem auto;
   padding: 0 1.5rem;
   line-height: 1.7;
@@ -212,9 +212,16 @@ li { margin: 0.35rem 0; }
   padding: 1.2rem;
   border: 1px solid var(--border);
   border-radius: 6px;
-  margin: 1.5rem 0;
+  margin: 1.5rem -2rem; /* 负 margin：让图突破正文列宽 */
   text-align: center;
   overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Mermaid 生成的 SVG 默认会缩放到容器宽度，禁用它以显示真实字号 */
+.diagram .mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
 }
 
 .print-only { display: none; }

@@ -120,6 +120,12 @@ Monet — DreamMaker AI 美术平台客户端 Agent 服务
 **备选 C · Prompt Caching / 上下文压缩**
 > 集成 DeepAgent 的上下文压缩机制并落地本地 SQLite Checkpointer，长对话不溢出、断点恢复、无需云端同步；应用层只维护 session 元信息，历史交给 checkpointer。
 
+**备选 D · 双 Backend 分层架构（LLM 推理直连 AIGW vs 生成任务走 Scheduler）** ⭐⭐⭐⭐
+> 设计 Monet Agent 的双 Backend 分层架构：LLM 推理与纯文本生成通过自研 ChatAIGW（LangChain ChatOpenAI 子类）直连 AIGW 网关（低延迟、高频调用），图/视频/3D 等耗时重任务走 DreamMaker Scheduler 异步队列（GPU 资源池集中调度）。让 Agent 内部 LLM 调用不受 Scheduler 排队影响，同时保证 GPU 密集型任务有集中管理。<br>
+> **Keyword**：Workload-based Routing, Backend Sharding, 延迟敏感 vs 吞吐敏感<br>
+> **代码锚点**：`src/monet/model/aigw.py` (`ChatAIGW`) + `src/monet/generation/aigw_backend.py` (`AigwBackend`) + `src/monet/generation/dm_api_backend.py` (`DmApiBackend`)<br>
+> **推荐用途**：AI Agent 岗的**架构思考深度**加分项。如果亮点 2（AIGW 适配）已经写了 BaseChatModel 抽象层，这条可以合并进去（把 workload 分层作为亮点 2 的第二段），或独立成第 5 条。
+
 ---
 
 ## 完整简历条目组合建议
@@ -143,3 +149,4 @@ Monet — DreamMaker AI 美术平台客户端 Agent 服务
 | 日期 | 版本 | 变更 |
 |------|------|------|
 | 2026-07-16 | v0.1 | 初稿，基于 POPO 9 篇文档整合 |
+| 2026-07-16 | v0.2 | 加入备选 D 双 Backend 分层架构（对应 04 报告新增亮点） |

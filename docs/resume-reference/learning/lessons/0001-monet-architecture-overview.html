@@ -6,7 +6,35 @@
   <link rel="stylesheet" href="../assets/style.css">
   <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
   <script>
-    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      // 全局字号：flowchart/sequence 通用
+      themeVariables: {
+        fontSize: '18px',
+        fontFamily: '"Inter", "PingFang SC", "Microsoft YaHei", sans-serif'
+      },
+      // 时序图专属参数：加宽 actor 间距 + 加大消息字号
+      sequence: {
+        actorFontSize: 16,
+        actorFontWeight: 600,
+        messageFontSize: 15,
+        noteFontSize: 14,
+        actorMargin: 90,
+        boxMargin: 12,
+        boxTextMargin: 8,
+        messageMargin: 40,
+        mirrorActors: false,
+        wrap: true
+      },
+      // flowchart 参数：稍微增大节点内边距和字号
+      flowchart: {
+        nodeSpacing: 60,
+        rankSpacing: 60,
+        htmlLabels: true,
+        useMaxWidth: false
+      }
+    });
   </script>
 </head>
 <body>
@@ -52,6 +80,10 @@
 
 <p>来自 <a href="https://docs.popo.netease.com/team/pc/dreammaker/pageDetail/793c642c8ae94c94baa5f8e99ecacbe7">POPO 文档 · DreamMaker Agent 技术方案</a>（作者：烂柯，2026-04）：</p>
 
+<blockquote>
+  <strong>📖 图例</strong>：<code>———</code> 实线 = 同一进程内的模块调用（同步/直接调用）；<code>- - -</code> 虚线 = 跨边界调用（走网络到云端后端）。
+</blockquote>
+
 <div class="diagram">
 <pre class="mermaid">
 flowchart TB
@@ -73,6 +105,13 @@ flowchart TB
 <h3>图 B · 当前代码实现（<code>src/monet/</code> 快照）</h3>
 
 <p>这是当前代码里能"跑通"的形态，覆盖了官方五层里 P0 的部分：</p>
+
+<blockquote>
+  <strong>📖 图例</strong>：<br>
+  · <code>———</code> 实线 = <strong>同步请求-响应</strong>：调用方发起请求、等待返回，方向就是发起方向<br>
+  · <code>- - -</code> 虚线 = <strong>反向推送 / 事件流</strong>：由服务端主动推给客户端（例如 SSE），而不是客户端请求驱动<br>
+  · 带文字标签的箭头（如 <code>HTTP/SSE</code>、<code>LLM 推理</code>）标注了协议或用途
+</blockquote>
 
 <div class="diagram">
 <pre class="mermaid">
@@ -212,32 +251,78 @@ flowchart TB
 
 <h2>五、数据流（一次典型请求）</h2>
 
+<blockquote>
+  <strong>📖 图例</strong>：<br>
+  · <code>———►</code> 实线 = 请求/发起调用<br>
+  · <code>- - -►</code> 虚线 = 响应/异步返回<br>
+  · 图中**用色区分了两条独立的 upstream**：AIGW（LLM 推理，直连）和 DM Scheduler（生成任务，异步）
+</blockquote>
+
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
     autonumber
     participant U as 用户
-    participant F as Frontend<br/>（画布）
+    participant F as Frontend · 画布
     participant A as Monet API
-    participant G as Agent Core<br/>(LangGraph)
-    participant T as Tool<br/>(generate_and_create_node)
+    participant G as Agent Core · LangGraph
+    participant M as ChatAIGW
+    participant W as AIGW 网关
+    participant T as Tool · generate_and_create_node
     participant D as DM Scheduler
     participant C as Canvas Backend
 
     U->>F: 点击"生成图像"
-    F->>A: POST /chat (SSE)
+    F->>A: POST /chat · SSE 长连接建立
     A->>G: 启动 Agent Task
-    G->>G: LLM 推理，决定调用 tool
-    G->>T: tool call: generate_and_create_node
-    T->>D: 提交生成任务
-    D-->>T: 任务结果（图片 URL）
+
+    rect rgb(235, 245, 255)
+    Note over G,W: 第一轮 LLM 推理（决定下一步动作）
+    G->>M: astream_events · 请求 LLM
+    M->>W: HTTPS · Chat Completions
+    W-->>M: 流式返回 tokens
+    M-->>G: tool_calls · 决定调用 generate_and_create_node
+    end
+
+    G-->>A: block.delta · thinking token 流
+    A-->>F: SSE 事件
+
+    rect rgb(255, 245, 235)
+    Note over T,D: 工具执行（异步生成任务）
+    G->>T: tool call
+    T->>D: POST /apps/APP/run · 提交生成任务
+    D-->>T: task_id
+    T->>D: 轮询 status
+    D-->>T: 任务完成 · 图片 URL
     T->>C: 创建画布节点
     C-->>T: 节点 ID
     T-->>G: tool result
-    G-->>A: 生成流式事件
-    A-->>F: SSE event stream
-    F-->>U: 画布实时更新
+    end
+
+    G-->>A: block.delta · tool_result
+    A-->>F: SSE 事件
+
+    rect rgb(235, 245, 255)
+    Note over G,W: 第二轮 LLM 推理（组织回复）
+    G->>M: 请求 LLM · 生成给用户的自然语言回复
+    M->>W: HTTPS · Chat Completions
+    W-->>M: 流式返回 tokens
+    M-->>G: 文本回复
+    end
+
+    G-->>A: block.delta · text token 流
+    A-->>F: SSE 事件
+    F-->>U: 画布 + 对话实时更新
 </pre>
+</div>
+
+<div class="highlight-box">
+  <strong>🔑 从时序图能读出的三个关键设计</strong>：
+  <ol>
+    <li><strong>两条独立的 upstream</strong>：<code>ChatAIGW → AIGW</code>（蓝色框，低延迟高频）和 <code>Tool → DM Scheduler</code>（橙色框，异步耗时）。绕开了让所有请求都走 Scheduler 的性能陷阱。</li>
+    <li><strong>Agent Loop 是多轮 LLM 调用</strong>：至少 <em>两次</em> LLM 请求——第一次决定用哪个工具，第二次拿到工具结果后组织自然语言回复。真实任务里可能十几轮。</li>
+    <li><strong>SSE 全程流式</strong>：thinking / tool_use / tool_result / text 都以 <code>block.delta</code> 事件流式推给前端，用户不用等整轮完成。</li>
+  </ol>
 </div>
 
 <h2>六、可写进简历的量化点（需要你去收集数据）</h2>

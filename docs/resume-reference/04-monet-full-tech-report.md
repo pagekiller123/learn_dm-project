@@ -135,6 +135,45 @@ DreamMaker Agent 技术方案（顶层愿景，2026-04）  ← 793c642c8ae94c94b
 
 ---
 
+### ⭐⭐⭐⭐ 强推：LLM 推理与生成任务的双 Backend 分层架构
+
+**背景**：Monet 里的"生成"分两类——**LLM 对话推理**（Agent 每步思考都调）和**耗时任务**（图/视频/3D 生成）。两者延迟要求和资源特性完全不同，如果都走同一个后端会互相拖累。
+
+**设计要点**：
+- **LLM 推理直连 AIGW**：通过自研 `ChatAIGW`（`langchain_openai.ChatOpenAI` 子类）直接打 <code>https://aigw.netease.com</code>，完全绕开 Scheduler
+  - 低延迟：Agent 一次对话可能调 LLM 十几次，累积 RTT 敏感
+  - 高频调用、纯文本、无需异步
+  - 复用 OpenAI 兼容协议（Chat Completions API）+ AIGW header 鉴权
+- **重任务走 Scheduler**：通过 `DmApiBackend` 走 <code>https://api-all.dreammaker.netease.com</code>
+  - 异步任务队列：submit/poll/fetch_result 三段式
+  - GPU 资源池集中管理
+  - 支撑计费、审计、多租户
+- **同类内也有细分**：`AigwBackend`（纯文本生成，走 AIGW 同步返回）vs `DmApiBackend`（图/视频/3D，走 Scheduler 异步）
+
+**关键洞察**：这是**按 workload 特性选择合适后端**的架构模式——不是"能不能走同一个后端"，而是**"该不该走"**。低延迟高频调用 vs 高延迟异步任务，两条路径完全独立、互不干扰。
+
+**代码锚点**：
+- `src/monet/config.py:25` — `aigw_base_url = "https://aigw.netease.com"`
+- `src/monet/config.py:40` — `dm_api_base_url = "https://api-all.dreammaker.netease.com"`
+- `src/monet/model/aigw.py` — `ChatAIGW(ChatOpenAI)`：LLM 推理直连
+- `src/monet/generation/aigw_backend.py` — `AigwBackend`：纯文本生成走 AIGW
+- `src/monet/generation/dm_api_backend.py` — `DmApiBackend`：图/视频/3D 走 Scheduler
+
+**简历一句话**：
+> 设计 Monet Agent 的双 Backend 分层架构：LLM 推理与纯文本生成通过自研 ChatAIGW（LangChain BaseChatModel 子类）直连 AIGW 网关（低延迟、高频调用），图/视频/3D 等耗时重任务走 DreamMaker Scheduler 异步队列（GPU 资源池集中调度）。让 Agent 内部 LLM 调用不受 Scheduler 排队影响，同时保证 GPU 密集型任务有集中管理。
+
+**Keyword**：Workload-based Routing, Backend Sharding, 分层调用, 延迟敏感 vs 吞吐敏感
+
+**面试防守问答**：
+- Q: Monet Agent 可以直接调用 AIGW 吗？还是必须经过 Scheduler？
+  A: **可以直连，架构上是两条完全独立的路径**。LLM 推理（Agent 每步思考）通过 ChatAIGW 直接打 AIGW；只有图/视频/3D 这种 GPU 密集型任务才走 Scheduler 的异步队列。config.py 里 aigw_base_url 和 dm_api_base_url 是两个独立的 upstream。
+- Q: 为什么不统一走 Scheduler？
+  A: 延迟。Agent 一次对话可能调 LLM 十几次做推理，如果每次都走 Scheduler 会累积 RTT 到不能忍——Scheduler 是异步任务队列，本来就不是为低延迟高频调用设计的。反过来图/视频/3D 生成本来就 10 秒起、1 分钟起，Scheduler 的排队和 GPU 调度收益远大于 RTT 代价。
+- Q: `ChatAIGW` 为什么继承 `ChatOpenAI` 而不是 `BaseChatModel`？
+  A: AIGW 网关本身兼容 OpenAI Chat Completions API 协议（这是网易内部约定，让内部服务都能复用 OpenAI 生态），所以复用 `ChatOpenAI` 比从 `BaseChatModel` 从零实现省事得多。ChatAIGW 只需处理三处适配：AIGW header 鉴权（无需 api_key）、强制走 Chat Completions API（不走 Responses API，兼容 Claude/Gemini 等非 OpenAI 模型）、image_url 转 base64。
+
+---
+
 ### ⭐⭐⭐⭐ 强推：Monet × WuzuBoard 语义画布合并
 
 **背景**：Monet（资源节点）和 WuzuCat（创作流程画布）两个画布体系合并，涉及 60+ 类节点收敛。
@@ -230,6 +269,17 @@ DreamMaker Agent 技术方案（顶层愿景，2026-04）  ← 793c642c8ae94c94b
 6. "换 Agent 框架前端零改动——AgentStreamAdapter 抽象层负责翻译。"
 
 7. "Monet 是 DreamMaker Harness Artist 平台的画布前端——美术师定义风格约束和质量标准，Agent 自主执行并自我验证，把 Harness Engineering 范式从软件工程扩展到美术创作。"
+
+8. "Monet 内部两条独立路径：LLM 推理直连 AIGW（低延迟高频），图/视频/3D 走 Scheduler 异步队列（GPU 集中调度）——按 workload 特性选后端。"
+
+9. "Monet 用 Agent 而不是工作流，是因为用户通过自然语言交互、步骤不固定——Agent 的价值在'理解和编排'，不在'精确操控 UI'。工作流适合固定步骤，Agent 适合不确定步骤。"
+
+---
+
+### 防守问答展开：为什么用 Agent 而不是工作流？
+
+- Q: 用户点击"生成图像"这种操作，不能写死成工作流吗？为什么要做成 Agent？
+  A: "点击生成一张图"只是最简单的场景。Monet 的入口是对话框，用户用自然语言说"帮我画一个赛博朋克风格的猫，参考画布上已有的那张风格"——这需要 Agent 先调 `canvas_subgraph` 查画布、再优化 prompt、再调 `generate_and_create_node`，链路不固定，取决于用户说了什么和画布当前状态。如果用工作流，每多一种组合就要多写一条分支，组合爆炸。Agent 的 LLM 推理能力天然处理这种不确定性。
 
 ---
 

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Lesson 0002 — Scheduler 整体架构总览</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'default' });</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span><strong>Lesson</strong> 0002</span>
+  <span><strong>项目</strong> DreamMaker Scheduler</span>
+  <span><strong>时长</strong> ~35 分钟</span>
+  <span><strong>难度</strong> ★★★☆☆</span>
+  <span><strong>上一节</strong> <a href="0001-monet-architecture-overview.html">← 0001 Monet 架构</a></span>
+</div>
+
+<h1>DreamMaker Scheduler 整体架构总览</h1>
+
+<p>如果 Monet 是"客户端 Agent"负责理解用户意图，那 DreamMaker Scheduler 就是"云端引擎"负责真正跑 GPU 任务。这一节目标是：<strong>能在白板上画出 Scheduler 的核心链路、讲清 app-gateway / worker-scheduler / worker-sidecar 三大组件的边界、并说出为什么这样分层</strong>。</p>
+
+<div class="highlight-box">
+  <strong>跟 Monet 的关键区别</strong>：Scheduler 是<strong>多服务 + 多用户 + 云端部署</strong>的分布式系统，跟 Monet"单机单用户本地服务"完全不同。所以 Scheduler 里的所有讨论——GPU 资源池、Leader 选举、限流、多租户鉴权——都跟 Monet 无关。搞混两边的场景是简历讲解最容易翻车的地方。
+</div>
+
+<h2>一、一句话架构</h2>
+
+<p>Scheduler = <code>多服务 Go 微服务集群</code> + <code>Redis 任务队列</code> + <code>Mongo 记录中心</code> + <code>etcd Worker 注册表</code> + <code>k8s 服务发现</code> + <code>dmfr 脚手架</code>。</p>
+
+<p>它没有单一入口——每个服务自带 <code>app/&lt;service&gt;/main.go</code>，通过 tmax istioingress 网关做路径路由，服务间用 <code>dmfr.HTTPClient()</code> 相互调用，任务状态通过 Redis / Mongo / etcd 三层协同管理。</p>
+
+<h2>二、整体架构图</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph External["外部请求方"]
+        Frontend["Frontend<br/>（DM 主站 UI）"]
+        Monet["Monet Agent<br/>（客户端）"]
+        InternalTools["内部工具 / 外部游戏"]
+    end
+
+    subgraph Gateway["网关层"]
+        Istio["tmax istioingress<br/>+ envoyfilter 认证"]
+    end
+
+    subgraph API["API 入口层"]
+        ApiOuter["api-outer<br/>（外部工具入口）"]
+        ApiServer["api-server<br/>（模型/用户组管理）"]
+    end
+
+    subgraph Business["业务服务层"]
+        AppGateway["app-gateway<br/>（APP 编排 / 参数映射 / 入队）"]
+        TwoD["2d"]
+        StoryBoard["story-board"]
+        Consumer["consumer<br/>（kafka 解耦）"]
+    end
+
+    subgraph Scheduling["调度层"]
+        WorkerScheduler["worker-scheduler<br/>（Leader 选举 + 任务分配）"]
+        TransformerV2["transformer_v2<br/>（tmax 推理调度）"]
+    end
+
+    subgraph Execute["Worker 执行层"]
+        WorkerSidecar["worker-sidecar<br/>（异构后端适配）"]
+        ComfyWorker["Comfy Worker"]
+        SDWorker["SD Worker"]
+        TrainingWorker["Training Worker"]
+    end
+
+    subgraph Infra["基础设施"]
+        Redis["Redis Queue<br/>（任务队列）"]
+        Mongo["MongoDB<br/>（AppRecord / TaskMsg）"]
+        Etcd["etcd<br/>（Worker/Task 注册）"]
+    end
+
+    subgraph Backend["外部推理后端"]
+        ComfyUI["ComfyUI"]
+        SDBackend["SD-WebUI"]
+        External["外部供应商<br/>（走 Gateway 仓库）"]
+    end
+
+    Frontend --> Istio
+    Monet --> Istio
+    InternalTools --> Istio
+
+    Istio --> ApiOuter
+    Istio --> ApiServer
+    ApiOuter --> AppGateway
+    ApiOuter --> TwoD
+    ApiOuter --> StoryBoard
+
+    AppGateway -->|入库| Mongo
+    AppGateway -->|入队| Redis
+    AppGateway --> Consumer
+
+    WorkerScheduler -->|Leader 选举| Etcd
+    WorkerScheduler -->|拉任务| Redis
+    WorkerScheduler -->|读消息| Mongo
+    WorkerScheduler -->|注册运行| Etcd
+
+    WorkerSidecar -->|上报| WorkerScheduler
+    WorkerSidecar --> ComfyWorker
+    WorkerSidecar --> SDWorker
+    WorkerSidecar --> TrainingWorker
+    ComfyWorker --> ComfyUI
+    SDWorker --> SDBackend
+    WorkerSidecar --> External
+</pre>
+</div>
+
+<h2>三、五层架构的职责边界</h2>
+
+<p>Scheduler 里"五层架构"这个说法来自团队 CLAUDE：<strong>外部请求层 → 业务服务层 → 基础服务层 → Worker 执行层 → 外部供应商层</strong>。用一张表说清每层的边界：</p>
+
+<table>
+<thead>
+<tr><th>层级</th><th>核心组件</th><th>职责</th><th>不该做</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td>① 外部请求层</td>
+  <td>Frontend / Monet / 内部工具</td>
+  <td>组装 HTTP 请求，携带鉴权 header 打过来</td>
+  <td>不该直接投递 worker 任务</td>
+</tr>
+<tr>
+  <td>② 业务服务层</td>
+  <td><code>api-outer</code> / <code>app-gateway</code> / <code>2d</code> / <code>story-board</code></td>
+  <td>参数校验、鉴权、参数映射、入库、入队、状态查询</td>
+  <td>不该直连 Worker、不该做 GPU 调度</td>
+</tr>
+<tr>
+  <td>③ 基础服务层</td>
+  <td><code>worker-scheduler</code></td>
+  <td>Leader 选举、拉队列、分配任务、结果回写</td>
+  <td>不该关心具体推理逻辑</td>
+</tr>
+<tr>
+  <td>④ Worker 执行层</td>
+  <td><code>worker-sidecar</code> + 各类 Worker</td>
+  <td>接收任务、适配后端、执行推理、上报进度和结果</td>
+  <td>不该反向依赖 <code>app-gateway</code></td>
+</tr>
+<tr>
+  <td>⑤ 外部供应商层</td>
+  <td>ComfyUI / SD-WebUI / 火山 / 混元 / …</td>
+  <td>真正的 AI 推理</td>
+  <td>——</td>
+</tr>
+</tbody>
+</table>
+
+<h2>四、三大核心组件（面试必考）</h2>
+
+<h3>4.1 app-gateway — 任务入口守门员</h3>
+
+<p><strong>职责</strong>：接住上游 <code>api-outer</code> 转发过来的请求，做四件事：</p>
+
+<ol>
+  <li><strong>权限检查</strong>：<code>CheckAppAccess</code> — 判断当前用户能不能调这个 app / sub_app</li>
+  <li><strong>组件解析</strong>：resolve app component、group、cluster、taskMode、priority</li>
+  <li><strong>持久化</strong>：<code>AddAppRecord(status=queued)</code> 入 Mongo，同时 <code>Produce pending task</code> 到 Redis 队列</li>
+  <li><strong>返回 task_id</strong>：立即返回，不等 Worker 执行完</li>
+</ol>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：为什么必须走 app-gateway，不能绕过？</h4>
+  <ol>
+    <li><strong>安全</strong>：<code>api-outer</code>+ <code>app-gateway</code> 是唯一的鉴权和限流入口。绕过等于把 Worker 队列直接暴露给外部</li>
+    <li><strong>可观测</strong>：所有任务必须留下 <code>AppRecord</code>，方便计费、审计、错误分析</li>
+    <li><strong>一致性</strong>：任务状态机（queued → running → success/failed）依赖 <code>action.Add</code> 建立初始状态，绕过就没了初态</li>
+    <li><strong>扩展性</strong>：预处理 / 参数映射 / 优先级都在 app-gateway 层做，绕过等于放弃这些能力</li>
+  </ol>
+  <p>CLAUDE.md 明写："不要绕过 app-gateway 直接从外部投递 worker 任务"。这是团队的硬约束。</p>
+</div>
+
+<h3>4.2 worker-scheduler — 分布式调度大脑</h3>
+
+<p><strong>职责</strong>：管 Worker 状态 + 分派任务 + 回写结果。整个 Scheduler 里最"分布式"的组件，因为要保证 Worker 池的一致性：</p>
+
+<ul>
+  <li><strong>Leader 选举</strong>：通过 etcd 选出一个 leader，避免多副本抢同一个任务（split-brain）</li>
+  <li><strong>拉队列</strong>：从 Redis 拉 pending task</li>
+  <li><strong>加载消息</strong>：从 Mongo 加载 <code>AppTaskMsg</code>（因为 Redis 里只放 task_id，完整参数在 Mongo）</li>
+  <li><strong>注册运行</strong>：把 task 写到 etcd 的运行注册表，作为"正在跑的任务"的 source of truth</li>
+  <li><strong>下发给 Worker</strong>：Worker 主动上报"我空闲"（<code>report consume</code>），scheduler 才把任务发下去</li>
+  <li><strong>结果回写</strong>：Worker 上报结果 → scheduler 调用 <code>action.AfterCall / MapCallResponse</code> → 写回 Mongo → 删除 etcd 注册</li>
+</ul>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：为什么 task 状态要同时用 Redis + Mongo + etcd？</h4>
+  <ol>
+    <li><strong>Redis</strong>：短生命周期"待消费"队列。选它是因为 <code>LPUSH/BRPOP</code> 高吞吐低延迟，适合队列语义。不做长期存储</li>
+    <li><strong>Mongo</strong>：长生命周期"任务记录中心"。所有任务的完整参数、状态、结果都写这里，用于查询、审计、计费</li>
+    <li><strong>etcd</strong>：<strong>"运行中"</strong>状态的强一致 registry。为什么不用 Mongo？因为 etcd 支持 lease + watch，Worker 挂掉时 lease 过期能自动清理；Mongo 做不到这种"心跳自清"</li>
+  </ol>
+  <p>核心思路：<strong>用不同的存储服务不同的语义，不用一个存储硬扛所有需求</strong>——这是分布式系统的经典权衡。</p>
+</div>
+
+<h3>4.3 worker-sidecar — 异构后端适配器</h3>
+
+<p><strong>职责</strong>：worker-scheduler 只知道"这个任务要发给某个 Worker"，但 Worker 具体是 ComfyUI / SD-WebUI / 训练 / 外部供应商，用什么协议、参数怎么组织、结果怎么解析——都由 sidecar 适配。</p>
+
+<p>类比：这是<strong>适配器模式</strong>在生产系统里的规模化应用。sidecar 让 scheduler 的调度逻辑跟具体推理后端解耦，加一种新 Worker 只需要加一种 sidecar，scheduler 侧不改。</p>
+
+<h2>五、关键数据流（一次任务的完整生命周期）</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant C as Client / Monet
+    participant O as api-outer
+    participant A as app-gateway
+    participant M as MongoDB
+    participant R as Redis Queue
+    participant WS as worker-scheduler
+    participant E as etcd
+    participant W as worker-sidecar
+
+    C->>O: POST /apps/{app}/run
+    O->>O: JWT / 权限校验
+    O->>A: RunApp(...)
+    A->>A: 参数映射 / 鉴权
+    A->>M: AddAppRecord(status=queued)
+    A->>R: Produce pending task
+    A-->>O: task_id
+    O-->>C: task_id
+
+    Note over W,WS: 异步阶段 — Worker 主动拉取
+    W->>WS: report consume（我空闲）
+    WS->>R: 拉 pending task
+    WS->>M: 加载 AppTaskMsg
+    WS->>E: 注册 running task
+    WS-->>W: JobReportData
+
+    W->>W: 执行推理
+    W->>WS: report progress
+    W->>WS: report result
+
+    WS->>A: AfterCall / MapCallResponse
+    A->>M: 写入 Success / Failed
+    WS->>E: 删除 running task
+
+    C->>O: GET /apps/{app}/status?task_id=xxx
+    O->>A: GetAppTaskStatus
+    A->>M: 读取 record
+    A-->>C: status / output
+</pre>
+</div>
+
+<h3>关键设计点</h3>
+
+<ul>
+  <li><strong>提交与执行完全异步</strong>：提交侧立即返回 <code>task_id</code>，客户端通过 <code>/status</code> 轮询——这是所有 AI 任务系统的标配（推理耗时不可预测）</li>
+  <li><strong>Worker "拉"而非 "推"</strong>：Worker 主动 <code>report consume</code> 告诉 scheduler "我可以接活了"，而不是 scheduler 硬塞。这样 Worker 侧永远不会被压垮</li>
+  <li><strong>状态机通过 action 推进</strong>：CLAUDE 明写"队列推进通过 action 完成，不要直接同步调用下一阶段"——这是团队约束，避免耦合和竞态</li>
+</ul>
+
+<h2>六、dmfr 脚手架（大量简历技术栈都对应这里）</h2>
+
+<p>dmfr = <strong>DreamMaker Framework</strong>，团队自研 Go 脚手架。你几乎不需要看它的源码，但要能讲清它提供了什么：</p>
+
+<table>
+<thead><tr><th>能力</th><th>调用方式</th><th>不这样做的后果</th></tr></thead>
+<tbody>
+<tr><td>HTTP Server</td><td><code>dmfr.HTTPServer()</code></td><td>手写 wrapper 会漏掉 trace / metrics</td></tr>
+<tr><td>HTTP Client</td><td><code>dmfr.HTTPClient(serviceName)</code></td><td>手写 base URL 会绕过服务发现</td></tr>
+<tr><td>日志</td><td><code>logging.Info(ctx, "msg", zap.Field...)</code></td><td>散落 logger 会破坏 trace 关联</td></tr>
+<tr><td>错误码</td><td><code>ecode</code> 包</td><td>业务错误没有统一分类</td></tr>
+<tr><td>响应封装</td><td><code>httpServer.JSON(c, resp, err)</code></td><td>响应格式不一致</td></tr>
+<tr><td>JSON</td><td>优先 Sonic，不用 <code>encoding/json</code></td><td>性能损失明显</td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+  <strong>简历包装点</strong>：可以写"基于 dmfr 脚手架开发多个微服务，复用其 HTTP client/server、trace、metrics、ecode、logging 能力，避免重复造轮子"——这既体现你懂微服务基础设施，又体现你有"复用生态"的判断力（面试评论区反复提到的加分点）。
+</div>
+
+<h2>七、可写进简历的量化点（需要你去收集数据）</h2>
+
+<div class="resume-hook">
+  <h4>📝 简历亮点候选</h4>
+  <ul>
+    <li>核心服务数量：<strong>40+ 微服务</strong>（<code>app/</code> 下服务列表可数）</li>
+    <li>Worker 类型：<strong>10 大类</strong>（图像/视频/3D/腾讯混元/火山/语音/LLM/工具/工作流/桌面软件）</li>
+    <li>日均任务量：<strong>XX 万</strong>（问导师 / 看监控）</li>
+    <li>峰值 QPS：<strong>XX</strong>（问导师 / 看监控）</li>
+    <li>任务完成率：<strong>99.X%</strong>（问导师 / 看监控）</li>
+    <li>接入 AI 供应商数量：<strong>XX</strong>（gateway 仓库能数）</li>
+    <li>GPU 资源池规模：<strong>XX 张卡</strong>（问导师）</li>
+    <li>Worker Leader 选举切换时长：<strong>XXs</strong>（问导师）</li>
+  </ul>
+  <p><strong>去哪拿数据？</strong> 问导师、看监控平台、翻 KM 团队空间（<code>332e46c02522490f9856818cc0668462</code>）。</p>
+</div>
+
+<h2>八、术语速查</h2>
+
+<table>
+<thead><tr><th>术语</th><th>指代</th></tr></thead>
+<tbody>
+<tr><td>app-gateway</td><td>业务服务层，APP 任务的编排入口</td></tr>
+<tr><td>worker-scheduler</td><td>基础服务层，Leader 选举 + 任务分配</td></tr>
+<tr><td>worker-sidecar</td><td>Worker 执行层，异构后端适配</td></tr>
+<tr><td>api-outer</td><td>外部工具 / 游戏的 API 入口</td></tr>
+<tr><td>AppRecord</td><td>Mongo 里的任务记录，长期存储</td></tr>
+<tr><td>AppTaskMsg</td><td>任务核心消息结构</td></tr>
+<tr><td>action</td><td>任务状态推进的抽象（Add / AfterCall / Failed）</td></tr>
+<tr><td>dmfr</td><td>DreamMaker Framework，Go 脚手架</td></tr>
+<tr><td>ecode</td><td>dmfr 提供的错误码包</td></tr>
+<tr><td>Sub App</td><td>APP 下的子应用，如 <code>image-generation/flux</code></td></tr>
+<tr><td>Hertz / Fiber</td><td>两个 Go HTTP 框架，新代码用 Hertz，老代码保留 Fiber</td></tr>
+</tbody>
+</table>
+
+<h2>九、检索练习</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. 为什么 Scheduler 里任务状态要同时用 Redis + Mongo + etcd？</p>
+  <ul class="quiz-options">
+    <li>A. Redis 存队列、Mongo 存记录、etcd 存运行时状态并支持心跳自清</li>
+    <li>B. 一个存储不够快，三个存储做冗余备份</li>
+    <li>C. 团队没统一意见，历史遗留</li>
+    <li>D. 分别对应开发 / 测试 / 生产环境</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>A</strong>。三个存储对应三种不同语义：Redis 提供高吞吐的短生命周期队列；Mongo 是"任务记录中心"用于查询和审计；etcd 提供强一致 registry + lease 机制，Worker 挂掉时能自动清理运行注册——这是 Mongo 做不到的。核心思路是"不同存储服务不同语义"。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. 外部工具能不能绕过 app-gateway 直接把任务投递到 Redis 队列？</p>
+  <ul class="quiz-options">
+    <li>A. 可以，都是内部服务</li>
+    <li>B. 不可以，会绕过鉴权、限流、AppRecord 建立</li>
+    <li>C. 可以但需要额外配置</li>
+    <li>D. 只有超级管理员可以</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>B</strong>。CLAUDE.md 明确禁止。绕过 app-gateway = 没有鉴权、没有 AppRecord 初态、没有限流、没有参数映射，任务状态机会缺失起点。这是团队的硬约束。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q3. Worker 拉任务采用"pull（Worker 主动 report consume）"而不是"push（scheduler 硬塞）"，主要好处是什么？</p>
+  <ul class="quiz-options">
+    <li>A. 网络流量更少</li>
+    <li>B. Worker 侧永远不会被压垮，天然反压</li>
+    <li>C. scheduler 侧代码更简单</li>
+    <li>D. B 和 C 都对</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>B</strong>。Push 模式下如果 scheduler 判断错了 Worker 容量，或者 Worker 突然变慢，任务会堆在 Worker 端造成雪崩；Pull 模式下 Worker 完全按自身节奏拉，天然实现反压。这在 GPU 任务这种"处理时长不可预测"的场景下尤其重要。
+  </div>
+</div>
+
+<div class="resource-recommend">
+  <strong>📖 主要推荐资源</strong>：<code>current_project/dreammaker_scheduler/docs/dreammaker-architecture/dm-architecture.md</code>——团队自己写的架构文档，比读代码高效多了。特别是里面的任务时序图，就是你面试时可以直接画的那张。
+</div>
+
+<div class="followup">
+  <h4>💬 followup 问题（跟我继续聊）</h4>
+  <ul>
+    <li>"帮我深入讲一下 worker-scheduler 的 Leader 选举怎么做的" → 后续 Lesson</li>
+    <li>"apps 商城的参数映射机制到底怎么工作" → 涉及 <code>app-market-tech-doc.md</code></li>
+    <li>"给我列一下 Scheduler 侧有含金量的 GitLab MR" → 进入阶段三</li>
+    <li>"Hertz 和 Fiber 两个框架并存，面试问起怎么答"</li>
+    <li>"dmfr 我一点都没看过源码，简历上敢写吗"</li>
+  </ul>
+</div>
+
+<nav class="lesson-nav">
+  <a href="0001-monet-architecture-overview.html">← Lesson 0001 Monet 架构</a>
+  <span>下一节待定</span>
+</nav>
+
+</body>
+</html>

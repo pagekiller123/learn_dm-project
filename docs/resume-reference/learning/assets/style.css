@@ -1,5 +1,7 @@
 /* 教学课程共享样式 — Tufte 风格 */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
 :root {
   --text: #1a1a1a;
   --text-muted: #555;
@@ -9,7 +11,7 @@
   --code-bg: #f4f1eb;
   --border: #d4c9a8;
   --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
-  --serif: "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
   --mono: "Fira Code", "SF Mono", Monaco, monospace;
 }
 

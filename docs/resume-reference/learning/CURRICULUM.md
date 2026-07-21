@@ -21,10 +21,15 @@
 - **目标**：讲清 7 个画布工具的内部实现、Agent 如何组合工具完成任务
 - **产出**：10 工具全景表 + 工具间组合模式 + 3 道 Quiz
 
-### M004 — Monet 画布感知（待定）
-- **模块**：`src/monet/agent/state_reader.py` + `src/monet/tools/canvas*.py`
-- **目标**：讲清 Agent 如何理解画布上下文（业内少见）
-- **候选亮点**：Canvas Awareness + Query Tool（可写入简历）
+### M004 — Monet 画布感知 ✅
+- **文件**：`lessons/M004-canvas-awareness.html`
+- **模块**：`canvas_context.py` + `canvas_overview.py` + `aigw.py` + `canvas_query.py` + `state_reader.py`
+- **目标**：讲清 Agent 怎么"看见"画布——三层感知机制
+- **产出**：三层感知数据流时序图 + 分级渲染策略表 + 7 个面试防守点 + contextvar 设计权衡
+- **主线故事**：Agent 怎么"看见"画布？
+  1. **每轮对话入口**：`_prime_canvas_context` 拉取概览写入 contextvar
+  2. **每次 LLM 调用**：`ChatAIGW._inject_canvas_overview` 拦截注入最新 HumanMessage（深拷贝，不污染 checkpoint）
+  3. **按需深挖**：`canvas_node_detail` / `canvas_subgraph` 复用 contextvar 缓存或现拉
 
 ---
 

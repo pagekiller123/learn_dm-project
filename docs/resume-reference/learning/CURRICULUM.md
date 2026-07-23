@@ -31,6 +31,17 @@
   2. **每次 LLM 调用**：`ChatAIGW._inject_canvas_overview` 拦截注入最新 HumanMessage（深拷贝，不污染 checkpoint）
   3. **按需深挖**：`canvas_node_detail` / `canvas_subgraph` 复用 contextvar 缓存或现拉
 
+### M005 — Monet 生成链路 ✅
+- **文件**：`lessons/M005-generation-pipeline.html`
+- **模块**：`agent_generation.py` + `generation_runner.py` + `service.py` + `registry.py` + 三种 backend 实现
+- **目标**：讲清 Agent 调用 AI 生成内容的完整链路（从工具调用到画布节点创建）
+- **产出**：四层架构时序图 + 模型注册表设计 + submit → poll → fetch 三阶段协议 + 重试策略
+- **主线故事**：Agent 怎么调用 AI 生成图片/视频/3D？
+  1. **编排层**：`AgentGenerationService` 负责业务编排（引用解析、参数校验、节点创建）
+  2. **执行层**：`GenerationRunner` 提供 submit → poll → fetch → mirror 原子操作
+  3. **服务层**：`GenerationService` 负责模型路由、参数转换、后端分发
+  4. **传输层**：`GenerationBackend` 协议统一三种后端（DM API / AIGW / Ailab）
+
 ---
 
 ## Scheduler 系列（S 前缀）

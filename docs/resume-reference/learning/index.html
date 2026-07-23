@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>DreamMaker Agent 学习课程</title>
+  <link rel="stylesheet" href="assets/style.css">
+  <style>
+    body {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 3rem;
+    }
+    .series {
+      margin-bottom: 3rem;
+    }
+    .series h2 {
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .course-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .course-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.5rem;
+      background: #fff;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .course-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .course-card.completed {
+      border-left: 4px solid #28a745;
+    }
+    .course-card.pending {
+      border-left: 4px solid #ffc107;
+      opacity: 0.7;
+    }
+    .course-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .course-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #333;
+      margin: 0;
+    }
+    .status {
+      font-size: 0.85rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .status.completed {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .course-meta {
+      font-size: 0.9rem;
+      color: #666;
+      margin: 0.5rem 0;
+    }
+    .course-description {
+      font-size: 0.95rem;
+      color: #555;
+      margin: 1rem 0;
+      line-height: 1.6;
+    }
+    .course-link {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background: #007bff;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .course-link:hover {
+      background: #0056b3;
+    }
+    .course-link.disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+    .upcoming {
+      margin-top: 3rem;
+      padding: 2rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+    }
+    .upcoming h3 {
+      margin-top: 0;
+      color: #495057;
+    }
+    .upcoming ul {
+      list-style: none;
+      padding: 0;
+    }
+    .upcoming li {
+      padding: 0.5rem 0;
+      color: #6c757d;
+    }
+    .upcoming li::before {
+      content: "📋 ";
+    }
+  </style>
+</head>
+<body>
+  <h1>🎨 DreamMaker Agent 学习课程</h1>
+  <p class="subtitle">从零开始掌握 AI Agent 开发</p>
+
+  <div class="series">
+    <h2>Monet 系列（Agent 核心）</h2>
+    <div class="course-grid">
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M001 — 架构总览</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★☆☆☆ | 时长：30 分钟</p>
+        <p class="course-description">了解 Monet 的整体架构，包括 Agent 运行时、工具系统、任务调度等核心概念。</p>
+        <a href="lessons/M001-monet-architecture-overview.html" class="course-link">开始学习 →</a>
+      </div>
+
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M002 — Agent 核心</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★☆☆ | 时长：40 分钟</p>
+        <p class="course-description">深入理解 Agent 的运行机制，包括 Agent Loop、消息流、工具调用、流式响应等。</p>
+        <a href="lessons/M002-monet-agent-core-factory-runner-loop.html" class="course-link">开始学习 →</a>
+      </div>
+
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M003 — Tool Use 系统</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★☆☆ | 时长：40 分钟</p>
+        <p class="course-description">掌握工具系统的设计与实现，包括工具定义、参数校验、错误处理、工具组合等。</p>
+        <a href="lessons/M003-monet-tool-use-system.html" class="course-link">开始学习 →</a>
+      </div>
+
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M004 — 画布感知</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★★☆ | 时长：45 分钟</p>
+        <p class="course-description">理解 Agent 如何感知画布状态，包括 contextvar 缓存、概览注入、按需查询等机制。</p>
+        <a href="lessons/M004-canvas-awareness.html" class="course-link">开始学习 →</a>
+      </div>
+
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M005 — 生成链路</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★★☆ | 时长：50 分钟</p>
+        <p class="course-description">深入生成链路，了解四层架构（编排层、执行原语、服务层、传输层）、模型注册表、submit → poll → fetch 三阶段协议等。</p>
+        <a href="lessons/M005-generation-pipeline.html" class="course-link">开始学习 →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="series">
+    <h2>Scheduler 系列（任务调度）</h2>
+    <div class="course-grid">
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">S001 — 架构总览</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★☆☆ | 时长：40 分钟</p>
+        <p class="course-description">了解 Scheduler 的整体架构，包括任务调度、Worker 管理、资源分配等核心概念。</p>
+        <a href="lessons/S001-scheduler-architecture-overview.html" class="course-link">开始学习 →</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="upcoming">
+    <h3>🚧 即将推出的课程</h3>
+    <ul>
+      <li><strong>S002 — 任务调度</strong>：深入理解任务队列、调度策略、优先级管理</li>
+      <li><strong>S003 — Worker 管理</strong>：Worker 生命周期、健康检查、负载均衡</li>
+      <li><strong>S004 — 资源调度</strong>：GPU 资源管理、队列分配、性能优化</li>
+      <li><strong>X001 — 实战案例</strong>：从 0 到 1 实现一个完整的 AI 能力接入</li>
+    </ul>
+  </div>
+
+  <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #eee; color: #666;">
+    <p>📚 课程基于 DreamMaker 项目实际代码编写 | 💡 有问题欢迎交流</p>
+  </div>
+</body>
+</html>

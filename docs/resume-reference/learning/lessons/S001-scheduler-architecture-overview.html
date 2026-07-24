@@ -31,84 +31,139 @@
 
 <p>它没有单一入口——每个服务自带 <code>app/&lt;service&gt;/main.go</code>，通过 tmax istioingress 网关做路径路由，服务间用 <code>dmfr.HTTPClient()</code> 相互调用，任务状态通过 Redis / Mongo / etcd 三层协同管理。</p>
 
+<div class="highlight-box">
+  <strong>名词解释：tmax istioingress</strong><br/>
+  <ul>
+    <li><strong>tmax</strong>：网易内部的 k8s 容器平台（类似阿里云 ACK / 腾讯 TKE），Scheduler 的所有微服务都部署在上面。</li>
+    <li><strong>Istio</strong>（读作 <strong>IS-tee-oh</strong>，源自希腊语"帆"）：一个开源的<strong>服务网格（Service Mesh）</strong>框架。简单说，它是一层透明的"基础设施"，套在你的微服务外面，帮你统一管理服务间的通信——包括流量路由、负载均衡、认证鉴权、可观测性（metrics / tracing / logging）。你的业务代码不用改一行，Istio 通过给每个 Pod 注入 sidecar 代理自动接管网络。</li>
+    <li><strong>Envoy</strong>（读作 <strong>EN-voy</strong>，英文"使者/信使"的意思）：一个高性能的 C++ 网络代理。Istio 底层就是用 Envoy 做数据面——每个微服务旁边跑一个 Envoy sidecar 拦截进出流量。而 <strong>Istio Ingress Gateway</strong> 本质上就是一个独立部署的 Envoy 实例，专门处理从集群外部进来的流量。</li>
+    <li><strong>EnvoyFilter</strong>：Istio 提供的一种配置资源，可以往 Envoy 代理里注入自定义过滤逻辑（比如在网关层统一做 JWT 认证），不用改业务代码。</li>
+  </ul>
+  <p>合在一起就是"部署在 tmax 平台上的 Istio 入口网关"，负责三件事：</p>
+  <ol>
+    <li><strong>路径路由</strong>：根据 URL path 把请求转发到对应的内部服务（如 <code>/api-outer/...</code> → api-outer 服务）</li>
+    <li><strong>统一认证</strong>：通过 EnvoyFilter 在网关层做鉴权，内部服务不用各自实现</li>
+    <li><strong>统一入口</strong>：Frontend、Monet、内部工具的流量全走这一层，再路由到后端</li>
+  </ol>
+  <p><strong>类比</strong>：如果你熟悉 Nginx 反向代理，tmax istioingress 就是集群级别的 Nginx——只不过跑在 Istio 服务网格上，能跟 k8s 服务发现无缝集成。Nginx 需要你手写 <code>upstream</code> 和 <code>location</code> 配置；Istio + k8s 的好处是服务上线/下线时路由自动更新，不用手动改配置文件。</p>
+</div>
+
 <h2>二、整体架构图</h2>
 
 <div class="diagram">
 <pre class="mermaid">
 flowchart TB
-    subgraph External["外部请求方"]
+    %% === 第一层：外部请求 ===
+    subgraph ExternalClients["① 外部请求方"]
+        direction LR
         Frontend["Frontend<br/>（DM 主站 UI）"]
         Monet["Monet Agent<br/>（客户端）"]
         InternalTools["内部工具 / 外部游戏"]
     end
 
-    subgraph Gateway["网关层"]
-        Istio["tmax istioingress<br/>+ envoyfilter 认证"]
+    %% === 第二层：网关 + API ===
+    subgraph GatewayAPI["② 网关 + API 入口"]
+        direction LR
+        Istio["tmax istioingress<br/>+ envoyfilter"]
+        Auth["authorization<br/>（JWT 鉴权）"]
+        ApiOuter["api-outer"]
+        ApiServer["api-server"]
     end
 
-    subgraph API["API 入口层"]
-        ApiOuter["api-outer<br/>（外部工具入口）"]
-        ApiServer["api-server<br/>（模型/用户组管理）"]
-    end
-
-    subgraph Business["业务服务层"]
-        AppGateway["app-gateway<br/>（APP 编排 / 参数映射 / 入队）"]
+    %% === 第三层：业务服务 ===
+    subgraph Business["③ 业务服务层"]
+        direction LR
+        AppGateway["app-gateway<br/>（权限检查 / APP 编排 / 参数映射 / 入队）"]
         TwoD["2d"]
         StoryBoard["story-board"]
-        Consumer["consumer<br/>（kafka 解耦）"]
+        Flow["flow<br/>（工作流引擎）"]
     end
 
-    subgraph Scheduling["调度层"]
+    %% === 第四层：基础设施（横向排列）===
+    subgraph Infra["基础设施（被上下两层共用）"]
+        direction LR
+        Redis["Redis<br/>任务队列"]
+        Mongo["MongoDB<br/>AppRecord / TaskMsg"]
+        Etcd["etcd<br/>Worker/Task 注册"]
+        Kafka["Kafka<br/>异步消息"]
+    end
+
+    %% === 第五层：调度 ===
+    subgraph Scheduling["④ 调度层"]
+        direction LR
         WorkerScheduler["worker-scheduler<br/>（Leader 选举 + 任务分配）"]
         TransformerV2["transformer_v2<br/>（tmax 推理调度）"]
     end
 
-    subgraph Execute["Worker 执行层"]
+    %% === 第六层：Worker 执行 ===
+    subgraph Execute["⑤ Worker 执行层"]
+        direction LR
         WorkerSidecar["worker-sidecar<br/>（异构后端适配）"]
         ComfyWorker["Comfy Worker"]
         SDWorker["SD Worker"]
         TrainingWorker["Training Worker"]
     end
 
-    subgraph Infra["基础设施"]
-        Redis["Redis Queue<br/>（任务队列）"]
-        Mongo["MongoDB<br/>（AppRecord / TaskMsg）"]
-        Etcd["etcd<br/>（Worker/Task 注册）"]
+    %% === 第七层：外部推理后端 ===
+    subgraph Backend["⑥ 外部推理后端"]
+        direction LR
+        ComfyUI["ComfyUI<br/>（本地 Pod）"]
+        SDBackend["SD-WebUI<br/>（本地 Pod）"]
+        DmGateway["AIGW<br/>（dreammaker-gateway 仓库）"]
+        VendorsDirect["供应商 API 直连<br/>（Kling / Runway / Sora 等）"]
     end
 
-    subgraph Backend["外部推理后端"]
-        ComfyUI["ComfyUI"]
-        SDBackend["SD-WebUI"]
-        External["外部供应商<br/>（走 Gateway 仓库）"]
-    end
+    %% === Kafka 消费者（独立放右侧）===
+    Consumer["consumer<br/>（Kafka 消费）"]
+    Transporter["transporter<br/>（Kafka 中继/路由）"]
 
-    Frontend --> Istio
-    Monet --> Istio
-    InternalTools --> Istio
-
-    Istio --> ApiOuter
-    Istio --> ApiServer
+    %% --- 连线：请求主链路（从上往下）---
+    ExternalClients --> Istio
+    Istio --> Auth
+    Auth --> ApiOuter
+    Auth --> ApiServer
     ApiOuter --> AppGateway
-    ApiOuter --> TwoD
-    ApiOuter --> StoryBoard
 
-    AppGateway -->|入库| Mongo
+    %% --- 连线：app-gateway → 基础设施（向下）---
     AppGateway -->|入队| Redis
-    AppGateway --> Consumer
+    AppGateway -->|AddAppRecord| Mongo
+    AppGateway -->|发送结果/进度| Kafka
 
-    WorkerScheduler -->|Leader 选举| Etcd
+    %% --- 连线：Kafka → 消费者 ---
+    Kafka -.->|消费结果| Consumer
+    Kafka -.->|消费中继| Transporter
+
+    %% --- 连线：worker-scheduler → 基础设施（向上）---
     WorkerScheduler -->|拉任务| Redis
     WorkerScheduler -->|读消息| Mongo
-    WorkerScheduler -->|注册运行| Etcd
+    WorkerScheduler -->|Leader 选举 + 注册| Etcd
 
-    WorkerSidecar -->|上报| WorkerScheduler
+    %% --- 连线：调度 → 执行 ---
+    WorkerScheduler -->|分派任务| WorkerSidecar
+
+    %% --- 连线：执行层内部 ---
     WorkerSidecar --> ComfyWorker
     WorkerSidecar --> SDWorker
     WorkerSidecar --> TrainingWorker
+
+    %% --- 连线：执行层 → 推理后端 ---
     ComfyWorker --> ComfyUI
     SDWorker --> SDBackend
-    WorkerSidecar --> External
+    WorkerSidecar -->|部分供应商| DmGateway
+    WorkerSidecar -->|部分供应商| VendorsDirect
+
+    %% --- 连线：执行层 → 调度层（上报）---
+    WorkerSidecar -.->|上报结果| WorkerScheduler
+
+    %% --- 连线：结果回写链路（scheduler 收到上报后）---
+    WorkerScheduler -.->|写状态 success/failed| Mongo
+    WorkerScheduler -.->|写结果到 Kafka| Kafka
+    Consumer -.->|通知前端| ExternalClients
 </pre>
+</div>
+
+<div class="highlight-box">
+  <strong>结果回写链路说明</strong>：worker-scheduler 并不自己实现结果处理逻辑——它在进程内直接复用 <code>app-gateway/action</code> 包的代码（Go 包导入，不是 HTTP 调用）。Worker 上报结果后，scheduler 调用 action 包完成：① 更新 Mongo 任务状态 → ② 写结果到 Kafka → ③ consumer 消费 Kafka 通知前端。图中虚线表示结果回写方向（与请求方向相反）。
 </div>
 
 <h2>三、五层架构的职责边界</h2>
@@ -186,7 +241,7 @@ flowchart TB
   <li><strong>拉队列</strong>：从 Redis 拉 pending task</li>
   <li><strong>加载消息</strong>：从 Mongo 加载 <code>AppTaskMsg</code>（因为 Redis 里只放 task_id，完整参数在 Mongo）</li>
   <li><strong>注册运行</strong>：把 task 写到 etcd 的运行注册表，作为"正在跑的任务"的 source of truth</li>
-  <li><strong>下发给 Worker</strong>：Worker 主动上报"我空闲"（<code>report consume</code>），scheduler 才把任务发下去</li>
+  <li><strong>下发给 Worker（Pull 模式）</strong>：Worker 主动上报"我空闲"（<code>report consume</code>），scheduler 才把任务发下去——是 Worker 来"拉"任务，不是 scheduler 主动"推"</li>
   <li><strong>结果回写</strong>：Worker 上报结果 → scheduler 调用 <code>action.AfterCall / MapCallResponse</code> → 写回 Mongo → 删除 etcd 注册</li>
 </ul>
 
@@ -204,7 +259,21 @@ flowchart TB
 
 <p><strong>职责</strong>：worker-scheduler 只知道"这个任务要发给某个 Worker"，但 Worker 具体是 ComfyUI / SD-WebUI / 训练 / 外部供应商，用什么协议、参数怎么组织、结果怎么解析——都由 sidecar 适配。</p>
 
-<p>类比：这是<strong>适配器模式</strong>在生产系统里的规模化应用。sidecar 让 scheduler 的调度逻辑跟具体推理后端解耦，加一种新 Worker 只需要加一种 sidecar，scheduler 侧不改。</p>
+<p>类比：这是<strong>适配器模式</strong>在生产系统里的规模化应用。sidecar 让 scheduler 的调度逻辑跟具体推理后端解耦——接入一种新的 AI 能力时，<strong>worker-scheduler 的调度代码不用改</strong>，只需要：① 在 sidecar 里新增一个 worker 实现（实现 <code>pkg.Worker</code> 接口）；② 在 app-gateway 的 action 层处理参数映射和结果处理。注意 worker-sidecar 本身是一个统一服务，不是每种 Worker 一个独立进程——它通过部署时配置的 <code>workerType</code> 决定实例化哪种 worker 实现。</p>
+
+<div class="highlight-box">
+  <strong>补充：action 不是每种能力都要新写一个文件</strong><br/>
+  app-gateway 里有一个通用的 <code>commonAction</code>，大多数新供应商直接复用它就行（通过 Mongo 里的 app 配置控制参数映射规则）。只有当某种后端的逻辑跟通用流程差异很大时（比如 ComfyUI 需要拼装工作流 JSON、MidJourney 有特殊回调机制），才需要单独写一个 <code>action_xxx.go</code>。
+</div>
+
+<div class="highlight-box">
+  <strong>补充：worker-sidecar 不全是传统意义的 sidecar</strong><br/>
+  <ul>
+    <li><strong>ComfyUI / SD-WebUI / GPT-SoVITS 等本地推理后端</strong>：sidecar 跟推理进程部署在同一个 Pod 里，通过 <code>localhost:8188</code> / <code>localhost:7861</code> 通信——这是经典的 sidecar 模式。</li>
+    <li><strong>火山 / Kling / Runway / Sora 等外部供应商</strong>：旁边没有推理容器，sidecar 只是一个独立进程通过 HTTP 调外部 API——更像是 "worker adapter"。</li>
+  </ul>
+  <p>之所以统一叫 sidecar，是历史原因：项目最早只有 ComfyUI/SD 这类本地推理后端，后来接了大量外部供应商，代码复用了同一套上报/调度机制，名字就没改。面试时如果被问到"这不是传统 sidecar 吧"，可以主动解释这一点。</p>
+</div>
 
 <h2>五、关键数据流（一次任务的完整生命周期）</h2>
 
@@ -222,9 +291,9 @@ sequenceDiagram
     participant W as worker-sidecar
 
     C->>O: POST /apps/{app}/run
-    O->>O: JWT / 权限校验
+    O->>O: JWT 认证 + API 模块权限校验
     O->>A: RunApp(...)
-    A->>A: 参数映射 / 鉴权
+    A->>A: CheckAppAccess（App 访问权限）+ 参数映射
     A->>M: AddAppRecord(status=queued)
     A->>R: Produce pending task
     A-->>O: task_id
@@ -277,7 +346,7 @@ sequenceDiagram
 </table>
 
 <div class="highlight-box">
-  <strong>简历包装点</strong>：可以写"基于 dmfr 脚手架开发多个微服务，复用其 HTTP client/server、trace、metrics、ecode、logging 能力，避免重复造轮子"——这既体现你懂微服务基础设施，又体现你有"复用生态"的判断力（面试评论区反复提到的加分点）。
+  <strong>简历包装点</strong>：可以写"基于 dmfr 脚手架开发多个微服务，复用其 HTTP client/server、trace、metrics、ecode、logging 能力，避免重复造轮子"——这既体现你懂微服务基础设施，又体现你有复用生态的判断力（评论区也提到"用框架快速出成果，别造轮子，实习公司看重落地能力"）。
 </div>
 
 <h2>七、可写进简历的量化点（需要你去收集数据）</h2>

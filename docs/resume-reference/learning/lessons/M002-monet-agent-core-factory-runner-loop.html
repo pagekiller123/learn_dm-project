@@ -603,15 +603,232 @@ sequenceDiagram
   <p><code>task.cancel()</code> 只是发出取消信号，task 可能正在执行 tool（比如 HTTP 请求），需要等它处理完 <code>CancelledError</code> 才能安全清理。代码里是 <code>task.cancel(); await task</code>，确保旧 task 彻底结束后新 task 才开始，避免两个 task 同时操作同一个 session 的状态。</p>
 </div>
 
-<h2>九、state_reader.py — 为什么需要只读状态图？</h2>
+<h2>九、state_reader.py — Checkpointer 与对话续跑</h2>
 
-<p>DeepAgent 0.6+ 将 messages channel 改为 <strong>DeltaChannel</strong>（增量存储）。直接读 checkpoint blob 拿不到完整消息——必须通过 LangGraph 的 <code>aget_state()</code> API 让框架内部做 delta 合并。</p>
+<p>Agent 需要记住"之前聊过什么"，这样才能在多轮对话中保持上下文。Monet 用 LangGraph 的 <strong>Checkpointer</strong> 机制实现对话持久化。</p>
 
-<p><code>state_reader.py</code> 构建了一个最小的 <strong>只读 StateGraph</strong>（只有一个 noop 节点），专门用来调用 <code>aget_state()</code> 重建消息历史。</p>
+<h3>9.1 Checkpointer：对话状态的"存档点"</h3>
+
+<p>每次 Agent 完成一轮对话（LLM 推理 + 可能的工具调用），LangGraph 会把当前的消息历史<strong>存档</strong>到 checkpointer。下次用户继续对话时，Agent 可以从存档点恢复，继续工作。</p>
+
+<pre><code># factory.py 里的配置
+checkpointer = get_checkpointer()  # 进程级单例
+
+agent = create_deep_agent(
+    model=model,
+    system_prompt=SYSTEM_PROMPT,
+    checkpointer=checkpointer,  # ← 注入 checkpointer
+    tools=[...],
+    ...
+)</code></pre>
+
+<p><strong>进程级单例</strong>：整个 Monet Agent 进程只有一个 checkpointer 实例，所有对话共享。它负责把对话状态持久化到 SQLite 数据库。</p>
+
+<h3>9.2 DeltaChannel：增量存储，不是完整快照</h3>
+
+<p>DeepAgent 0.6+ 将 messages channel 改为 <strong>DeltaChannel</strong>——checkpoint 存的是<strong>增量</strong>（每次只存新增的消息），不是完整快照。</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph "Checkpoint 1（第 1 轮对话后）"
+        D1["Delta: [用户消息 1, Agent 回复 1]"]
+    end
+
+    subgraph "Checkpoint 2（第 2 轮对话后）"
+        D2["Delta: [用户消息 2, Agent 回复 2]"]
+    end
+
+    subgraph "Checkpoint 3（第 3 轮对话后）"
+        D3["Delta: [用户消息 3, Agent 回复 3]"]
+    end
+
+    Complete["完整消息历史 = Delta1 + Delta2 + Delta3"]
+
+    D1 --> Complete
+    D2 --> Complete
+    D3 --> Complete
+</pre>
+</div>
+
+<p>为什么用增量而不是完整快照？<strong>节省存储空间。</strong>如果每轮都存完整消息（可能包含大量工具调用结果），几轮对话后 checkpoint 就会变得很大。增量存储只存新增部分，体积增长慢得多。</p>
+
+<h3>9.3 问题：怎么从增量重建完整消息？</h3>
+
+<p>直接读 checkpoint blob 只能看到最后一次的增量片段，不是完整消息列表。LangGraph 提供了 <code>aget_state()</code> API，内部会自动把所有增量合并成完整消息——但前提是必须通过一个 <strong>StateGraph</strong> 调用。</p>
+
+<p><code>state_reader.py</code> 构建了一个最小的<strong>只读 StateGraph</strong>，专门用来调用 <code>aget_state()</code> 重建消息历史：</p>
+
+<pre><code># src/monet/agent/state_reader.py
+
+def build_state_reader(checkpointer: Checkpointer) -> CompiledStateGraph:
+    """构建只读状态图，用于通过 aget_state 重建 DeltaChannel 消息。"""
+    graph = StateGraph(state_schema=_ReaderState)  # 定义 messages channel
+
+    # 只有一个 noop 节点，什么都不做
+    graph.add_node("_noop", lambda state: state)
+    graph.add_edge(START, "_noop")
+    graph.add_edge("_noop", END)
+
+    # 编译时注入 checkpointer
+    return graph.compile(checkpointer=checkpointer)</code></pre>
+
+<p>关键点：</p>
+<ul>
+  <li><strong>_ReaderState</strong>：定义了 <code>messages</code> 字段，使用 <code>DeltaChannel</code> 和相同的 reducer（合并逻辑）</li>
+  <li><strong>_noop 节点</strong>：什么都不做，只是为了满足 StateGraph 的结构要求（至少一个节点）</li>
+  <li><strong>checkpointer</strong>：注入同一个 checkpointer 实例，确保读到相同的 checkpoint 数据</li>
+</ul>
+
+<h3>9.4 对话续跑的完整流程</h3>
+
+<p>用户重新打开对话（比如关闭 Monet 后重新打开，或者第二天继续昨天的对话）：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant F as Frontend
+    participant R as routes.py
+    participant SR as state_reader.py
+    participant CP as Checkpointer<br/>(SQLite)
+    participant AG as Agent
+
+    U->>F: 打开之前的对话
+    F->>R: POST /chat {session_id, message}
+
+    R->>SR: build_state_reader(checkpointer)
+    SR->>CP: aget_state(thread_id=session_id)
+    CP-->>SR: 所有 checkpoint 的增量数据
+    SR->>SR: DeltaChannel reducer 合并增量
+    SR-->>R: 完整消息历史
+
+    R->>AG: create_agent(checkpointer=...)
+    AG->>CP: 读取 checkpoint（继续存档）
+    AG->>AG: 基于完整历史继续推理
+    AG-->>R: 流式返回回复
+    R-->>F: SSE 流
+    F-->>U: 显示回复</code></pre>
+</div>
+
+<ol>
+  <li><strong>build_state_reader</strong>：构建只读 StateGraph，注入 checkpointer</li>
+  <li><strong>aget_state(thread_id)</strong>：通过 StateGraph 调用 LangGraph API，读取所有 checkpoint 的增量数据</li>
+  <li><strong>DeltaChannel reducer 合并</strong>：把所有增量合并成完整消息列表（[消息 1, 消息 2, ..., 消息 N]）</li>
+  <li><strong>创建 Agent</strong>：注入同一个 checkpointer，确保后续对话继续存档到相同的 checkpoint</li>
+  <li><strong>继续推理</strong>：Agent 基于完整历史继续工作，用户感觉"对话没断过"</li>
+</ol>
 
 <div class="defend">
   <h4>🛡️ 面试防守：为什么不直接用 LangGraph 的 API 读 checkpoint？</h4>
   <p>因为 DeltaChannel 的 checkpoint 存的是<em>增量</em>（每次只存新增的消息），不是完整快照。LangGraph 的 <code>aget_state()</code> 内部会自动把所有增量合并成完整消息列表。自己直接读 blob 就只能看到最后一次的增量片段。</p>
+  <p>而且 <code>aget_state()</code> 要求通过 StateGraph 调用——即使你只是想"读"状态，也必须构建一个 StateGraph。这就是 <code>state_reader.py</code> 存在的原因：构建一个最小的只读 StateGraph（只有一个 noop 节点），专门用来调用 <code>aget_state()</code>。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：为什么 checkpointer 是进程级单例？</h4>
+  <p>因为 checkpointer 本质是数据库连接池。如果每个请求都创建新的 checkpointer，会导致：
+  <ul>
+    <li>数据库连接数爆炸（每个请求一个连接）</li>
+    <li>SQLite 文件锁冲突（SQLite 不支持高并发写）</li>
+    <li>内存浪费（每个 checkpointer 实例都有缓存）</li>
+  </ul>
+  进程级单例确保所有对话共享同一个数据库连接，复用连接池和缓存。</p>
+</div>
+
+<h3>9.5 Prompt Caching 降本</h3>
+
+<p>多轮对话场景下，System Prompt + Tools 定义在每一轮都会重复发送。以 Monet 为例：System Prompt 约 2000 token，7 个工具的 JSON Schema 约 3000 token，每轮对话都要重新计算这些"固定内容"，浪费且昂贵。</p>
+
+<p>Claude 提供了 <strong>Prompt Caching</strong> 机制：在请求的特定位置标记 <code>cache_control</code>，AIGW/Anthropic 会缓存从开头到标记处的内容。后续请求如果前缀相同，直接复用缓存，input token 价格降低约 90%。</p>
+
+<h4>三个缓存断点</h4>
+
+<p><code>cache_control.py</code> 在请求 payload 里注入最多 3 个断点（Claude 限制 4 个，保留 1 个余量）：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph "请求 Payload"
+        direction TB
+        Sys["System Prompt<br/>(~2000 token)"]
+        Tools["Tools 定义<br/>(~3000 token)"]
+        Hist["对话历史<br/>(逐轮增长)"]
+        Latest["最新 user 消息<br/>(每轮变化)"]
+    end
+
+    Sys -->|断点 1| Cache1["cache_control<br/>#1"]
+    Tools -->|断点 2| Cache2["cache_control<br/>#2"]
+    Hist -->|断点 3| Cache3["cache_control<br/>#3"]
+    Latest --> NoCache["无缓存标记<br/>(每轮都变)"]
+
+    style Cache1 fill:#d4edda,stroke:#28a745
+    style Cache2 fill:#d4edda,stroke:#28a745
+    style Cache3 fill:#d4edda,stroke:#28a745
+    style NoCache fill:#f8d7da,stroke:#dc3545
+</pre>
+</div>
+
+<table>
+<thead>
+<tr><th>断点</th><th>位置</th><th>缓存内容</th><th>为什么缓存</th></tr>
+</thead>
+<tbody>
+<tr><td>#1</td><td>System Prompt 末尾</td><td>System Prompt（Agent 行为定义）</td><td>所有请求相同，永不变</td></tr>
+<tr><td>#2</td><td>Tools 数组最后一个元素</td><td>7 个工具的 JSON Schema</td><td>所有请求相同，永不变</td></tr>
+<tr><td>#3</td><td>最后一条 user 消息之前的消息</td><td>对话历史（不含最新 user 消息）</td><td>多轮对话中，历史消息不变，只有最新 user 消息是新的</td></tr>
+</tbody>
+</table>
+
+<h4>代码实现</h4>
+
+<pre><code># src/monet/model/cache_control.py
+
+def inject_cache_control(payload: dict[str, Any]) -> None:
+    """为 Claude 模型请求注入 prompt caching 标记。"""
+    if not _should_enable(payload):  # 只对 claude-* 模型启用
+        return
+
+    messages = payload.get("messages", [])
+    tools = payload.get("tools", [])
+
+    _mark_system_message(messages)    # 断点 1：System Prompt
+    _mark_tools(tools)                # 断点 2：Tools 定义
+    _mark_conversation_prefix(messages)  # 断点 3：对话历史</code></pre>
+
+<p>注入时机：在 <code>ChatAIGW._get_request_payload</code> 构建完请求 payload 后、发送前调用：</p>
+
+<pre><code># src/monet/model/aigw.py
+def _get_request_payload(self, input_, stop=None, **kwargs):
+    payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+    inject_cache_control(payload)  # ← 注入缓存标记
+    return payload</code></pre>
+
+<h4>缓存命中效果</h4>
+
+<div class="highlight-box">
+  <strong>示例：10 轮对话的成本对比</strong>
+  <ul>
+    <li><strong>无缓存</strong>：每轮都重新计算 System + Tools + 全部历史 → 10 轮 × 5000 token = 50,000 token</li>
+    <li><strong>有缓存</strong>：System + Tools 只算 1 次，历史消息每轮只算新增部分 → 5000 + 10 × 200 = 7,000 token</li>
+    <li><strong>节省</strong>：约 85% 的 input token 成本</li>
+  </ul>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：为什么只在 claude-* 模型上启用？</h4>
+  <p>因为 Prompt Caching 是 Claude 特有的功能，其他模型（如 GPT、Gemini）不支持 <code>cache_control</code> 字段。代码里通过 <code>model_name.startswith("claude-")</code> 判断，只对 Claude 模型注入标记，避免其他模型报错。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：为什么保留 1 个断点余量（只用 3 个，不用满 4 个）？</h4>
+  <p>Claude 最多支持 4 个缓存断点，但代码只用 3 个。这是为了应对未来可能的变化：如果新增一个"永不变"的内容块（比如画布概览注入），可以加第 4 个断点而不需要重构。这是<strong>防御性设计</strong>——留一个余量，避免后续改动时超出限制。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：断点 3 为什么标记"最后一条 user 消息之前"而不是"最后一条 assistant 消息"？</h4>
+  <p>因为用户可能连续发多条消息（比如先说"帮我画猫"，还没等回复又追加"要赛博朋克风格"）。如果标记在 assistant 消息上，连续 user 消息会打断缓存。标记在"最后一条 user 消息之前"，确保所有历史消息（包括可能的多条连续 user 消息）都被缓存，只有最新的那条 user 消息不缓存（因为它每轮都变）。</p>
 </div>
 
 <h2>十、可写进简历的亮点</h2>

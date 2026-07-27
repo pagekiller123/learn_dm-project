@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Monet Agent 学习课程</title>
+  
+  <style>
+/* 教学课程共享样式 — Tufte 风格 */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.quiz {
+  background: #fef9e7;
+  border: 1px solid #e6d999;
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+}
+.quiz-question { font-weight: 600; margin-bottom: 0.8rem; font-family: var(--sans); }
+.quiz-options { list-style: none; padding: 0; }
+.quiz-options li {
+  padding: 0.5rem 0.8rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 0.4rem 0;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.quiz-options li:hover { background: var(--accent-soft); }
+.quiz-answer {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: white;
+  border-radius: 4px;
+  display: none;
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+.quiz-answer.visible { display: block; }
+.quiz-toggle {
+  margin-top: 0.5rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.85em;
+}
+
+.followup {
+  border: 2px dashed var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 2rem 0 1rem;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-family: var(--sans);
+}
+.followup h4 { margin-top: 0; color: var(--accent); }
+
+.resource-recommend {
+  background: #eef7ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+
+.resume-hook {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+}
+.resume-hook h4 { color: #16a34a; margin-top: 0; }
+
+/* 面试防守 box */
+.defend {
+  background: #fef2f2;
+  border: 2px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+.defend h4 { margin-top: 0; color: var(--accent); }
+.defend ol { padding-left: 1.4rem; }
+.defend li { margin: 0.5rem 0; }
+
+/* Mermaid 图容器 */
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem -2rem; /* 负 margin：让图突破正文列宽 */
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Mermaid 生成的 SVG 默认会缩放到容器宽度，禁用它以显示真实字号 */
+.diagram .mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+}
+
+.print-only { display: none; }
+@media print {
+  body { max-width: none; margin: 0; padding: 1cm; font-size: 11pt; }
+  .quiz-toggle, .followup { break-inside: avoid; }
+  .print-only { display: block; }
+  a { color: var(--text); text-decoration: none; }
+}
+
+nav.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+
+    body {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 3rem;
+    }
+    .series {
+      margin-bottom: 3rem;
+    }
+    .series h2 {
+      border-bottom: 2px solid #007bff;
+      padding-bottom: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .course-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .course-card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 1.5rem;
+      background: #fff;
+      transition: box-shadow 0.2s, transform 0.2s;
+    }
+    .course-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      transform: translateY(-2px);
+    }
+    .course-card.completed {
+      border-left: 4px solid #28a745;
+    }
+    .course-card.pending {
+      border-left: 4px solid #ffc107;
+      opacity: 0.7;
+    }
+    .course-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+    .course-title {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #333;
+      margin: 0;
+    }
+    .status {
+      font-size: 0.85rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    .status.completed {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.pending {
+      background: #fff3cd;
+      color: #856404;
+    }
+    .course-meta {
+      font-size: 0.9rem;
+      color: #666;
+      margin: 0.5rem 0;
+    }
+    .course-description {
+      font-size: 0.95rem;
+      color: #555;
+      margin: 1rem 0;
+      line-height: 1.6;
+    }
+    .course-link {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: 0.5rem 1rem;
+      background: #007bff;
+      color: #fff;
+      text-decoration: none;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+    .course-link:hover {
+      background: #0056b3;
+    }
+    .course-link.disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      pointer-events: none;
+    }</style>
+</head>
+<body>
+  <h1>🎨 Monet Agent 学习课程</h1>
+  <p class="subtitle">从零开始掌握 AI Agent 开发</p>
+
+  <div class="series">
+    <h2>Monet 系列（Agent 核心）</h2>
+    <div class="course-grid">
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M001 — 架构总览</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★☆☆☆ | 时长：30 分钟</p>
+        <p class="course-description">了解 Monet 的整体架构，包括 Agent 运行时、工具系统、画布感知和生成链路等核心概念。</p>
+        <a href="M001-monet-architecture-overview.html" class="course-link">开始学习 →</a>
+      </div>
+
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M002 — Agent 核心</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★☆☆ | 时长：40 分钟</p>
+        <p class="course-description">深入理解 Agent 的运行机制，包括 Agent Loop、消息流、工具调用、流式响应等。</p>
+        <a href="M002-monet-agent-core-factory-runner-loop.html" class="course-link">开始学习 →</a>
+      </div>
+
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M003 — Tool Use 系统</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★☆☆ | 时长：40 分钟</p>
+        <p class="course-description">掌握工具系统的设计与实现，包括工具定义、参数校验、错误处理、工具组合等。</p>
+        <a href="M003-monet-tool-use-system.html" class="course-link">开始学习 →</a>
+      </div>
+
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M004 — 画布感知</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★★☆ | 时长：45 分钟</p>
+        <p class="course-description">理解 Agent 如何感知画布状态，包括 contextvar 缓存、概览注入、按需查询等机制。</p>
+        <a href="M004-canvas-awareness.html" class="course-link">开始学习 →</a>
+      </div>
+
+      <div class="course-card completed">
+        <div class="course-header">
+          <h3 class="course-title">M005 — 生成链路</h3>
+          <span class="status completed">✅ 已完成</span>
+        </div>
+        <p class="course-meta">难度：★★★★☆ | 时长：50 分钟</p>
+        <p class="course-description">深入生成链路，了解四层架构（编排层、执行原语、服务层、传输层）、模型注册表、submit → poll → fetch 三阶段协议等。</p>
+        <a href="M005-generation-pipeline.html" class="course-link">开始学习 →</a>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 3rem; padding-top: 2rem; border-top: 1px solid #eee; color: #666;">
+    <p>📚 课程基于 DreamMaker 项目实际代码编写 | 💡 有问题欢迎交流</p>
+  </div>
+</body>
+</html>

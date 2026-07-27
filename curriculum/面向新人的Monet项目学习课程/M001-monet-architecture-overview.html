@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <style>
+/* 教学课程共享样式 — Tufte 风格 */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.quiz {
+  background: #fef9e7;
+  border: 1px solid #e6d999;
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+}
+.quiz-question { font-weight: 600; margin-bottom: 0.8rem; font-family: var(--sans); }
+.quiz-options { list-style: none; padding: 0; }
+.quiz-options li {
+  padding: 0.5rem 0.8rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 0.4rem 0;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.quiz-options li:hover { background: var(--accent-soft); }
+.quiz-answer {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: white;
+  border-radius: 4px;
+  display: none;
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+.quiz-answer.visible { display: block; }
+.quiz-toggle {
+  margin-top: 0.5rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.85em;
+}
+
+.followup {
+  border: 2px dashed var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 2rem 0 1rem;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-family: var(--sans);
+}
+.followup h4 { margin-top: 0; color: var(--accent); }
+
+.resource-recommend {
+  background: #eef7ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+
+.resume-hook {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+}
+.resume-hook h4 { color: #16a34a; margin-top: 0; }
+
+/* 思考 box */
+.defend {
+  background: #fef2f2;
+  border: 2px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+.defend h4 { margin-top: 0; color: var(--accent); }
+.defend ol { padding-left: 1.4rem; }
+.defend li { margin: 0.5rem 0; }
+
+/* Mermaid 图容器 */
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem -2rem; /* 负 margin：让图突破正文列宽 */
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Mermaid 生成的 SVG 默认会缩放到容器宽度，禁用它以显示真实字号 */
+.diagram .mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+}
+
+.print-only { display: none; }
+@media print {
+  body { max-width: none; margin: 0; padding: 1cm; font-size: 11pt; }
+  .quiz-toggle, .followup { break-inside: avoid; }
+  .print-only { display: block; }
+  a { color: var(--text); text-decoration: none; }
+}
+
+nav.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+
+  </style>
+  <meta charset="UTF-8">
+  <title>M001 — Monet 整体架构总览</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'default',
+      // 全局字号：flowchart/sequence 通用
+      themeVariables: {
+        fontSize: '18px',
+        fontFamily: '"Inter", "PingFang SC", "Microsoft YaHei", sans-serif'
+      },
+      // 时序图专属参数：加宽 actor 间距 + 加大消息字号
+      sequence: {
+        actorFontSize: 16,
+        actorFontWeight: 600,
+        messageFontSize: 15,
+        noteFontSize: 14,
+        actorMargin: 90,
+        boxMargin: 12,
+        boxTextMargin: 8,
+        messageMargin: 40,
+        mirrorActors: false,
+        wrap: true
+      },
+      // flowchart 参数：稍微增大节点内边距和字号
+      flowchart: {
+        nodeSpacing: 60,
+        rankSpacing: 60,
+        htmlLabels: true,
+        useMaxWidth: false
+      }
+    });
+  </script>
+</head>
+<body>
+
+<div class="lesson-meta"><span><strong>适合人群</strong> 工作新人</span>
+  <span><strong>Lesson</strong> M001</span>
+  <span><strong>项目</strong> Monet Agent</span>
+  <span><strong>时长</strong> ~30 分钟</span>
+  <span><strong>难度</strong> ★★☆☆☆</span>
+  <span><strong>下一节</strong> <a href="M002-monet-agent-core-factory-runner-loop.html">M002 — Agent 核心</a></span>
+</div>
+
+<h1>Monet 整体架构总览</h1>
+
+<p>Monet 是网易互娱 AI 美术平台的 <strong>本地 Agent 服务</strong>——跟 Monet 桌面客户端打包在一起，为用户提供画布式 AI 创作能力。这一节的目标是：<strong>看完能画出它的架构图，并能用自己的话说明各模块的职责和协作关系</strong>。</p>
+
+<div class="highlight-box">
+  <strong>Monet 的独特定位</strong>：不是云端 SaaS，而是<strong>运行在用户客户端上的 Agent 服务</strong>，跟一个画布客户端（dm-tapnow）打包为桌面软件。这个定位决定了 Monet 的几个关键设计：本地 shell 能力、画布节点感知、SSE 流式响应、Human-in-the-Loop 审批。
+</div>
+
+<div class="highlight-box">
+  <strong>🎨 品牌级概念：Harness Artist</strong><br>
+  官方技术方案对 DM Agent 的品牌定位是 "<strong>Harness Artist</strong>"——对标软件工程界的 "Harness Engineer"：<em>美术师从"亲手画画"转变为"驾驭 AI Agent 完成创作"，通过定义约束、能力、验证标准和流程来驾驭 Agent</em>。这个词可以帮助你理解 Monet 的产品定位，而不只停留在代码层面。<br>
+  ——出处：<a href="https://docs.popo.netease.com/team/pc/dreammaker/pageDetail/793c642c8ae94c94baa5f8e99ecacbe7">POPO 团队空间 · DreamMaker Agent 技术方案</a>
+</div>
+
+<h2>一、一句话架构</h2>
+
+<p>Monet = <code>FastAPI</code> 服务 + <code>DeepAgent</code> 框架 + <code>画布工具集</code> + <code>SSE 流式协议</code>。</p>
+
+<p>它在客户端本机启动一个 HTTP 服务（默认端口在 <code>settings.port</code>），前端画布通过 HTTP + SSE 跟它交互。Agent 内部由 LangGraph 驱动状态机，调用 tools 操作画布节点、生成图像/视频/3D 内容。</p>
+
+<h2>二、整体架构图</h2>
+
+<div class="highlight-box">
+  <strong>两张图，各有用途</strong>：<br>
+  · <strong>图 A（官方五层）</strong>——来自团队《DreamMaker Agent 技术方案》，体现设计意图与产品愿景。<strong>用来讲"整体架构"，稳定，不会随代码重构而变</strong>。<br>
+  · <strong>图 B（当前代码实现）</strong>——按当前 <code>src/monet/</code> 代码画的实际形态，用来讲"我具体做了什么"。<strong>会随开发迭代变化</strong>，需要跟着代码更新。<br>
+  学习时：宏观架构讲图 A，具体实现讲图 B，被问到"官方方案里的 X 现在实现了吗"就用两张图对照答。
+</div>
+
+<h3>图 A · 官方五层架构（技术方案）</h3>
+
+<p>来自 <a href="https://docs.popo.netease.com/team/pc/dreammaker/pageDetail/793c642c8ae94c94baa5f8e99ecacbe7">POPO 文档 · DreamMaker Agent 技术方案</a>（作者：烂柯，2026-04）：</p>
+
+<blockquote>
+  <strong>📖 图例</strong>：<code>———</code> 实线 = 同一进程内的模块调用（同步/直接调用）；<code>- - -</code> 虚线 = 跨边界调用（走网络到云端后端）。
+</blockquote>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph Client["🖥️ DreamMaker Agent 客户端（Monet）"]
+        L1["① 展示层<br/>画布 / 对话界面 / 资产浏览器 / 工作流视图"]
+        L2["② Agent 执行层<br/>流式对话 · 工具调用 · 权限审批 · 会话管理<br/>（方案候选：Claude SDK / Opencode；实际用：DeepAgent）"]
+        L3["③ Skills 层<br/>文生图 / 视频生成 / 资产入库 / 批量处理 / Prompt 优化<br/>（由 Skill-Hub 统一管理）"]
+        L4["④ DM CLI 层<br/>模型调用 · 资产管理 · 模型路由 · 计费 · 内容审核<br/>（相比 MCP 显著降低 Token 消耗）"]
+        L5["⑤ 本地能力层<br/>本地文件系统 · MCP 工具 · 定时任务"]
+        L1 --- L2 --- L3 --- L4 --- L5
+    end
+
+    Backend["☁️ DM 后端服务<br/>模型路由 / 资产存储 / Skill-Hub / 计费 / 内容审核"]
+
+    L4 -.->|Skills 调用后端服务| Backend
+</pre>
+</div>
+
+<h3>图 B · 当前代码实现（<code>src/monet/</code> 快照）</h3>
+
+<p>这是当前代码里能"跑通"的形态，覆盖了官方五层里 P0 的部分：</p>
+
+<blockquote>
+  <strong>📖 图例</strong>：<br>
+  · <code>———</code> 实线 = <strong>同步请求-响应</strong>：调用方发起请求、等待返回，方向就是发起方向<br>
+  · <code>- - -</code> 虚线 = <strong>反向推送 / 事件流</strong>：由服务端主动推给客户端（例如 SSE），而不是客户端请求驱动<br>
+  · 带文字标签的箭头（如 <code>HTTP/SSE</code>、<code>LLM 推理</code>）标注了协议或用途
+</blockquote>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph ClientBox["🖥️ 客户端（用户机器）"]
+        Frontend["Frontend<br/>画布 UI<br/>React + ReactFlow + Electron"]
+        subgraph MonetProc["Monet Agent 进程 · FastAPI · 127.0.0.1"]
+            API["API 层 · 展示层的服务端<br/>routes / groups / subjects"]
+            SSE["SSE 流式协议"]
+            AgentCore["② Agent 执行层<br/>DeepAgent + LangGraph<br/>create_deep_agent + AsyncSqliteSaver"]
+            Skills["③ Skills 层<br/>skills/paths.py<br/>builtin / global / workspace 三级"]
+            Tools["Tools · Agent 可直接调用的函数<br/>canvas / generate_node / query_models"]
+            DMAPI["④ DM CLI 层 · 当前用 HTTP Backend 替代<br/>generation/dm_api_backend.py<br/>DmApiBackend: submit/poll/fetch_result"]
+            Shell["⑤ 本地能力层<br/>LocalShellBackend<br/>受 interrupt_on HITL 保护"]
+        end
+        CanvasBackend["Canvas Backend<br/>画布后端 API"]
+    end
+
+    subgraph Cloud["☁️ 云端"]
+        DMBackend["DreamMaker Scheduler<br/>api-all.dreammaker.netease.com"]
+        AIGW["AIGW 网关<br/>LLM 调用"]
+    end
+
+    Frontend -->|HTTP/SSE| API
+    API --> AgentCore
+    AgentCore --> Tools
+    AgentCore --> Skills
+    AgentCore --> Shell
+    Tools -->|生成任务| DMAPI
+    DMAPI -->|/api/v1/apps/APP/run| DMBackend
+    Tools -->|画布查询| CanvasBackend
+    AgentCore -->|LLM 推理| AIGW
+    SSE -.->|流式事件| Frontend
+</pre>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：官方五层里有"DM CLI 层"，但代码里我只看到 HTTP Backend？</h4>
+  <p>标准答法：<strong>"官方技术方案（2026-04）规划的是 DM CLI 层作为后端能力的统一暴露方式，主要动机是相比 MCP 降低 Token 消耗。当前代码实现的是过渡态——用 <code>DmApiBackend</code> 类封装 HTTP 调用，扮演 CLI 层的职责（认证、鉴权、错误处理、Token 管理），但还没真正抽出独立 CLI 二进制。这是团队 roadmap 里明确要落地的方向。"</strong></p>
+  <p>这样答体现你既懂官方设计意图，又清楚当前代码状态，不会在两者不一致的地方翻车。</p>
+</div>
+
+<h2>三、核心模块解剖（<code>src/monet/</code>）</h2>
+
+<table>
+<thead>
+<tr><th>模块</th><th>职责</th><th>关键文件</th></tr>
+</thead>
+<tbody>
+<tr><td><code>main.py</code></td><td>FastAPI 入口、日志、生命周期、CORS</td><td><code>main.py</code></td></tr>
+<tr><td><code>agent/</code></td><td>Agent 核心：工厂、Prompt、Runner、状态读取</td><td><code>factory.py</code>, <code>prompts.py</code>, <code>runner.py</code>, <code>state_reader.py</code></td></tr>
+<tr><td><code>tools/</code></td><td>Agent 可调用的工具（画布相关为主）</td><td><code>canvas.py</code>, <code>canvas_query.py</code>, <code>generate_node.py</code>, <code>crop_node.py</code>, <code>query_models.py</code></td></tr>
+<tr><td><code>skills/</code></td><td>Skill 系统：内置技能 + 用户全局技能 + 工作区技能</td><td><code>paths.py</code></td></tr>
+<tr><td><code>generation/</code></td><td>生成任务的执行链路（跟 DM Scheduler 通信）</td><td>—</td></tr>
+<tr><td><code>postprocess/</code></td><td>生成结果的后处理（裁剪、格式转换等）</td><td>—</td></tr>
+<tr><td><code>sse/</code></td><td>SSE 流式协议实现</td><td>—</td></tr>
+<tr><td><code>api/</code></td><td>HTTP 路由：会话、消息、订阅、群组等</td><td><code>routes.py</code>, <code>groups.py</code>, <code>subjects.py</code></td></tr>
+<tr><td><code>services/</code></td><td>业务服务层（session、message 等）</td><td>—</td></tr>
+<tr><td><code>tracking/</code></td><td>事件埋点、tool 执行 tracking</td><td>—</td></tr>
+</tbody>
+</table>
+
+<h2>四、关键设计点（阅读重点）</h2>
+
+<h3>4.1 基于 DeepAgent + LangGraph 的 Agent 内核</h3>
+
+<p>Monet 没有自研 Agent Loop，而是用 <a href="https://github.com/langchain-ai/deepagents">DeepAgent</a> 框架的 <code>create_deep_agent()</code>。看 <code>agent/factory.py</code>：</p>
+
+<pre><code>agent = create_deep_agent(
+    model=model,                    # 请求级 model（携带鉴权）
+    system_prompt=SYSTEM_PROMPT,
+    checkpointer=checkpointer,      # 共享 checkpointer（LangGraph 状态持久化）
+    tools=[
+        query_models,               # 查询可用模型
+        generate_and_create_node,   # 生成 + 创建画布节点
+        create_canvas_node,         # 创建画布节点
+        fit_size_and_create_node,   # 裁剪 + 创建节点
+        canvas_create_input_node,   # 创建输入节点
+        canvas_node_detail,         # 查询节点详情
+        canvas_subgraph,            # 查询画布子图
+    ],
+    backend=LocalShellBackend(...), # 本地 shell 执行能力
+    skills=[builtin_path, global_path],  # 技能路径
+    interrupt_on=INTERRUPT_ON_TOOLS,     # HITL 审批
+)</code></pre>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么用 DeepAgent 而不是自研？</h4>
+  <ol>
+    <li>DeepAgent 底层是 LangGraph，提供了状态机 + checkpointer 免费的能力（对话续跑、异常恢复）</li>
+    <li>Agent Loop、Tool Calling、Human-in-the-Loop 这些都是行业成熟模式，自研收益低</li>
+    <li>DeepAgent 提供的 <code>InterruptOnConfig</code> 直接支持"某些工具执行前需人工审批"的能力，正好匹配 Monet 的 shell/文件写入场景</li>
+  </ol>
+</div>
+
+<h3>4.2 请求级 Model + 进程级 Checkpointer</h3>
+
+<p>细读 <code>factory.py</code> 的注释："使用共享的 checkpointer 和请求级别的 model（携带当前请求的认证信息）"。</p>
+
+<p>这个设计的动机：<strong>Monet 是本地客户端服务，只服务本机用户（<code>host=127.0.0.1</code>）；但同一用户会在同一进程内发起多次请求，每次请求携带的 AIGW token 可能已刷新、前端指定的模型名（GPT-4o / Claude / Gemini …）也可能变化，所以 model 必须请求级重建。而 checkpointer 是纯粹的存储组件（AsyncSqliteSaver），全局单例避免重复建 SQLite 连接的开销</strong>。</p>
+
+<div class="highlight-box">
+  <strong>常见误区（我自己也犯过）</strong>：不要以为"共享 checkpointer"意味着"不同 session 能看到彼此的记忆"。共享的是<em>存储组件本身</em>，记忆内容按 session_id（LangGraph 里叫 thread_id）严格隔离，删除 session 时也只删对应 thread：<code>await checkpointer.adelete_thread(session_id)</code>。也不要以为"多个用户共享 Agent 进程"——Monet 只监听 <code>127.0.0.1</code>，本来就是单机单用户场景。
+</div>
+
+<h3>4.3 SSE 流式响应 + 会话取消</h3>
+
+<p>看 <code>agent/runner.py</code>：进程级 <code>_running_chats: dict[str, asyncio.Task]</code>，以 session_id 为 key。作用：</p>
+
+<ul>
+  <li>同 session 新 chat 自动 cancel 旧 task（避免多次点击生成同一个）</li>
+  <li><code>/sessions/{id}/cancel</code> 接口停止流式响应</li>
+  <li>应用关停时优雅清理</li>
+</ul>
+
+<h3>4.4 Human-in-the-Loop 审批</h3>
+
+<p><code>INTERRUPT_ON_TOOLS</code> 定义了哪些工具需要人工审批：</p>
+
+<pre><code>INTERRUPT_ON_TOOLS = {
+    "execute": True,    # 本地 shell 命令执行
+    "write_file": True, # 写文件
+    "edit_file": True,  # 编辑文件
+}</code></pre>
+
+<p>因为 Monet 有 <code>LocalShellBackend</code>，能在用户本机执行命令和读写文件——安全性风险大，必须让用户审批。</p>
+
+<h3>4.5 Skills 系统：三级路径</h3>
+
+<p>技能 = 预定义的能力描述（比如"生成图片时的提示词优化"）。Monet 从三个位置加载：</p>
+
+<ul>
+  <li><code>resolve_builtin_path()</code> — 内置技能（打包在应用里）</li>
+  <li><code>resolve_global_path()</code> — 用户全局技能（用户目录）</li>
+  <li><code>resolve_workspace_path()</code> — 当前工作区技能</li>
+</ul>
+
+<h2>五、数据流（一次典型请求）</h2>
+
+<blockquote>
+  <strong>📖 图例</strong>：<br>
+  · <code>———►</code> 实线 = 请求/发起调用<br>
+  · <code>- - -►</code> 虚线 = 响应/异步返回<br>
+  · 图中**用色区分了两条独立的 upstream**：AIGW（LLM 推理，直连）和 DM Scheduler（生成任务，异步）
+</blockquote>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant F as Frontend · 画布
+    participant A as Monet API
+    participant G as Agent Core · LangGraph
+    participant M as ChatAIGW
+    participant W as AIGW 网关
+    participant T as Tool · generate_and_create_node
+    participant D as DM Scheduler
+    participant C as Canvas Backend
+
+    U->>F: 点击"生成图像"
+    F->>A: POST /chat · SSE 长连接建立
+    A->>G: 启动 Agent Task
+
+    rect rgb(235, 245, 255)
+    Note over G,W: 第一轮 LLM 推理（决定下一步动作）
+    G->>M: astream_events · 请求 LLM
+    M->>W: HTTPS · Chat Completions
+    W-->>M: 流式返回 tokens
+    M-->>G: tool_calls · 决定调用 generate_and_create_node
+    end
+
+    G-->>A: block.delta · thinking token 流
+    A-->>F: SSE 事件
+
+    rect rgb(255, 245, 235)
+    Note over T,D: 工具执行（异步生成任务）
+    G->>T: tool call
+    T->>D: POST /apps/APP/run · 提交生成任务
+    D-->>T: task_id
+    T->>D: 轮询 status
+    D-->>T: 任务完成 · 图片 URL
+    T->>C: 创建画布节点
+    C-->>T: 节点 ID
+    T-->>G: tool result
+    end
+
+    G-->>A: block.delta · tool_result
+    A-->>F: SSE 事件
+
+    rect rgb(235, 245, 255)
+    Note over G,W: 第二轮 LLM 推理（组织回复）
+    G->>M: 请求 LLM · 生成给用户的自然语言回复
+    M->>W: HTTPS · Chat Completions
+    W-->>M: 流式返回 tokens
+    M-->>G: 文本回复
+    end
+
+    G-->>A: block.delta · text token 流
+    A-->>F: SSE 事件
+    F-->>U: 画布 + 对话实时更新
+</pre>
+</div>
+
+<div class="highlight-box">
+  <strong>🔑 从时序图能读出的三个关键设计</strong>：
+  <ol>
+    <li><strong>两条独立的 upstream</strong>：<code>ChatAIGW → AIGW</code>（蓝色框，低延迟高频）和 <code>Tool → DM Scheduler</code>（橙色框，异步耗时）。绕开了让所有请求都走 Scheduler 的性能陷阱。</li>
+    <li><strong>Agent Loop 是多轮 LLM 调用</strong>：至少 <em>两次</em> LLM 请求——第一次决定用哪个工具，第二次拿到工具结果后组织自然语言回复。真实任务里可能十几轮。</li>
+    <li><strong>SSE 全程流式</strong>：thinking / tool_use / tool_result / text 都以 <code>block.delta</code> 事件流式推给前端，用户不用等整轮完成。</li>
+  </ol>
+</div>
+
+<h2>六、可量化的观察点（需要你去收集数据）</h2>
+
+<div class="resume-hook">
+  <h4>📝 设计要点</h4>
+  <ul>
+    <li>集成 <strong>XX 种</strong> Tool（画布查询/生成/裁剪 …）</li>
+    <li>支持 <strong>XX 种</strong> AI 供应商模型（通过 <code>query_models</code> 动态查询）</li>
+    <li>会话数：日均 <strong>XX</strong> 个 session，任务成功率 <strong>XX%</strong></li>
+    <li>SSE 流式响应，首 token 延迟 <strong>XXms</strong></li>
+    <li>HITL 审批命中率、任务取消响应时间</li>
+  </ul>
+  <p><strong>去哪里拿数据？</strong>问导师、看监控平台、翻团队 KM 知识库。</p>
+</div>
+
+<h2>七、前端技术栈速查（画在架构图但不属于 Monet 仓库）</h2>
+
+<p>前端仓库是独立的 <code>dm-tapnow</code>（pnpm monorepo），跟 Monet Agent 之间只有 HTTP + SSE 的接口约定。你不需要懂前端实现，但要能定位边界，避免在不了解的地方凭空猜测：</p>
+
+<table>
+<thead><tr><th>领域</th><th>技术</th><th>证据出处</th></tr></thead>
+<tbody>
+<tr><td>UI 框架</td><td>React 18 + TypeScript</td><td><code>dm-tapnow/package.json</code></td></tr>
+<tr><td>画布引擎</td><td>ReactFlow</td><td><code>dm-tapnow/CLAUDE.md</code> Core Systems</td></tr>
+<tr><td>桌面壳</td><td>Electron</td><td><code>apps/desktop/</code>；<code>package.json</code> onlyBuiltDependencies</td></tr>
+<tr><td>状态管理</td><td>Zustand + undoManager + SWR + use-bus</td><td><code>coding.mdc</code> 状态管理边界</td></tr>
+<tr><td>数据请求</td><td>SWR（GET）+ apiClient（POST/PATCH/DELETE）</td><td><code>api-contract.mdc</code></td></tr>
+<tr><td>样式</td><td>Tailwind + 双主题 CSS 变量</td><td><code>styling.mdc</code></td></tr>
+<tr><td>工程化</td><td>pnpm workspace + Turbo</td><td><code>pnpm-workspace.yaml</code>, <code>turbo.json</code></td></tr>
+<tr><td>测试</td><td>Vitest + jsdom + Testing Library</td><td><code>package.json</code> devDependencies</td></tr>
+</tbody>
+</table>
+
+<div class="defend">
+  <h4>🛡️ 思考：被追问"前端是什么技术栈"</h4>
+  <p>标准答法：<strong>"前端是独立仓库 <code>dm-tapnow</code>，React 18 + ReactFlow + Electron 打包，跟 Monet Agent 通过 HTTP + SSE 通信。我的工作在 Monet Agent 侧，跟前端的接口约定在 <code>docs/frontend-integration/</code>。"</strong></p>
+  <p>这样既显得你懂全景，又划清工作边界——避免被追问前端细节时露馅。</p>
+</div>
+
+<h2>八、术语速查（词汇一致性）</h2>
+
+<table>
+<thead><tr><th>术语</th><th>指代</th></tr></thead>
+<tbody>
+<tr><td>DeepAgent</td><td>基于 LangGraph 的 Agent 框架，Monet 的核心</td></tr>
+<tr><td>Checkpointer</td><td>LangGraph 的状态持久化组件（内存/DB/文件）</td></tr>
+<tr><td>Skill</td><td>可加载的能力描述文件（三级路径）</td></tr>
+<tr><td>Tool</td><td>Agent 可调用的函数（画布操作、模型调用等）</td></tr>
+<tr><td>Backend</td><td>Agent 的执行环境后端（Monet 用 LocalShellBackend）</td></tr>
+<tr><td>HITL</td><td>Human-in-the-Loop，人工审批某些高风险操作</td></tr>
+<tr><td>Canvas</td><td>画布，Monet 的 UI 载体（前端 dm-tapnow）</td></tr>
+<tr><td>Subject/Group</td><td>Monet 的会话组织概念（消息主题、群组）</td></tr>
+</tbody>
+</table>
+
+<h2>九、检索练习</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. Monet 为什么用"请求级 model"而不是"进程级 model"？</p>
+  <ul class="quiz-options">
+    <li>A. AIGW token 可能已刷新、前端指定模型也可能变化</li>
+    <li>B. 不同用户共享同一 Agent 进程需要隔离</li>
+    <li>C. 请求级 model 更省内存</li>
+    <li>D. LangGraph 强制要求</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>A</strong>。Monet 只监听 <code>127.0.0.1</code>，是单机单用户场景，B 不成立。请求级 model 的真正原因是：每次请求都要用最新的 AIGW token + 前端指定的 model_name（用户随时可能在 UI 切换 GPT-4o / Claude / Gemini），所以 model 必须请求级重建；而 checkpointer 是纯存储组件，全局单例避免重复建 SQLite 连接的开销。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. <code>INTERRUPT_ON_TOOLS</code> 里为什么只有 execute / write_file / edit_file 需要审批？</p>
+  <ul class="quiz-options">
+    <li>A. 这三个 tool 最耗时</li>
+    <li>B. 这三个 tool 会影响用户本机文件系统或执行命令，风险最大</li>
+    <li>C. 这三个 tool 是 LocalShellBackend 提供的</li>
+    <li>D. B 和 C 都对</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>D</strong>。这三个能力都由 <code>LocalShellBackend</code> 提供（这是让 Monet 能读写用户文件、执行命令的原因），也正因如此风险最大——如果 Agent 决策失误，可能删掉用户重要文件或执行恶意命令。HITL 是唯一安全保障。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q3. 一个用户在同一 session 里连续点击两次"生成图像"，会发生什么？</p>
+  <ul class="quiz-options">
+    <li>A. 两个任务并行执行，返回两张图</li>
+    <li>B. 第二次点击被拒绝，前端报错</li>
+    <li>C. 第一次任务被 cancel，第二次接管</li>
+    <li>D. 排队执行，先生成第一张再生成第二张</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>C</strong>。<code>_running_chats</code> 以 session_id 为 key，新 chat 会自动 cancel 旧 task。这个设计避免用户重复操作导致资源浪费。
+  </div>
+</div>
+
+<div class="resource-recommend">
+  <strong>📖 主要推荐资源</strong>：<a href="https://github.com/langchain-ai/deepagents">DeepAgent GitHub</a>——直接看它的 README 和 examples，理解 <code>create_deep_agent()</code> 内部到底做了什么。这是 Monet 的核心依赖，便于进一步理解 DeepAgent 在系统中的作用。
+</div>
+
+<div class="followup">
+  <h4>💬 followup 问题（跟我继续聊）</h4>
+  <ul>
+    <li>"我想具体看下 <code>agent/runner.py</code> 到底怎么驱动 Agent 的" → 直接进 Lesson M002</li>
+    <li>"我想画一张更细的架构图，把 sse/tracking 也加上"</li>
+    <li>"Monet 的 checkpointer 存哪？内存还是文件？"</li>
+    <li>"帮我列一下 Monet 上有价值的 GitLab MR，作为亮点候选"</li>
+    <li>"这一节我记不住 A/B/C/D 那个 quiz，帮我出更多类似题目"</li>
+  </ul>
+</div>
+
+<nav class="lesson-nav">
+  <span>—</span>
+  <a href="M002-monet-agent-core-factory-runner-loop.html">Lesson M002 — Agent 核心：工厂、Runner 与 Agent Loop →</a>
+</nav>
+
+</body>
+</html>

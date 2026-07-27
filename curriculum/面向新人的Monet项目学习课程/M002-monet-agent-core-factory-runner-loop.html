@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <style>
+/* 教学课程共享样式 — Tufte 风格 */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.quiz {
+  background: #fef9e7;
+  border: 1px solid #e6d999;
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+}
+.quiz-question { font-weight: 600; margin-bottom: 0.8rem; font-family: var(--sans); }
+.quiz-options { list-style: none; padding: 0; }
+.quiz-options li {
+  padding: 0.5rem 0.8rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 0.4rem 0;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.quiz-options li:hover { background: var(--accent-soft); }
+.quiz-answer {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: white;
+  border-radius: 4px;
+  display: none;
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+.quiz-answer.visible { display: block; }
+.quiz-toggle {
+  margin-top: 0.5rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.85em;
+}
+
+.followup {
+  border: 2px dashed var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 2rem 0 1rem;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-family: var(--sans);
+}
+.followup h4 { margin-top: 0; color: var(--accent); }
+
+.resource-recommend {
+  background: #eef7ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+
+.resume-hook {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+}
+.resume-hook h4 { color: #16a34a; margin-top: 0; }
+
+/* 思考 box */
+.defend {
+  background: #fef2f2;
+  border: 2px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+.defend h4 { margin-top: 0; color: var(--accent); }
+.defend ol { padding-left: 1.4rem; }
+.defend li { margin: 0.5rem 0; }
+
+/* Mermaid 图容器 */
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem -2rem; /* 负 margin：让图突破正文列宽 */
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Mermaid 生成的 SVG 默认会缩放到容器宽度，禁用它以显示真实字号 */
+.diagram .mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+}
+
+.print-only { display: none; }
+@media print {
+  body { max-width: none; margin: 0; padding: 1cm; font-size: 11pt; }
+  .quiz-toggle, .followup { break-inside: avoid; }
+  .print-only { display: block; }
+  a { color: var(--text); text-decoration: none; }
+}
+
+nav.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+
+  </style>
+  <meta charset="UTF-8">
+  <title>M002 — Monet Agent 核心：工厂、Runner 与 Agent Loop</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+
+<div class="lesson-meta"><span><strong>适合人群</strong> 工作新人</span>
+  <span><strong>Lesson</strong> M002</span>
+  <span><strong>项目</strong> Monet Agent</span>
+  <span><strong>时长</strong> ~40 分钟</span>
+  <span><strong>难度</strong> ★★★☆☆</span>
+  <span><strong>前置</strong> <a href="M001-monet-architecture-overview.html">M001 — Monet 架构总览</a></span>
+  <span><strong>下一节</strong> <a href="M003-monet-tool-use-system.html">M003 — Tool Use 系统</a></span>
+</div>
+
+<h1>Monet Agent 核心：工厂、Runner 与 Agent Loop</h1>
+
+<p>上一节你看到了 Monet 的整体架构。这一节深入 Agent 核心——<strong>一次用户对话从收到请求到流式返回结果，代码到底怎么跑的</strong>。学完你能画出 Agent Loop 的完整数据流，并向学习官讲清每个环节的设计决策。</p>
+
+<h2>一、四个文件，四个职责</h2>
+
+<p><code>src/monet/agent/</code> 下只有四个文件，分工清晰：</p>
+
+<table>
+<thead>
+<tr><th>文件</th><th>职责</th><th>一句话</th></tr>
+</thead>
+<tbody>
+<tr><td><code>factory.py</code></td><td>Agent 工厂</td><td>每次请求创建一个编译后的 Agent 实例</td></tr>
+<tr><td><code>runner.py</code></td><td>In-flight 注册表</td><td>进程级 dict，管理正在运行的 chat 协程</td></tr>
+<tr><td><code>prompts.py</code></td><td>System Prompt</td><td>Agent 的行为定义——"你是谁、能做什么、怎么做"</td></tr>
+<tr><td><code>state_reader.py</code></td><td>只读状态图</td><td>从 DeltaChannel checkpoint 重建完整消息历史</td></tr>
+</tbody>
+</table>
+
+<h2>二、一次 /chat 请求的完整链路</h2>
+
+<p>从前端发请求到 Agent 流式返回，经过 6 步。这是 Monet 最核心的数据流，建议先画出来：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant F as Frontend
+    participant R as routes.py<br/>chat()
+    participant CTX as _prime_canvas_context
+    participant FAC as factory.py<br/>create_agent_for_request()
+    participant ADA as DeepAgentStreamAdapter
+    participant AG as LangGraph Agent
+    participant LLM as AIGW
+    participant T as Tools
+
+    F->>R: POST /chat {session_id, canvas_id, model, message}
+    R->>R: 提取 auth headers
+    R->>R: _cancel_existing_chat() 取消同 session 旧任务
+    R->>CTX: _prime_canvas_context(canvas_id)
+    Note over CTX: 拉取画布概览写入 contextvar<br/>后续 LLM 调用复用缓存
+    R->>FAC: create_model() + create_agent_for_request(model)
+    Note over FAC: 组装 tools + backend + skills<br/>+ checkpointer + interrupt_on
+    R->>ADA: new DeepAgentStreamAdapter(agent)
+    R->>ADA: adapter.stream(messages, thread_id, ...)
+    ADA->>AG: agent.astream_events(input, config, version="v2")
+
+    loop Agent Loop
+        AG->>LLM: LLM 推理（带 system prompt + 历史 + tools 定义）
+        LLM-->>AG: AIMessageChunk（文本 或 tool_call）
+        AG->>AG: 如果 tool_call → 执行 tool
+        AG->>T: tool call（如 generate_and_create_node）
+        T-->>AG: tool result
+        AG-->>ADA: astream_events 产出事件流
+    end
+
+    ADA-->>R: AsyncGenerator[SSEFrame]
+    R-->>F: StreamingResponse（SSE 流）
+</pre>
+</div>
+
+<div class="highlight-box">
+  <strong>关键洞察</strong>：Monet 的 Agent Loop <em>不在 Monet 代码里</em>——它在 <code>create_deep_agent()</code> 返回的 <code>CompiledStateGraph</code> 内部。Monet 代码做的是<em>编排</em>：创建 Agent、喂入消息、消费事件流、翻译为 SSE。这个分工决定了 Monet 对 DeepAgent 框架的依赖深度。
+</div>
+
+<h2>三、factory.py — Agent 工厂详解</h2>
+
+<p>这是 Monet Agent 的"出生地"。每次 <code>/chat</code> 请求都会调用 <code>create_agent_for_request(model)</code>：</p>
+
+<pre><code>def create_agent_for_request(model: BaseChatModel) -> CompiledStateGraph:
+    checkpointer = get_checkpointer()          # 进程级单例
+    workspace_path = resolve_workspace_path()
+    backend = LocalShellBackend(root_dir=str(workspace_path), virtual_mode=False)
+
+    agent = create_deep_agent(
+        model=model,                           # 请求级（携带当前请求的认证信息）
+        system_prompt=SYSTEM_PROMPT,           # Agent 行为定义
+        checkpointer=checkpointer,             # 状态持久化（对话续跑）
+        tools=[...],                           # 7 个工具
+        backend=backend,                       # 本地 shell 执行能力
+        skills=[builtin_path, global_path],    # 技能路径
+        interrupt_on=INTERRUPT_ON_TOOLS,       # HITL 审批
+    )
+    return agent</code></pre>
+
+<h3>3.1 七个注册工具</h3>
+
+<table>
+<thead>
+<tr><th>工具名</th><th>功能</th><th>来源文件</th></tr>
+</thead>
+<tbody>
+<tr><td><code>query_models</code></td><td>查询可用的 AI 模型及其参数定义</td><td><code>tools/query_models.py</code></td></tr>
+<tr><td><code>generate_and_create_node</code></td><td>生成内容 + 创建画布节点（一步完成）</td><td><code>tools/generate_node.py</code></td></tr>
+<tr><td><code>create_canvas_node</code></td><td>仅创建画布节点（需要先有 ticket）</td><td><code>tools/canvas.py</code></td></tr>
+<tr><td><code>fit_size_and_create_node</code></td><td>裁剪 + 创建节点</td><td><code>tools/crop_node.py</code></td></tr>
+<tr><td><code>canvas_create_input_node</code></td><td>将外部 URL 导入为画布节点</td><td><code>tools/canvas_create_input_node.py</code></td></tr>
+<tr><td><code>canvas_node_detail</code></td><td>查询单个节点的完整信息</td><td><code>tools/canvas_query.py</code></td></tr>
+<tr><td><code>canvas_subgraph</code></td><td>查询一组节点及其连线</td><td><code>tools/canvas_query.py</code></td></tr>
+</tbody>
+</table>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么 tools 只有 7 个？不是应该更多吗？</h4>
+  <p>Monet 的设计哲学是 <strong>"一个 tool 做一件事，Agent 组合它们"</strong>。比如 <code>generate_and_create_node</code> 内部已经封装了"提交生成任务 → 轮询结果 → 创建画布节点"三步，Agent 不需要分别调用。工具数量少但每个工具的抽象层次高，减少了 Agent 的决策负担（tool 越多，LLM 选错的概率越大）。</p>
+</div>
+
+<h3>3.2 HITL 审批工具集</h3>
+
+<pre><code>INTERRUPT_ON_TOOLS = {
+    "execute": True,      # 本地 shell 命令
+    "write_file": True,   # 写文件
+    "edit_file": True,    # 编辑文件
+}</code></pre>
+
+<p>这三个工具 <strong>不属于上面注册的 7 个</strong>——它们来自 <code>LocalShellBackend</code>（DeepAgent 框架内置）。Agent 除了有 7 个画布工具，还有 3 个本地 shell 工具（execute / write_file / edit_file），这 3 个全部需要人工审批。</p>
+
+<p>所以 Monet Agent 实际可用的工具是 <strong>10 个</strong>（7 + 3），其中 3 个走 HITL 审批。</p>
+
+<h2>四、Agent Loop 的内部机制</h2>
+
+<p><code>CompiledStateGraph.astream_events()</code> 是 LangGraph 的核心 API。Monet 不需要自己写 Agent Loop——框架内部的状态机自动驱动：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    A["用户消息 + 历史"] --> B["LLM 推理"]
+    B --> C{"输出是文本<br/>还是 tool_call?"}
+    C -->|文本| D["直接返回<br/>（流式输出给用户）"]
+    C -->|tool_call| E["执行 Tool"]
+    E --> F["Tool Result<br/>追加到消息历史"]
+    F --> B
+    D --> G["Agent 完成<br/>（LLM 不再请求 tool）"]
+</pre>
+</div>
+
+<p>这个循环在 LangGraph 内部运行，Monet 只通过 <code>astream_events(version="v2")</code> 消费产出的事件流。每轮循环可能产出：</p>
+
+<h4>事件流的本质：AsyncGenerator</h4>
+
+<p><code>astream_events()</code> 返回的不是一个列表，而是一个 <strong>Python 异步生成器（AsyncGenerator）</strong>——一个数据管道，上游产一个事件、下游就读一个、处理一个、推一个，中间不存储。像自来水管：水厂产水 → 水管传输 → 水龙头出水，不是先存到水池再一次性倒出来。</p>
+
+<pre><code># deepagent.py 里的代码
+async for event in self._agent.astream_events(agent_input, config=config, version="v2"):
+    # 每产出一个事件，这个循环就跑一次
+    # event 是一个 dict，比如：
+    # {"event": "on_chat_model_stream", "data": {"chunk": AIMessageChunk("我来")}}
+    # {"event": "on_chat_model_stream", "data": {"chunk": AIMessageChunk("帮你生成")}}
+    # {"event": "on_tool_start", "data": {"input": {...}}}
+    # {"event": "on_tool_end", "data": {"output": "..."}}
+    ...</code></pre>
+
+<h4>三层管道：从 LangGraph 事件到前端 SSE</h4>
+
+<p>"消费"事件流就是<strong>读取 → 翻译 → 转发</strong>，像流水线一样。整个链路是三层嵌套的异步生成器：</p>
+
+<pre><code>LangGraph 产出事件              Adapter "消费"事件                    推给 Frontend
+─────────────────              ──────────────────                    ──────────────
+astream_events()                _generate_frames()                    SSE 流
+    │                                │                                  │
+    │ yield event                    │ 翻译为 SSEFrame                   │ 序列化为文本
+    ├─→ "on_chat_model_stream"  ──→  ├─→ block.delta {content:"我来"}  ──→ "data: {...}\n\n"
+    │                                │                                  │
+    │ yield event                    │ 翻译为 SSEFrame                   │ 序列化为文本
+    ├─→ "on_tool_start"         ──→  ├─→ block.updated {status:"running"} ──→ "data: {...}\n\n"
+    │                                │                                  │
+    │ yield event                    │ 翻译为 SSEFrame                   │ 序列化为文本
+    ├─→ "on_tool_end"           ──→  ├─→ block.updated {status:"completed"} ──→ "data: {...}\n\n"</code></pre>
+
+<table>
+<thead>
+<tr><th>事件类型</th><th>含义</th><th>Monet 怎么处理</th></tr>
+</thead>
+<tbody>
+<tr><td><code>on_chat_model_stream</code></td><td>LLM 正在流式输出文本</td><td>→ <code>block.created</code> / <code>block.delta</code>（text 类型）</td></tr>
+<tr><td><code>on_chat_model_stream</code>（tool_call_chunks）</td><td>LLM 正在流式输出 tool call</td><td>→ <code>block.created</code> / <code>block.delta</code>（tool_use 类型）</td></tr>
+<tr><td><code>on_tool_start</code></td><td>开始执行一个 tool</td><td>→ <code>block.updated</code>（status: running）</td></tr>
+<tr><td><code>on_tool_end</code></td><td>tool 执行完毕</td><td>→ <code>block.updated</code>（status: completed + result）</td></tr>
+<tr><td><code>on_custom_event</code></td><td>自定义事件（如画布节点变更）</td><td>→ 透传为同名 SSE 事件</td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+  <strong>🔄 Agent 什么时候停止？</strong> 当 LLM 的下一轮推理不再请求任何 tool call，只输出文本时，LangGraph 的状态机判定"Agent 已完成思考"，循环结束。这就是为什么 System Prompt 里写了"连续 2 次失败要停下来"——防止无限循环。
+</div>
+
+<h2>五、DeepAgentStreamAdapter — 事件翻译器</h2>
+
+<p>这是 Monet 最有工程含量的文件之一（<code>sse/deepagent.py</code>，~780 行）。它的职责是把 LangGraph 的内部事件翻译成前端能理解的 SSE 协议帧。</p>
+
+<h3>5.1 适配器模式</h3>
+
+<pre><code>class AgentStreamAdapter(ABC):           # 抽象基类
+    async def _generate_frames(...)      # 子类实现：框架事件 → SSEFrame
+    async def stream(...)                # 基类提供：心跳 + 格式化 + 错误处理
+
+class DeepAgentStreamAdapter(AgentStreamAdapter):  # 具体实现
+    async def _generate_frames(...)      # 消费 astream_events v2 事件</code></pre>
+
+<p>为什么用适配器？<strong>换 Agent 框架时前端零改动</strong>。如果未来从 DeepAgent 换成别的框架，只需新写一个 <code>XxxStreamAdapter</code> 子类，前端 SSE 协议不变。</p>
+
+<h3>5.2 SSE 协议三层内容模型：conversation → message → block</h3>
+
+<p>Adapter 把 LangGraph 事件翻译成的 SSE 协议，是一个<strong>三层嵌套结构</strong>。类比微信聊天：</p>
+
+<table>
+<thead>
+<tr><th>层级</th><th>类比</th><th>Monet 里指什么</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>conversation</strong>（会话）</td><td>你跟某个人的聊天窗口</td><td>一个 session（session_id 对应）</td></tr>
+<tr><td><strong>message</strong>（消息）</td><td>窗口里的一条消息气泡</td><td>Agent 某一轮的完整回复</td></tr>
+<tr><td><strong>block</strong>（内容块）</td><td>气泡里的具体内容</td><td>一段文字 / 一次工具调用 / 一张图片</td></tr>
+</tbody>
+</table>
+
+<p>一次 /chat 请求的实际结构：</p>
+
+<pre><code>conversation（session_id 对应的那个会话）
+  └── message（Agent 这一轮的回复）
+        ├── block: text       "我来帮你生成一张赛博朋克风格的猫"
+        ├── block: tool_use   generate_and_create_node({...})
+        └── block: text       "已为你生成并添加到画布"</code></pre>
+
+<h4>事件动作：created / delta / updated</h4>
+
+<table>
+<thead>
+<tr><th>动作</th><th>含义</th><th>什么时候用</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>created</strong></td><td>"这个东西刚出现"</td><td>首次创建</td></tr>
+<tr><td><strong>delta</strong></td><td>"内容追加了一小段"</td><td>流式输出时，每次来几个字就发一个 delta</td></tr>
+<tr><td><strong>updated</strong></td><td>"这个东西的状态/属性变了"</td><td>状态变化（generating → running → completed）</td></tr>
+</tbody>
+</table>
+
+<h4>完整事件序列示例</h4>
+
+<p>把三层结构和动作拼在一起，一次完整的对话请求，前端收到的 SSE 事件流是这样的：</p>
+
+<pre><code>message.created        → "Agent 开始回复了，这是消息 ID"
+  block.created        → "出现了一个 text 块"
+  block.delta          → "追加几个字：'我来'"
+  block.delta          → "追加几个字：'帮你生成'"
+  block.delta          → "追加几个字：'一张猫'"
+  block.updated        → "text 块完成（status: completed）"
+
+  block.created        → "出现了一个 tool_use 块（generate_and_create_node）"
+  block.delta          → "tool 参数流式输出：{model_id: ...}"
+  block.updated        → "tool 开始执行（status: running）"
+  block.updated        → "tool 执行完了（status: completed，带 result）"
+
+  block.created        → "又出现一个 text 块"
+  block.delta          → "追加：'已为你生成'"
+  block.updated        → "text 块完成"
+
+message.updated        → "整条消息完成（status: completed）"</code></pre>
+
+<p>前端收到这些事件后，逐步渲染出完整的聊天气泡——先显示文字，然后显示工具执行进度，最后显示结果文字。</p>
+
+<div class="highlight-box">
+  <strong>为什么这样设计？</strong>跟 LangGraph 事件解耦。LangGraph 内部的事件（<code>on_chat_model_stream</code>、<code>on_tool_start</code>）是框架细节，直接暴露给前端的话，换框架前端全部要改。Monet 的 <code>message → block</code> 协议是<strong>稳定的对外契约</strong>，Adapter 层负责翻译，换框架只需新写一个 Adapter 子类。这个设计的价值在于："AgentStreamAdapter 抽象基类（模板方法模式），换 Agent 框架前端零改动"。
+</div>
+
+<h3>5.3 状态管理</h3>
+
+<p>每个请求创建一个 <code>DeepAgentStreamAdapter</code> 实例，内部维护：</p>
+
+<table>
+<thead>
+<tr><th>状态</th><th>用途</th></tr>
+</thead>
+<tbody>
+<tr><td><code>message_id</code></td><td>当前消息的唯一 ID</td></tr>
+<tr><td><code>block_index</code></td><td>block 序号（递增）</td></tr>
+<tr><td><code>current_text_block_id</code></td><td>当前正在输出的 text block</td></tr>
+<tr><td><code>pending_tool_calls</code></td><td>tool_call_chunks 流式追踪（index → block_id）</td></tr>
+<tr><td><code>tool_block_ids</code></td><td>工具 block 映射（run_id → block_id）</td></tr>
+<tr><td><code>url_cleaner</code></td><td>流式清理 AI 文本中的图片 URL</td></tr>
+</tbody>
+</table>
+
+<p>这 6 个状态变量全部是 <strong>Monet 自定义的</strong>，在 <code>_generate_frames()</code> 里作为局部变量定义。LangGraph 框架不管这些——它只负责 yield 原始事件，怎么追踪 block 状态、怎么关联 run_id 到 block_id，都是 Monet 的 Adapter 层自己实现的。</p>
+
+<h4>逐个详解</h4>
+
+<p><strong>1. <code>message_id</code> — 消息唯一标识</strong></p>
+<pre><code>message_id = str(uuid.uuid4())</code></pre>
+<p>每次 /chat 请求生成一个新的 UUID，作为这次 Agent 回复的 ID。所有产出的 block 都挂在这个 message_id 下面。</p>
+
+<p><strong>2. <code>block_index</code> — block 序号计数器</strong></p>
+<pre><code>block_index = 0</code></pre>
+<p>每创建一个新 block（不管是 text 还是 tool_use），<code>block_index += 1</code>。前端用它来决定 block 的显示顺序。</p>
+
+<p><strong>3. <code>current_text_block_id</code> — 当前 text block 追踪</strong></p>
+<p>这是最巧妙的一个。LLM 流式输出时，token 是一个字一个字来的：</p>
+<pre><code>chunk 1: "我"       → current_text_block_id is None → 创建 block.created，赋值 block_id
+chunk 2: "来"       → current_text_block_id 有值   → 发 block.delta
+chunk 3: "帮你"     → current_text_block_id 有值   → 发 block.delta
+...
+遇到 tool_call     → _close_text_block()          → 发 block.updated，清空为 None</code></pre>
+<p>核心逻辑：<code>None</code> 表示"当前没有打开的 text block"。第一个 token 来了就创建，后续 token 追加，直到要切换到 tool_use 时关闭。</p>
+
+<p><strong>4. <code>pending_tool_calls</code> — tool call 流式追踪</strong></p>
+<pre><code>pending_tool_calls: dict[int, str] = {}   # tool_call index → block_id</code></pre>
+<p>LLM 的 tool call 参数也是流式输出的（<code>tool_call_chunks</code>）。比如调用 <code>generate_and_create_node</code>，参数 JSON 可能分多个 chunk 到达：</p>
+<pre><code>chunk 1: {index: 0, name: "generate_and_create_node", args: "{\"model_id"}
+chunk 2: {index: 0, name: "",                          args: ": \"seedream"}
+chunk 3: {index: 0, name: "",                          args: "-4.5\"}"}</code></pre>
+<p>用 <code>index</code> 做 key，把同一个 tool call 的多个 chunk 关联到同一个 block_id。</p>
+
+<p><strong>5. <code>tool_block_ids</code> + <code>tool_names</code> — 工具执行追踪</strong></p>
+<pre><code>tool_block_ids: dict[str, str] = {}   # run_id → block_id
+tool_names:    dict[str, str] = {}   # run_id → tool_name</code></pre>
+<p>LangGraph 的事件里，<code>on_tool_start</code> 和 <code>on_tool_end</code> 通过 <code>run_id</code> 关联。但前端 SSE 协议用的是 <code>block_id</code>。这两个 dict 做 ID 映射：</p>
+<pre><code>on_tool_start(run_id="abc")  → 找到 block_id → 发 block.updated(status: running)
+on_tool_end(run_id="abc")    → 找到 block_id → 发 block.updated(status: completed)</code></pre>
+<p><code>tool_names</code> 额外记录工具名，用于 <code>on_tool_end</code> 时判断是否需要埋点（只有 <code>TRACKED_TOOLS</code> 里的工具才上报）。</p>
+
+<p><strong>6. <code>url_cleaner</code> — 流式 URL 清理器</strong></p>
+<pre><code>url_cleaner = StreamingUrlCleaner()</code></pre>
+
+<p><strong>它要解决什么问题？</strong>LLM 有时候会在回复里输出 Markdown 图片语法：</p>
+<pre><code>![猫](https://dreammaker.netease.com/static/image/cat.png)</code></pre>
+<p>但前端只需要路径部分（<code>/static/image/cat.png</code>），域名由前端自己拼。需要把 <code>https://dreammaker.netease.com</code> 剥掉。</p>
+
+<p><strong>难点在哪？</strong>LLM 是逐 chunk 流式输出的，Markdown 图片语法可能被 chunk 切断：</p>
+<pre><code>chunk 1: "![猫](https://dreammaker.n"
+chunk 2: "etease.com/static/image/cat.png) 请查看"</code></pre>
+<p>chunk 1 里的 URL 不完整，直接做字符串替换匹配不上。</p>
+
+<p><strong>核心思路</strong>：不是检测"URL 是否完整"，而是检测 <strong>Markdown 图片语法 <code>![](...)</code> 是否闭合</strong>。用 <code>](</code> 和 <code>)</code> 作为明确的开始/结束标记。</p>
+
+<pre><code>def _drain(self):
+    while self._buffer:
+        trigger_pos = self._buffer.find("](")     # 找触发器
+
+        if trigger_pos == -1:
+            return safe_output                    # 没找到，输出安全部分
+
+        # buffer 以 "](" 开头
+        if after_trigger.startswith("https://dreammaker.netease.com"):
+            close_paren = after_trigger.find(")")
+            if close_paren == -1:
+                break                             # ⏳ 还没闭合，等更多 chunk
+            # ✅ 找到了！替换 URL 并输出
+            output += f"]({stripped_url})"
+
+        elif domain.startswith(after_trigger):
+            break                                 # ⏳ 可能是域名开头，太短不确定
+
+        else:
+            output += "]("                        # ❌ 不是 DM 域名，原样输出</code></pre>
+
+<p><strong>用例子演示：</strong></p>
+
+<pre><code>场景 1：完整 URL 在一个 chunk 里
+  chunk: "![猫](https://dreammaker.netease.com/static/cat.png) 请查看"
+  → 找到 "](" → 后面是完整域名 → 找到 ")" → 替换
+  → 输出: "![猫](/static/cat.png) 请查看"
+
+场景 2：URL 被 chunk 切断
+  chunk 1: "![猫](https://dreammaker.n"
+    → 找到 "](" → 后面太短，可能是域名开头 → break，不输出
+  chunk 2: "etease.com/static/cat.png) 请查看"
+    → buffer 拼完整了 → 找到完整域名 → 找到 ")" → 替换
+    → 输出: "![猫](/static/cat.png) 请查看"
+
+场景 3：不是 DM 的图片
+  chunk: "![图](https://google.com/logo.png)"
+  → 找到 "](" → 域名不匹配 → 原样输出 "]("，继续处理后面</code></pre>
+
+<p><strong>feed() 和 flush() 的配合</strong>：<code>feed(chunk)</code> 每次吃一个 chunk，把 chunk 拼到 buffer 里然后尝试 drain（提取已确认安全的输出）；<code>flush()</code> 在 text block 关闭时把 buffer 里所有剩余内容全部强制输出。</p>
+
+<h4>状态协作流程</h4>
+
+<pre><code>LLM 输出 "我来帮你"
+  ├─ current_text_block_id=None → 创建 text block，赋值
+  └─ 后续 token → block.delta
+
+LLM 输出 tool_call
+  ├─ _close_text_block()  → 关闭 text block，current_text_block_id=None
+  ├─ pending_tool_calls   → 追踪 tool_call_chunks，创建 tool_use block
+  └─ on_tool_start        → tool_block_ids 记录映射，status → running
+
+Tool 执行完毕
+  ├─ on_tool_end          → 通过 tool_block_ids 找到 block_id
+  ├─ tool_names           → 判断是否埋点
+  └─ status → completed
+
+LLM 继续输出文字
+  └─ current_text_block_id=None → 创建新的 text block，循环继续</code></pre>
+
+<h3>5.4 SSE 事件流的生命周期</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant A as Adapter
+    participant S as SSE Stream
+
+    A->>S: message.created {id, status: "generating"}
+
+    rect rgb(240, 248, 255)
+    Note over A,S: LLM 开始输出文本
+    A->>S: block.created {type: "text", status: "generating"}
+    A->>S: block.delta {content: "我来"}
+    A->>S: block.delta {content: "帮你生成"}
+    A->>S: block.delta {content: "一张赛博朋克风格的猫"}
+    A->>S: block.updated {status: "completed"}
+    end
+
+    rect rgb(255, 245, 238)
+    Note over A,S: LLM 决定调用工具
+    A->>S: block.created {type: "tool_use", tool: "generate_and_create_node"}
+    A->>S: block.delta {content: "{model_id: 'seedream-4.5'...}"}
+    A->>S: block.updated {status: "running", tool: {input: {...}}}
+    Note over A: tool 执行中...（可能几十秒）
+    A->>S: stream.heartbeat（超时自动注入）
+    A->>S: block.updated {status: "completed", tool: {result: "..."}}
+    end
+
+    rect rgb(240, 255, 240)
+    Note over A,S: LLM 基于 tool result 输出最终回复
+    A->>S: block.created {type: "text"}
+    A->>S: block.delta {content: "已为你生成..."}
+    A->>S: block.updated {status: "completed"}
+    end
+
+    A->>S: conversation.update {title: "赛博朋克猫咪"}（首轮自动生成标题）
+    A->>S: message.updated {status: "completed"}
+    A->>S: stream.done
+</pre>
+</div>
+
+<h2>六、Interrupt / Resume 机制（HITL 实现）</h2>
+
+<p>当 Agent 调用 <code>execute</code> / <code>write_file</code> / <code>edit_file</code> 时，LangGraph 会 <strong>暂停 graph 执行</strong>（interrupt），等待用户审批。Adapter 里有一段关键代码处理这个：</p>
+
+<pre><code># 循环检测 interrupt：每次 resume 后可能又触发新的 interrupt
+# 直到 graph 完成（无 pending interrupt）为止
+while True:
+    state_snapshot = await self._agent.aget_state(config)
+    if not (state_snapshot.next and state_snapshot.interrupts):
+        break  # 无 interrupt，graph 正常完成
+
+    # 发出交互请求帧给前端
+    for interrupt in state_snapshot.interrupts:
+        yield self._build_interaction_frame(interrupt)
+    # → SSE: interaction.request {id, type: "confirmation", options: ["approve", "reject"]}
+
+    # 挂起等待用户决定（300 秒超时）
+    wait_event = register_interrupt(thread_id)
+    await asyncio.wait_for(wait_event.wait(), timeout=300)
+
+    # 用户通过 /chat/{session_id}/resume 提交决定
+    decision = pop_decision(thread_id)
+    resume_input = Command(resume=matched_decision)
+
+    # 用 Command(resume=...) 恢复 graph，继续处理事件流
+    async for event in self._agent.astream_events(resume_input, config=config, ...):
+        ...
+    # resume 流结束后，loop 回去检查是否有新的 interrupt</code></pre>
+
+<p>整个 Interrupt/Resume 机制的完整流程图（注意两次 <code>astream_events</code> 调用的入参不同）：</p>
+
+<pre><code>用户发消息
+  │
+  ▼
+astream_events(agent_input)     ← 第 1 次：初始驱动，启动 Agent 推理
+  │
+  ▼
+graph 跑完了？有 interrupt 吗？
+  │                    │
+  无 interrupt          有 interrupt
+  │                    │
+  ▼                    ▼
+结束                while True:
+                      aget_state() → 检测到 interrupt
+                      推审批请求给前端
+                      等用户决定（300s）
+                      │
+                      ▼
+                    astream_events(Command(resume=...))  ← 第 2 次：恢复 graph
+                      │
+                      ▼
+                    又有 interrupt？
+                      │          │
+                      有          无
+                      │          │
+                      ▼          ▼
+                    回到 while   break，结束
+                    循环顶部</code></pre>
+
+<table>
+<thead>
+<tr><th>调用位置</th><th>入参</th><th>作用</th></tr>
+</thead>
+<tbody>
+<tr><td>第 1 次（while 前）</td><td><code>agent_input</code>（用户消息）</td><td>启动 Agent，开始推理</td></tr>
+<tr><td>第 2 次（while 内）</td><td><code>Command(resume=...)</code></td><td>恢复被中断的 graph</td></tr>
+</tbody>
+</table>
+
+<p>两者产出的事件格式完全一样（<code>on_chat_model_stream</code>、<code>on_tool_start</code> 等），Adapter 用同样的逻辑翻译。区别只是<strong>启动方式不同</strong>——一个是新消息驱动，一个是审批恢复。</p>
+
+<p>完整流程：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant AG as Agent Graph
+    participant ADA as Adapter
+    participant F as Frontend
+    participant R as /resume 端点
+
+    AG->>AG: LLM 决定调用 execute("ls -la")
+    AG->>AG: interrupt_on 触发，graph 暂停
+    AG-->>ADA: astream_events 结束（有 pending interrupt）
+    ADA->>ADA: aget_state() 检测到 interrupts
+    ADA->>F: SSE: interaction.request {action: "execute", args: "ls -la"}
+    Note over F: 用户看到审批弹窗
+    F->>R: POST /chat/{id}/resume {decision: "approve"}
+    R->>ADA: resolve_interrupt(thread_id, decision)
+    ADA->>ADA: pop_decision() 获取决定
+    ADA->>AG: Command(resume=...) 恢复 graph
+    AG->>AG: 执行 execute("ls -la")
+    AG-->>ADA: 继续产出事件流
+</pre>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：Interrupt 为什么用 while 循环而不是 if？</h4>
+  <p>因为 <strong>resume 之后可能又触发新的 interrupt</strong>。比如 Agent 先 <code>write_file</code>（interrupt 1），用户 approve 后 Agent 继续推理，又决定 <code>execute</code>（interrupt 2）。所以必须循环检测直到 graph 真正完成（无 pending interrupt）。</p>
+</div>
+
+<h2>七、System Prompt 设计要点</h2>
+
+<p><code>prompts.py</code> 定义了 Agent 的完整行为指令。阅读时重点关注 prompt 里包含哪些关键约束：</p>
+
+<table>
+<thead>
+<tr><th>Prompt 章节</th><th>内容</th><th>设计意图</th></tr>
+</thead>
+<tbody>
+<tr><td>节点引用规则</td><td>只接受 node ID，不接受 URL；URL 必须走导入流程</td><td>防止 Agent 把 URL 直接当参数传给生成工具</td></tr>
+<tr><td>主体（Subject）引用</td><td><code>{{node_id}}</code> 占位符 + reference_nodes</td><td>角色/素材复用机制</td></tr>
+<tr><td>推荐模型</td><td>seedream-4.5 / tripo-P1 / kling-video-o3 / claude-sonnet-4-6</td><td>减少 Agent 每次 query_models 的开销</td></tr>
+<tr><td>画布感知</td><td>每轮自动注入画布概览，优先用概览信息</td><td>减少不必要的 tool 调用</td></tr>
+<tr><td>失败处理规范</td><td>不盲目重试、不用相同参数重试、连续 2 次失败停下</td><td>防止 Agent 陷入死循环烧 token</td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+  <strong>System Prompt 是 Agent 行为的"宪法"</strong>：它定义了 Agent 能做什么、不能做什么、遇到异常怎么办。代码（factory.py）定义 Agent 的<em>能力</em>，Prompt 定义 Agent 的<em>行为准则</em>。如果想理解 Agent 如何控制行为，System Prompt 是最直接的入口。
+</div>
+
+<h2>八、runner.py — In-flight 注册表</h2>
+
+<p>只有 22 行代码，但支撑了三个关键能力：</p>
+
+<pre><code>_running_chats: dict[str, asyncio.Task] = {}   # session_id → Task</code></pre>
+
+<table>
+<thead>
+<tr><th>能力</th><th>机制</th></tr>
+</thead>
+<tbody>
+<tr><td>同 session 新 chat 自动 cancel 旧 task</td><td><code>_cancel_existing_chat()</code>：先 cancel + await，再启新 task</td></tr>
+<tr><td><code>/sessions/{id}/cancel</code> 接口</td><td>从注册表取 task 并 cancel</td></tr>
+<tr><td>应用关停优雅清理</td><td>遍历所有 in-flight task 逐个 cancel</td></tr>
+</tbody>
+</table>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么 cancel 要 await？不能直接 cancel 吗？</h4>
+  <p><code>task.cancel()</code> 只是发出取消信号，task 可能正在执行 tool（比如 HTTP 请求），需要等它处理完 <code>CancelledError</code> 才能安全清理。代码里是 <code>task.cancel(); await task</code>，确保旧 task 彻底结束后新 task 才开始，避免两个 task 同时操作同一个 session 的状态。</p>
+</div>
+
+<h2>九、state_reader.py — Checkpointer 与对话续跑</h2>
+
+<p>Agent 需要记住"之前聊过什么"，这样才能在多轮对话中保持上下文。Monet 用 LangGraph 的 <strong>Checkpointer</strong> 机制实现对话持久化。</p>
+
+<h3>9.1 Checkpointer：对话状态的"存档点"</h3>
+
+<p>每次 Agent 完成一轮对话（LLM 推理 + 可能的工具调用），LangGraph 会把当前的消息历史<strong>存档</strong>到 checkpointer。下次用户继续对话时，Agent 可以从存档点恢复，继续工作。</p>
+
+<pre><code># factory.py 里的配置
+checkpointer = get_checkpointer()  # 进程级单例
+
+agent = create_deep_agent(
+    model=model,
+    system_prompt=SYSTEM_PROMPT,
+    checkpointer=checkpointer,  # ← 注入 checkpointer
+    tools=[...],
+    ...
+)</code></pre>
+
+<p><strong>进程级单例</strong>：整个 Monet Agent 进程只有一个 checkpointer 实例，所有对话共享。它负责把对话状态持久化到 SQLite 数据库。</p>
+
+<h3>9.2 DeltaChannel：增量存储，不是完整快照</h3>
+
+<p>DeepAgent 0.6+ 将 messages channel 改为 <strong>DeltaChannel</strong>——checkpoint 存的是<strong>增量</strong>（每次只存新增的消息），不是完整快照。</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph "Checkpoint 1（第 1 轮对话后）"
+        D1["Delta: [用户消息 1, Agent 回复 1]"]
+    end
+
+    subgraph "Checkpoint 2（第 2 轮对话后）"
+        D2["Delta: [用户消息 2, Agent 回复 2]"]
+    end
+
+    subgraph "Checkpoint 3（第 3 轮对话后）"
+        D3["Delta: [用户消息 3, Agent 回复 3]"]
+    end
+
+    Complete["完整消息历史 = Delta1 + Delta2 + Delta3"]
+
+    D1 --> Complete
+    D2 --> Complete
+    D3 --> Complete
+</pre>
+</div>
+
+<p>为什么用增量而不是完整快照？<strong>节省存储空间。</strong>如果每轮都存完整消息（可能包含大量工具调用结果），几轮对话后 checkpoint 就会变得很大。增量存储只存新增部分，体积增长慢得多。</p>
+
+<h3>9.3 问题：怎么从增量重建完整消息？</h3>
+
+<p>直接读 checkpoint blob 只能看到最后一次的增量片段，不是完整消息列表。LangGraph 提供了 <code>aget_state()</code> API，内部会自动把所有增量合并成完整消息——但前提是必须通过一个 <strong>StateGraph</strong> 调用。</p>
+
+<p><code>state_reader.py</code> 构建了一个最小的<strong>只读 StateGraph</strong>，专门用来调用 <code>aget_state()</code> 重建消息历史：</p>
+
+<pre><code># src/monet/agent/state_reader.py
+
+def build_state_reader(checkpointer: Checkpointer) -> CompiledStateGraph:
+    """构建只读状态图，用于通过 aget_state 重建 DeltaChannel 消息。"""
+    graph = StateGraph(state_schema=_ReaderState)  # 定义 messages channel
+
+    # 只有一个 noop 节点，什么都不做
+    graph.add_node("_noop", lambda state: state)
+    graph.add_edge(START, "_noop")
+    graph.add_edge("_noop", END)
+
+    # 编译时注入 checkpointer
+    return graph.compile(checkpointer=checkpointer)</code></pre>
+
+<p>关键点：</p>
+<ul>
+  <li><strong>_ReaderState</strong>：定义了 <code>messages</code> 字段，使用 <code>DeltaChannel</code> 和相同的 reducer（合并逻辑）</li>
+  <li><strong>_noop 节点</strong>：什么都不做，只是为了满足 StateGraph 的结构要求（至少一个节点）</li>
+  <li><strong>checkpointer</strong>：注入同一个 checkpointer 实例，确保读到相同的 checkpoint 数据</li>
+</ul>
+
+<h3>9.4 对话续跑的完整流程</h3>
+
+<p>用户重新打开对话（比如关闭 Monet 后重新打开，或者第二天继续昨天的对话）：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant F as Frontend
+    participant R as routes.py
+    participant SR as state_reader.py
+    participant CP as Checkpointer<br/>(SQLite)
+    participant AG as Agent
+
+    U->>F: 打开之前的对话
+    F->>R: POST /chat {session_id, message}
+
+    R->>SR: build_state_reader(checkpointer)
+    SR->>CP: aget_state(thread_id=session_id)
+    CP-->>SR: 所有 checkpoint 的增量数据
+    SR->>SR: DeltaChannel reducer 合并增量
+    SR-->>R: 完整消息历史
+
+    R->>AG: create_agent(checkpointer=...)
+    AG->>CP: 读取 checkpoint（继续存档）
+    AG->>AG: 基于完整历史继续推理
+    AG-->>R: 流式返回回复
+    R-->>F: SSE 流
+    F-->>U: 显示回复</code></pre>
+</div>
+
+<ol>
+  <li><strong>build_state_reader</strong>：构建只读 StateGraph，注入 checkpointer</li>
+  <li><strong>aget_state(thread_id)</strong>：通过 StateGraph 调用 LangGraph API，读取所有 checkpoint 的增量数据</li>
+  <li><strong>DeltaChannel reducer 合并</strong>：把所有增量合并成完整消息列表（[消息 1, 消息 2, ..., 消息 N]）</li>
+  <li><strong>创建 Agent</strong>：注入同一个 checkpointer，确保后续对话继续存档到相同的 checkpoint</li>
+  <li><strong>继续推理</strong>：Agent 基于完整历史继续工作，用户感觉"对话没断过"</li>
+</ol>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么不直接用 LangGraph 的 API 读 checkpoint？</h4>
+  <p>因为 DeltaChannel 的 checkpoint 存的是<em>增量</em>（每次只存新增的消息），不是完整快照。LangGraph 的 <code>aget_state()</code> 内部会自动把所有增量合并成完整消息列表。自己直接读 blob 就只能看到最后一次的增量片段。</p>
+  <p>而且 <code>aget_state()</code> 要求通过 StateGraph 调用——即使你只是想"读"状态，也必须构建一个 StateGraph。这就是 <code>state_reader.py</code> 存在的原因：构建一个最小的只读 StateGraph（只有一个 noop 节点），专门用来调用 <code>aget_state()</code>。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么 checkpointer 是进程级单例？</h4>
+  <p>因为 checkpointer 本质是数据库连接池。如果每个请求都创建新的 checkpointer，会导致：
+  <ul>
+    <li>数据库连接数爆炸（每个请求一个连接）</li>
+    <li>SQLite 文件锁冲突（SQLite 不支持高并发写）</li>
+    <li>内存浪费（每个 checkpointer 实例都有缓存）</li>
+  </ul>
+  进程级单例确保所有对话共享同一个数据库连接，复用连接池和缓存。</p>
+</div>
+
+<h3>9.5 Prompt Caching 降本</h3>
+
+<p>多轮对话场景下，System Prompt + Tools 定义在每一轮都会重复发送。以 Monet 为例：System Prompt 约 2000 token，7 个工具的 JSON Schema 约 3000 token，每轮对话都要重新计算这些"固定内容"，浪费且昂贵。</p>
+
+<p>Claude 提供了 <strong>Prompt Caching</strong> 机制：在请求的特定位置标记 <code>cache_control</code>，AIGW/Anthropic 会缓存从开头到标记处的内容。后续请求如果前缀相同，直接复用缓存，input token 价格降低约 90%。</p>
+
+<h4>三个缓存断点</h4>
+
+<p><code>cache_control.py</code> 在请求 payload 里注入最多 3 个断点（Claude 限制 4 个，保留 1 个余量）：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph "请求 Payload"
+        direction TB
+        Sys["System Prompt<br/>(~2000 token)"]
+        Tools["Tools 定义<br/>(~3000 token)"]
+        Hist["对话历史<br/>(逐轮增长)"]
+        Latest["最新 user 消息<br/>(每轮变化)"]
+    end
+
+    Sys -->|断点 1| Cache1["cache_control<br/>#1"]
+    Tools -->|断点 2| Cache2["cache_control<br/>#2"]
+    Hist -->|断点 3| Cache3["cache_control<br/>#3"]
+    Latest --> NoCache["无缓存标记<br/>(每轮都变)"]
+
+    style Cache1 fill:#d4edda,stroke:#28a745
+    style Cache2 fill:#d4edda,stroke:#28a745
+    style Cache3 fill:#d4edda,stroke:#28a745
+    style NoCache fill:#f8d7da,stroke:#dc3545
+</pre>
+</div>
+
+<table>
+<thead>
+<tr><th>断点</th><th>位置</th><th>缓存内容</th><th>为什么缓存</th></tr>
+</thead>
+<tbody>
+<tr><td>#1</td><td>System Prompt 末尾</td><td>System Prompt（Agent 行为定义）</td><td>所有请求相同，永不变</td></tr>
+<tr><td>#2</td><td>Tools 数组最后一个元素</td><td>7 个工具的 JSON Schema</td><td>所有请求相同，永不变</td></tr>
+<tr><td>#3</td><td>最后一条 user 消息之前的消息</td><td>对话历史（不含最新 user 消息）</td><td>多轮对话中，历史消息不变，只有最新 user 消息是新的</td></tr>
+</tbody>
+</table>
+
+<h4>代码实现</h4>
+
+<pre><code># src/monet/model/cache_control.py
+
+def inject_cache_control(payload: dict[str, Any]) -> None:
+    """为 Claude 模型请求注入 prompt caching 标记。"""
+    if not _should_enable(payload):  # 只对 claude-* 模型启用
+        return
+
+    messages = payload.get("messages", [])
+    tools = payload.get("tools", [])
+
+    _mark_system_message(messages)    # 断点 1：System Prompt
+    _mark_tools(tools)                # 断点 2：Tools 定义
+    _mark_conversation_prefix(messages)  # 断点 3：对话历史</code></pre>
+
+<p>注入时机：在 <code>ChatAIGW._get_request_payload</code> 构建完请求 payload 后、发送前调用：</p>
+
+<pre><code># src/monet/model/aigw.py
+def _get_request_payload(self, input_, stop=None, **kwargs):
+    payload = super()._get_request_payload(input_, stop=stop, **kwargs)
+    inject_cache_control(payload)  # ← 注入缓存标记
+    return payload</code></pre>
+
+<h4>缓存命中效果</h4>
+
+<div class="highlight-box">
+  <strong>示例：10 轮对话的成本对比</strong>
+  <ul>
+    <li><strong>无缓存</strong>：每轮都重新计算 System + Tools + 全部历史 → 10 轮 × 5000 token = 50,000 token</li>
+    <li><strong>有缓存</strong>：System + Tools 只算 1 次，历史消息每轮只算新增部分 → 5000 + 10 × 200 = 7,000 token</li>
+    <li><strong>节省</strong>：约 85% 的 input token 成本</li>
+  </ul>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么只在 claude-* 模型上启用？</h4>
+  <p>因为 Prompt Caching 是 Claude 特有的功能，其他模型（如 GPT、Gemini）不支持 <code>cache_control</code> 字段。代码里通过 <code>model_name.startswith("claude-")</code> 判断，只对 Claude 模型注入标记，避免其他模型报错。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么保留 1 个断点余量（只用 3 个，不用满 4 个）？</h4>
+  <p>Claude 最多支持 4 个缓存断点，但代码只用 3 个。这是为了应对未来可能的变化：如果新增一个"永不变"的内容块（比如画布概览注入），可以加第 4 个断点而不需要重构。这是<strong>防御性设计</strong>——留一个余量，避免后续改动时超出限制。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：断点 3 为什么标记"最后一条 user 消息之前"而不是"最后一条 assistant 消息"？</h4>
+  <p>因为用户可能连续发多条消息（比如先说"帮我画猫"，还没等回复又追加"要赛博朋克风格"）。如果标记在 assistant 消息上，连续 user 消息会打断缓存。标记在"最后一条 user 消息之前"，确保所有历史消息（包括可能的多条连续 user 消息）都被缓存，只有最新的那条 user 消息不缓存（因为它每轮都变）。</p>
+</div>
+
+<h2>十、设计要点</h2>
+
+<div class="resume-hook">
+  <h4>📝 设计要点</h4>
+  <ul>
+    <li><strong>SSE 适配器架构</strong>：AgentStreamAdapter 抽象 + DeepAgentStreamAdapter 具体，换 Agent 框架前端零改动</li>
+    <li><strong>Interrupt/Resume 循环检测</strong>：while 循环 + Command(resume) 处理多轮审批</li>
+    <li><strong>In-flight 注册表</strong>：进程级 dict 管理 session 生命周期，三条取消路径</li>
+    <li><strong>System Prompt 工程</strong>：失败处理规范（不盲目重试、连续 2 次失败停下）</li>
+    <li>支持的 tool 数量：<strong>10 个</strong>（7 画布 + 3 shell）</li>
+    <li>recursion_limit：<strong>100</strong>（LangGraph 默认 25 太小，长任务会被截断）</li>
+  </ul>
+</div>
+
+<h2>十一、检索练习</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. Agent Loop（"LLM 推理 → 判断 tool → 执行 → 再推理"）在哪里运行？</p>
+  <ul class="quiz-options">
+    <li>A. factory.py 的 create_agent_for_request 里</li>
+    <li>B. DeepAgentStreamAdapter._generate_frames 里</li>
+    <li>C. CompiledStateGraph 内部（LangGraph 状态机）</li>
+    <li>D. routes.py 的 chat 函数里</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>C</strong>。Agent Loop 在 <code>CompiledStateGraph</code>（LangGraph 状态机）内部运行。Monet 代码只负责<em>编排</em>：factory.py 创建 Agent，routes.py 启动流，Adapter 消费事件流。真正的"思考→调用工具→再思考"循环是 LangGraph 框架的核心能力，Monet 通过 <code>astream_events()</code> 消费其产出。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. 一次 /chat 请求中，Agent 实际可用的工具有几个？</p>
+  <ul class="quiz-options">
+    <li>A. 7 个（factory.py 注册的 tools 列表）</li>
+    <li>B. 3 个（INTERRUPT_ON_TOOLS 里的 execute/write_file/edit_file）</li>
+    <li>C. 10 个（7 画布工具 + 3 shell 工具）</li>
+    <li>D. 不确定，取决于 skills 加载了多少</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>C</strong>。factory.py 注册了 7 个画布工具（query_models / generate_and_create_node / create_canvas_node / fit_size_and_create_node / canvas_create_input_node / canvas_node_detail / canvas_subgraph），加上 LocalShellBackend 提供的 3 个 shell 工具（execute / write_file / edit_file），共 10 个。Skills 不增加 tool 数量，它们是能力描述文件。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q3. DeepAgentStreamAdapter 处理 interrupt 时为什么用 while 循环？</p>
+  <ul class="quiz-options">
+    <li>A. 防止用户审批超时后没有重试机会</li>
+    <li>B. resume 后可能又触发新的 interrupt，需要循环检测直到 graph 完成</li>
+    <li>C. 一次请求可能有多个 session 同时 interrupt</li>
+    <li>D. LangGraph 要求必须用 while 循环消费 astream_events</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>B</strong>。Agent 恢复执行后，下一轮推理可能又决定调用 <code>write_file</code> 或 <code>execute</code>，触发新的 interrupt。所以必须 <code>while True</code> 循环检测 <code>aget_state()</code> 是否还有 pending interrupt，直到 graph 真正完成（无 <code>state_snapshot.next</code>）才 break。
+  </div>
+</div>
+
+<div class="resource-recommend">
+  <strong>📖 主要推荐资源</strong>：<a href="https://langchain-ai.github.io/langgraph/how-tos/streaming-tokens/">LangGraph Streaming Tokens</a>——理解 <code>astream_events(version="v2")</code> 的事件模型是读懂 DeepAgentStreamAdapter 的前提。这是 Monet Agent Loop 的底层依赖。
+</div>
+
+<div class="followup">
+  <h4>💬 followup 问题（跟我继续聊）</h4>
+  <ul>
+    <li>"我想看 generate_and_create_node 这个 tool 内部怎么实现的" → 进 Lesson M003（Tool Use 系统）</li>
+    <li>"System Prompt 里的'画布概览自动注入'是怎么实现的？"</li>
+    <li>"_stream_with_registry 里的注册表清理逻辑能展开讲讲吗？"</li>
+    <li>"SSE 心跳机制为什么用 asyncio.wait 而不是 asyncio.wait_for？"</li>
+    <li>"帮我对比 Monet 的 Agent Loop 和 OpenAI Assistants API 的 Run 机制"</li>
+  </ul>
+</div>
+
+<nav class="lesson-nav">
+  <a href="M001-monet-architecture-overview.html">← Lesson M001 — Monet 架构总览</a>
+  <a href="M003-monet-tool-use-system.html">Lesson M003 — Tool Use 系统 →</a>
+</nav>
+
+</body>
+</html>

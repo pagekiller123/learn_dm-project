@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <style>
+/* 教学课程共享样式 — Tufte 风格 */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.quiz {
+  background: #fef9e7;
+  border: 1px solid #e6d999;
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+}
+.quiz-question { font-weight: 600; margin-bottom: 0.8rem; font-family: var(--sans); }
+.quiz-options { list-style: none; padding: 0; }
+.quiz-options li {
+  padding: 0.5rem 0.8rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 0.4rem 0;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.quiz-options li:hover { background: var(--accent-soft); }
+.quiz-answer {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: white;
+  border-radius: 4px;
+  display: none;
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+.quiz-answer.visible { display: block; }
+.quiz-toggle {
+  margin-top: 0.5rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.85em;
+}
+
+.followup {
+  border: 2px dashed var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 2rem 0 1rem;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-family: var(--sans);
+}
+.followup h4 { margin-top: 0; color: var(--accent); }
+
+.resource-recommend {
+  background: #eef7ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+
+.resume-hook {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+}
+.resume-hook h4 { color: #16a34a; margin-top: 0; }
+
+/* 思考 box */
+.defend {
+  background: #fef2f2;
+  border: 2px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+.defend h4 { margin-top: 0; color: var(--accent); }
+.defend ol { padding-left: 1.4rem; }
+.defend li { margin: 0.5rem 0; }
+
+/* Mermaid 图容器 */
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem -2rem; /* 负 margin：让图突破正文列宽 */
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Mermaid 生成的 SVG 默认会缩放到容器宽度，禁用它以显示真实字号 */
+.diagram .mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+}
+
+.print-only { display: none; }
+@media print {
+  body { max-width: none; margin: 0; padding: 1cm; font-size: 11pt; }
+  .quiz-toggle, .followup { break-inside: avoid; }
+  .print-only { display: block; }
+  a { color: var(--text); text-decoration: none; }
+}
+
+nav.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+
+  </style>
+  <meta charset="UTF-8">
+  <title>M003 — Monet Tool Use 系统</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+
+<div class="lesson-meta"><span><strong>适合人群</strong> 工作新人</span>
+  <span><strong>Lesson</strong> M003</span>
+  <span><strong>项目</strong> Monet Agent</span>
+  <span><strong>时长</strong> ~40 分钟</span>
+  <span><strong>难度</strong> ★★★☆☆</span>
+  <span><strong>前置</strong> <a href="M002-monet-agent-core-factory-runner-loop.html">M002 — Agent 核心</a></span>
+  <span><strong>下一节</strong> <a href="M004-canvas-awareness.html">M004 — 画布感知</a></span>
+</div>
+
+<h1>Monet Tool Use 系统</h1>
+
+<p>M002 讲清了 Agent Loop 和 SSE 流式协议。这一节聚焦 Agent 的"手脚"——<strong>10 个工具</strong>（7 画布 + 3 shell）。学完你能讲清每个工具的职责、Agent 怎么组合它们完成任务、以及 Tool Calling 的工程实现细节。</p>
+
+<div class="highlight-box">
+  <strong>核心概念</strong>：Tool 就是 Agent 可调用的<strong>函数</strong>。LangGraph 的 Tool Calling 机制让 LLM 决定"我要调哪个函数、传什么参数"，框架执行函数并把返回值喂回 LLM。Monet 的工作是<strong>定义这些函数</strong>——函数签名（输入参数）+ 函数体（业务逻辑）。
+</div>
+
+<h2>一、10 个工具全景</h2>
+
+<table>
+<thead>
+<tr><th>#</th><th>工具名</th><th>文件</th><th>职责</th><th>HITL</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td><code>query_models</code></td><td><code>query_models.py</code></td><td>查询可用 AI 模型及其参数定义</td><td>—</td></tr>
+<tr><td>2</td><td><code>generate_and_create_node</code></td><td><code>generate_node.py</code></td><td>生成内容 + 创建画布节点（一步完成）</td><td>—</td></tr>
+<tr><td>3</td><td><code>create_canvas_node</code></td><td><code>canvas.py</code></td><td>从 ticket 创建画布节点（备用路径）</td><td>—</td></tr>
+<tr><td>4</td><td><code>fit_size_and_create_node</code></td><td><code>crop_node.py</code></td><td>裁剪/缩放图片 + 创建节点</td><td>—</td></tr>
+<tr><td>5</td><td><code>canvas_create_input_node</code></td><td><code>canvas_create_input_node.py</code></td><td>将外部 URL 导入为画布节点</td><td>—</td></tr>
+<tr><td>6</td><td><code>canvas_node_detail</code></td><td><code>canvas_query.py</code></td><td>查询单个节点的完整详情</td><td>—</td></tr>
+<tr><td>7</td><td><code>canvas_subgraph</code></td><td><code>canvas_query.py</code></td><td>查询一组节点及其连线</td><td>—</td></tr>
+<tr><td>8</td><td><code>execute</code></td><td>DeepAgent 框架内置</td><td>执行本地 shell 命令</td><td>✅</td></tr>
+<tr><td>9</td><td><code>write_file</code></td><td>DeepAgent 框架内置</td><td>写本地文件</td><td>✅</td></tr>
+<tr><td>10</td><td><code>edit_file</code></td><td>DeepAgent 框架内置</td><td>编辑本地文件</td><td>✅</td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+  <strong>设计哲学：高抽象、少数量</strong>。Monet 的 7 个画布工具每个都封装了多步操作（比如 <code>generate_and_create_node</code> 内部 = 提交生成 → 轮询结果 → 创建节点 → 建立连线）。工具少（7 个）但每个抽象层次高，减少 LLM 的决策负担——tool 越多，LLM 选错的概率越大。
+</div>
+
+<h2>二、工具分类：做什么 vs 查什么</h2>
+
+<p>按功能分两大类：</p>
+
+<table>
+<thead>
+<tr><th>类别</th><th>工具</th><th>特点</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>创建类</strong>（写操作）</td>
+  <td><code>generate_and_create_node</code>、<code>create_canvas_node</code>、<code>fit_size_and_create_node</code>、<code>canvas_create_input_node</code></td>
+  <td>会在画布上创建新节点，成功后发 <code>canvas.render</code> 自定义事件通知前端刷新</td>
+</tr>
+<tr>
+  <td><strong>查询类</strong>（读操作）</td>
+  <td><code>query_models</code>、<code>canvas_node_detail</code>、<code>canvas_subgraph</code></td>
+  <td>只读不写，返回文本（markdown 格式）给 Agent</td>
+</tr>
+</tbody>
+</table>
+
+<h2>三、核心工具详解</h2>
+
+<h3>3.1 query_models — "查字典"</h3>
+
+<p>Agent 在生成之前，需要知道"有什么模型可用、每个模型需要什么参数"。<code>query_models</code> 就是这本字典。</p>
+
+<pre><code>class QueryModelsInput(BaseModel):
+    category: str | None    # 按类型过滤：image / video / model_3d / text
+    node_type: str | None   # 按节点类型过滤：gen-image / gen-video ...
+    model_id: str | None    # 精确查询单个模型的参数定义</code></pre>
+
+<p>典型用法：</p>
+
+<pre><code>用户："帮我生成一张猫的图片"
+  │
+  ▼
+Agent 第一步：调 query_models(category="image")
+  → 返回："可用模型：seedream-4.5（参数：prompt, aspect_ratio, image_size）
+           nano-banana-pro（参数：prompt, width, height）..."
+  │
+  ▼
+Agent 第二步：根据用户需求和返回结果，选模型、填参数
+  → 调 generate_and_create_node(
+      node_type="gen-image",
+      model_id="seedream-4.5",
+      model_params={"prompt": "一只可爱的猫", "aspect_ratio": "1:1"},
+      label="可爱猫咪"
+    )</code></pre>
+
+<div class="defend">
+  <h4>🛡️ 思考：System Prompt 里不是已经推荐了模型吗？为什么还要 query_models？</h4>
+  <p>System Prompt 里的推荐模型是"常用的几个"（seedream-4.5 / tripo-P1 / kling-video-o3），但可用的模型远不止这些。<code>query_models</code> 的另一个关键作用是<strong>查参数定义</strong>——每个模型需要什么参数、类型是什么、有没有默认值，这些不能硬编码在 prompt 里（模型列表会频繁更新）。Agent 调 <code>query_models(model_id="seedream-4.5")</code> 可以精确获取该模型的完整参数 schema。</p>
+</div>
+
+<h3>3.2 generate_and_create_node — "一键生成"</h3>
+
+<p>这是 Agent <strong>最常用的工具</strong>，一步完成"生成内容 + 创建画布节点"：</p>
+
+<pre><code>class GenerateAndCreateNodeInput(BaseModel):
+    node_type: str              # 能力类型：gen-image / gen-video / gen-3d / gen-text
+    model_id: str               # 模型 ID：seedream-4.5 / kling-video-o3 ...
+    model_params: dict          # 模型参数：{prompt, aspect_ratio, ...}
+    label: str                  # 节点标签：8-16 字中文短语
+    reference_nodes: list[str]  # 参考图节点 ID（自动解析为 URL 注入参数）</code></pre>
+
+<p>注意：<strong>这个 tool 本身只有 120 行</strong>。真正的业务逻辑委托给了 <code>AgentGenerationService</code>：</p>
+
+<pre><code>service = get_agent_generation_service()
+result = await service.generate_and_create(
+    AgentGenerateRequest(...)
+)</code></pre>
+
+<p>工具文件只做<strong>框架适配</strong>：从 LangGraph config 取 canvas_id / auth_headers / thread_id，构造请求，调用 service，返回结果文本。</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant A as Agent (LLM)
+    participant T as generate_and_create_node
+    participant S as AgentGenerationService
+    participant G as DM Scheduler / AIGW
+    participant C as Canvas Backend
+
+    A->>T: tool call: (node_type, model_id, model_params, label, reference_nodes)
+    T->>S: AgentGenerateRequest
+    S->>S: 解析 reference_nodes → URL
+    S->>G: 提交生成任务
+    G-->>S: 生成结果（图片/视频/3D URL）
+    S->>C: 创建画布节点 + 建立连线
+    C-->>S: node_id
+    S-->>T: result (success + node_ids)
+    T-->>A: "已生成并创建 1 个画布节点: node-xxx"
+    T-->>SSE: canvas.render 自定义事件
+</pre>
+</div>
+
+<h3>3.3 create_canvas_node — "先检后放"的备用路径</h3>
+
+<p>跟 <code>generate_and_create_node</code> 的区别：这个工具是<strong>两步走</strong>——先让 Agent 看到生成结果（通过 ticket），再决定是否放到画布上。</p>
+
+<pre><code>class CreateCanvasNodeInput(BaseModel):
+    ticket: str         # 生成工具返回的 ticket ID
+    label: str          # 节点标签
+    pick: list[int]     # 可选：只创建指定的 outputs</code></pre>
+
+<p>流程：</p>
+<pre><code>generate_and_create_node 的特殊模式（返回 ticket 而非直接创建）
+  → Agent 拿到 ticket，可以"看看"生成结果
+  → 满意 → create_canvas_node(ticket="gen-001", label="...")
+  → 不满意 → 不调 create_canvas_node，重新生成</code></pre>
+
+<p>System Prompt 里写了：<em>"仅在需要先检视生成结果再决定是否落盘的特殊场景使用"</em>。常规场景直接用 <code>generate_and_create_node</code> 一步完成。</p>
+
+<h3>3.4 canvas_create_input_node — "导入外部资源"</h3>
+
+<p>当用户发了一个 URL（图片/视频/3D 模型），需要把它导入画布。这个工具做的事情比看上去多得多：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    A["用户发的 URL"] --> B["下载资源"]
+    B --> C["检测类型<br/>image/video/audio/3d"]
+    C --> D["计算 MD5"]
+    D --> E{"画布上已有<br/>相同 MD5 的节点?"}
+    E -->|是| F["返回已有节点<br/>（去重复用）"]
+    E -->|否| G["上传到 Storage"]
+    G --> H["创建 input-* 节点"]
+</pre>
+</div>
+
+<p>关键设计：<strong>MD5 去重</strong>。下载资源后计算文件 MD5，遍历画布上所有节点的主图 MD5，如果已有相同的就跳过上传，直接返回已有节点。避免用户反复发同一个 URL 导致画布上出现一堆重复节点。</p>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么不能根据节点 label 判断重复？</h4>
+  <p>因为 label 只是人写的描述文字，两个不同的图片可能有相同的 label（比如都叫"赛博朋克猫咪"），同一个图片也可能有不同的 label。<strong>只有文件内容的 MD5 才能确定两张图是不是同一个文件</strong>。System Prompt 里也明确说了："label 仅为显示用途，不能反映实际资源内容"。</p>
+</div>
+
+<h3>3.5 fit_size_and_create_node — "裁剪/缩放"</h3>
+
+<p>从源节点取图，用 <strong>本地 PIL</strong> 适配到目标尺寸，上传后创建新节点。</p>
+
+<pre><code>流程：
+1. canvas_client.get_node_detail(source_node_id)  → 拿到源节点的输出图片 URL
+2. httpx.get(source_url)                           → 下载图片
+3. PIL.Image.open() + crop_or_resize()             → 本地裁剪/缩放
+4. storage_client.upload_from_bytes()              → 上传处理后的图片
+5. canvas_service.create_plain_image_node()        → 创建新节点</code></pre>
+
+<p>这是唯一一个在 <strong>本地做图像处理</strong>的工具（用 PIL），其他工具都是调远程服务。</p>
+
+<h3>3.6 canvas_node_detail / canvas_subgraph — "查画布"</h3>
+
+<p>两个查询工具，解决"Agent 需要看画布"的问题：</p>
+
+<table>
+<thead>
+<tr><th>工具</th><th>输入</th><th>返回</th><th>什么时候用</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><code>canvas_node_detail</code></td>
+  <td>一个 node_id</td>
+  <td>节点的完整信息（type / label / 位置 / params / outputs）</td>
+  <td>画布概览不够，需要看某个节点的具体参数或输出</td>
+</tr>
+<tr>
+  <td><code>canvas_subgraph</code></td>
+  <td>一组 node_ids</td>
+  <td>这些节点 + 它们之间的连线</td>
+  <td>理解画布上的局部拓扑关系</td>
+</tr>
+</tbody>
+</table>
+
+<p>两个工具都优先复用 <code>/chat</code> 入口缓存的画布详情（contextvar），缺失时才回退现拉一次。返回 markdown 格式的文本给 Agent 阅读。</p>
+
+<h2>四、工具间的组合模式</h2>
+
+<p>Agent 不是孤立调用某个工具，而是<strong>组合多个工具</strong>完成复杂任务。几个典型场景：</p>
+
+<h4>场景 1："帮我生成一张赛博朋克风格的猫"</h4>
+<pre><code>1. query_models(category="image")          → 查可用模型
+2. generate_and_create_node(                → 生成 + 创建节点
+     node_type="gen-image",
+     model_id="seedream-4.5",
+     model_params={prompt: "..."},
+     label="赛博朋克猫咪"
+   )</code></pre>
+
+<h4>场景 2："参考画布上已有的那张风格，生成一张类似的"</h4>
+<pre><code>1. canvas_subgraph(node_ids=[...])          → 查画布上的参考节点
+2. query_models(model_id="seedream-4.5")    → 查参数定义
+3. generate_and_create_node(                → 生成（带参考图）
+     node_type="gen-image",
+     model_id="seedream-4.5",
+     model_params={prompt: "..."},
+     reference_nodes=["node-xxx"],          ← 参考图自动解析为 URL
+     label="类似风格的猫咪"
+   )</code></pre>
+
+<h4>场景 3：用户发了一个 URL 说"把这个放到画布上"</h4>
+<pre><code>1. canvas_create_input_node(                → 下载 + 去重 + 上传 + 创建节点
+     url="https://example.com/cat.png",
+     label="外部猫咪图片"
+   )</code></pre>
+
+<h4>场景 4："生成的图片尺寸不对，帮我裁一下"</h4>
+<pre><code>1. fit_size_and_create_node(                → 本地裁剪 + 上传 + 创建新节点
+     source_node_id="node-xxx",
+     target_width=512,
+     target_height=512,
+     label="裁剪后的猫咪"
+   )</code></pre>
+
+<div class="highlight-box">
+  <strong>关键点</strong>：Agent 的工具组合不是预先编排好的，而是 LLM 根据用户意图和当前画布状态<strong>实时决策</strong>的。这正是用 Agent 而不是工作流的原因——工具组合空间太大，无法枚举。
+</div>
+
+<h2>五、Tool 的代码结构（统一模式）</h2>
+
+<p>所有 Monet 自定义工具遵循相同的代码结构：</p>
+
+<pre><code># 1. 定义输入参数（Pydantic BaseModel）
+class XxxInput(BaseModel):
+    param_a: str = Field(description="...")
+    param_b: int = Field(description="...")
+
+# 2. 用 @tool 装饰器注册
+@tool(args_schema=XxxInput)
+async def my_tool(param_a: str, param_b: int) -> str:
+    """工具的文档字符串（LLM 据此理解工具用途）"""
+
+    # 3. 从 LangGraph config 取上下文
+    config = get_config()
+    canvas_id = config.get("configurable", {}).get("canvas_id")
+    auth_headers = config.get("configurable", {}).get("auth_headers")
+
+    # 4. 参数校验
+    if not canvas_id:
+        return "错误：无法获取画布 ID"
+
+    # 5. 调用 service 执行业务逻辑
+    result = await some_service.do_something(...)
+
+    # 6. 发 canvas.render 通知前端刷新（仅创建类工具）
+    await adispatch_custom_event(name="canvas.render", data={})
+
+    # 7. 返回文本结果给 Agent
+    return "已完成：..."</code></pre>
+
+<p>几个关键设计点：</p>
+
+<table>
+<thead>
+<tr><th>设计点</th><th>说明</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>返回 str，不抛异常</strong></td>
+  <td>工具失败时返回错误文本（<code>"错误：xxx"</code>），而不是抛 Python 异常。LLM 能读懂错误信息并决定下一步；抛异常会导致 Agent 无法处理</td>
+</tr>
+<tr>
+  <td><strong>Pydantic BaseModel 做参数校验</strong></td>
+  <td>LLM 生成的参数经过 Pydantic 自动校验，类型不对或必填项缺失会在框架层拦截，不会进入业务逻辑</td>
+</tr>
+<tr>
+  <td><strong>LangGraph config 传上下文</strong></td>
+  <td><code>canvas_id</code>、<code>auth_headers</code>、<code>thread_id</code> 都通过 LangGraph 的 <code>configurable</code> 传递，不需要全局变量</td>
+</tr>
+<tr>
+  <td><strong>业务逻辑委托给 Service</strong></td>
+  <td>工具文件只做框架适配（取上下文 + 构造请求 + 格式化返回），真正的业务逻辑在 <code>services/</code> 层</td>
+</tr>
+</tbody>
+</table>
+
+<h2>六、canvas.render 自定义事件</h2>
+
+<p>前几节讲了工具怎么创建节点。现在的问题是：<strong>前端画布怎么知道要刷新？</strong></p>
+
+<h3>三种方案对比</h3>
+
+<table>
+<thead>
+<tr><th>方案</th><th>做法</th><th>问题</th></tr>
+</thead>
+<tbody>
+<tr><td>A. 工具返回完整画布数据</td><td>工具执行后，把完整画布状态塞进 tool result</td><td>数据量大；工具不该负责序列化画布</td></tr>
+<tr><td>B. 后端推送完整画布快照</td><td>后端主动在 SSE 里推完整画布状态</td><td>数据量大，后端要负责序列化全量数据</td></tr>
+<tr><td><strong>C. 通知 + 前端自拉</strong></td><td>后端只发一个轻量通知，前端自己调接口拉最新数据</td><td>✅ 职责分离、数据量小</td></tr>
+</tbody>
+</table>
+
+<p>Monet 选了<strong>方案 C</strong>。实现分三层：</p>
+
+<h3>第一层：工具 dispatch 自定义事件</h3>
+
+<p>所有创建类工具（<code>generate_and_create_node</code>、<code>canvas_create_input_node</code>、<code>fit_size_and_create_node</code> 等）在成功创建节点后，都会调 LangGraph 提供的 <code>adispatch_custom_event</code>：</p>
+
+<pre><code># 代码来源：src/monet/tools/generate_node.py
+for _ in result.node_ids:
+    await adispatch_custom_event(name="canvas.render", data={})</code></pre>
+
+<p>这个调用告诉 LangGraph："我产出了一个自定义事件，名字是 <code>canvas.render</code>，payload 是空 dict。"</p>
+
+<h3>第二层：Adapter 透传</h3>
+
+<p>LangGraph 在 <code>astream_events()</code> 循环里把这个事件 yield 出来，event kind 是 <code>on_custom_event</code>。Adapter 检测到这个 kind 后<strong>直接透传</strong>为 SSEFrame——不加业务逻辑，只做格式转换：</p>
+
+<pre><code># 代码来源：src/monet/sse/deepagent.py
+elif event_kind == "on_custom_event":
+    event_name = event.get("name", "")          # → "canvas.render"
+    event_payload = event_data.get("data", {})  # → {}
+    yield SSEFrame(
+        event=event_name,
+        data={"message_id": message_id, **event_payload},
+    )</code></pre>
+
+<p>注意 Adapter 的角色：<strong>纯翻译器，不加业务逻辑</strong>。事件名 <code>canvas.render</code> 原样保留，payload 原样透传（额外附加 <code>message_id</code> 供前端关联消息）。这跟 Adapter 处理 <code>on_tool_start</code> / <code>on_tool_end</code> 的原则一致——框架事件翻译为 SSE 协议，不掺杂业务判断。</p>
+
+<h3>第三层：SSE 文本序列化</h3>
+
+<p>SSEFrame 被 <code>base.py</code> 的 <code>_format_sse</code> 序列化为标准 SSE 文本帧：</p>
+
+<pre><code>id: 7
+event: canvas.render
+data: {"message_id": "abc-123"}
+
+</code></pre>
+
+<p>前端 EventSource 收到这个帧后，<strong>主动调 HTTP 接口</strong>拉取最新画布数据来刷新渲染。</p>
+
+<h3>完整数据流</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant T as Tool（工具函数）
+    participant LG as LangGraph<br/>astream_events()
+    participant A as Adapter<br/>_generate_frames()
+    participant S as SSE 文本流
+    participant F as Frontend
+
+    T->>T: 创建画布节点成功
+    T->>LG: adispatch_custom_event("canvas.render", {})
+    LG-->>A: yield {event: "on_custom_event", name: "canvas.render", data: {}}
+    A-->>S: yield SSEFrame(event="canvas.render", data={message_id: "..."})
+    S-->>S: _format_sse → "id: 7\nevent: canvas.render\ndata: {...}\n\n"
+    S-->>F: EventSource 收到 canvas.render 事件
+    F->>F: 主动调 HTTP 拉取最新画布数据
+    F->>F: 局部刷新渲染
+</pre>
+</div>
+
+<div class="highlight-box">
+  <strong>关键设计：职责分离</strong>。后端（工具）只负责"通知"——我改了一个节点，你来看看。前端负责"拉取 + 渲染"——前端自己知道怎么调接口、怎么局部更新。这样 SSE 管道里只流过一条几十字节的通知，而不是几 KB 的完整画布状态。
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么不在 tool 的返回值里带完整画布数据？</h4>
+  <p>两个原因。第一，<strong>职责分离</strong>——工具的返回值是给 LLM 读的文本（如 <code>"已生成并创建 1 个画布节点: node-xxx"</code>），画布状态管理不是工具的 Responsibility。第二，<strong>画布后端有自己的 API</strong>，前端调用画布接口能拿到结构化的完整数据，比从 SSE 里解析 tool result 可靠得多。前端收到 <code>canvas.render</code> 通知后，用已有的画布 API 拉数据、做局部更新——这是前端最熟悉的流程，不需要改任何逻辑。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：payload 为什么是空的 <code>{}</code>？前端怎么知道变了什么？</h4>
+  <p>前端<strong>不需要</strong>从 payload 里知道变了什么。它收到通知后自己调接口拉最新画布数据，对比前后差异做局部更新。这跟 Git 的 webhook 通知类似——payload 只告诉你"有 push 了"，具体变了哪些文件你要自己去 <code>git fetch</code>。如果 payload 里塞完整画布状态，每次创建节点都要推几 KB 数据，而前端反正要拉一次完整数据来保证一致性——那 payload 里的数据就是浪费。</p>
+</div>
+
+<h2>七、reference_nodes 机制</h2>
+
+<p><code>generate_and_create_node</code> 有一个巧妙的设计：<code>reference_nodes</code> 参数。</p>
+
+<pre><code>reference_nodes: list[str]  # 参考图节点 ID 列表（如 ['node-xxx']）</code></pre>
+
+<p>Agent 只需要传<strong>节点 ID</strong>，工具内部会自动：</p>
+<pre><code>1. 根据 node_id 查 Canvas Backend → 拿到节点的输出图片 URL
+2. 把 URL 注入到 model_params 的对应字段（如 reference_images）
+3. 创建节点时建立 UPSERT_EDGE 连线（表示"新节点参考了旧节点"）</code></pre>
+
+<p>为什么不让 Agent 自己传 URL？</p>
+<ul>
+  <li>Agent 看不到完整的 URL（画布概览里只有 node_id 和 type）</li>
+  <li>减少 token 消耗（node_id 很短，URL 很长）</li>
+  <li>保证 URL 的准确性（工具内部查，避免 Agent 幻觉）</li>
+  <li>自动建立连线关系（Agent 不需要额外操作）</li>
+</ul>
+
+<h2>八、设计要点</h2>
+
+<div class="resume-hook">
+  <h4>📝 设计要点</h4>
+  <ul>
+    <li><strong>Tool Use 系统设计</strong>：7 个画布工具 + 3 个 shell 工具，高抽象少数量，减少 LLM 决策负担</li>
+    <li><strong>reference_nodes 机制</strong>：Agent 只传 node_id，工具内部解析 URL + 注入参数 + 建立连线</li>
+    <li><strong>MD5 去重</strong>：canvas_create_input_node 通过文件 MD5 实现画布资源去重</li>
+    <li><strong>错误返回文本不抛异常</strong>：让 LLM 能读懂错误信息并自主决策下一步</li>
+    <li><strong>canvas.render 自定义事件</strong>：工具创建节点后通知前端刷新，比推送完整状态轻量</li>
+  </ul>
+</div>
+
+<h2>九、检索练习</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. 用户说"参考画布上已有的那张风格，帮我画一张类似的"，Agent 最少需要调用几个工具？</p>
+  <ul class="quiz-options">
+    <li>A. 1 个（只调 generate_and_create_node）</li>
+    <li>B. 2 个（canvas_subgraph + generate_and_create_node）</li>
+    <li>C. 3 个（canvas_node_detail + query_models + generate_and_create_node）</li>
+    <li>D. 取决于画布概览里是否已有足够信息</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>D</strong>。如果画布概览（每轮对话自动注入）里已经包含了参考节点的 node_id 和 type，Agent 可以直接调 <code>generate_and_create_node</code>（传 reference_nodes），只需 1 个工具。如果概览不够（比如需要看节点的具体参数），就需要先调 <code>canvas_node_detail</code> 或 <code>canvas_subgraph</code>。如果 Agent 不确定用什么模型，可能还需要 <code>query_models</code>。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. 工具失败时为什么返回错误文本而不是抛 Python 异常？</p>
+  <ul class="quiz-options">
+    <li>A. 抛异常会导致 LangGraph 状态机崩溃</li>
+    <li>B. LLM 能读懂错误文本并决定下一步（重试/换参数/告知用户）</li>
+    <li>C. Python 异常不能被序列化为 SSE 事件</li>
+    <li>D. A 和 B 都对</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>B</strong>。抛异常不一定会导致崩溃（LangGraph 有异常处理机制），但异常信息是给程序员看的，不是给 LLM 看的。返回结构化的错误文本（<code>"错误：节点 node-xxx 不存在"</code>），LLM 能理解含义并做出决策——比如换参数重试、或者告诉用户"这个节点不存在"。这也是 System Prompt 里"失败要思考根因，不要盲目重试"的前提：Agent 必须先能<em>读到</em>错误信息。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q3. canvas_create_input_node 用什么机制判断资源是否重复？</p>
+  <ul class="quiz-options">
+    <li>A. 比较 URL 是否相同</li>
+    <li>B. 比较节点 label 是否相似</li>
+    <li>C. 比较文件内容的 MD5 是否一致</li>
+    <li>D. 比较文件大小和类型</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>C</strong>。下载资源后计算文件 MD5，遍历画布上所有节点的主图 metadata 里的 md5 字段。MD5 相同 = 同一个文件，跳过上传直接复用。URL 不靠谱（同一个文件可能有不同的 URL），label 不靠谱（不同文件可能有相同 label），只有文件内容的 MD5 才是确定性判据。
+  </div>
+</div>
+
+<div class="resource-recommend">
+  <strong>📖 主要推荐资源</strong>：<a href="https://python.langchain.com/docs/how_to/custom_tools/">LangChain Custom Tools</a>——理解 <code>@tool</code> 装饰器和 Pydantic BaseModel 配合的 Tool Calling 机制。这是 Monet 所有工具的基础。
+</div>
+
+<div class="followup">
+  <h4>💬 followup 问题（跟我继续聊）</h4>
+  <ul>
+    <li>"AgentGenerationService 内部到底怎么提交任务到 Scheduler 的？" → 进 M005（生成链路）</li>
+    <li>"canvas.render 事件在前端怎么处理的？"</li>
+    <li>"reference_nodes 的 UPSERT_EDGE 连线是怎么建立的？"</li>
+    <li>"LocalShellBackend 的三个 shell 工具内部怎么实现的？"</li>
+    <li>"帮我对比 Monet 的 Tool Calling 和 OpenAI Function Calling 的实现差异"</li>
+  </ul>
+</div>
+
+<nav class="lesson-nav">
+  <a href="M002-monet-agent-core-factory-runner-loop.html">← Lesson M002 — Agent 核心</a>
+  <a href="M004-canvas-awareness.html">Lesson M004 — 画布感知 →</a>
+</nav>
+
+</body>
+</html>

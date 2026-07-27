@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <style>
+/* 教学课程共享样式 — Tufte 风格 */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.quiz {
+  background: #fef9e7;
+  border: 1px solid #e6d999;
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+}
+.quiz-question { font-weight: 600; margin-bottom: 0.8rem; font-family: var(--sans); }
+.quiz-options { list-style: none; padding: 0; }
+.quiz-options li {
+  padding: 0.5rem 0.8rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 0.4rem 0;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.quiz-options li:hover { background: var(--accent-soft); }
+.quiz-answer {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: white;
+  border-radius: 4px;
+  display: none;
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+.quiz-answer.visible { display: block; }
+.quiz-toggle {
+  margin-top: 0.5rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.85em;
+}
+
+.followup {
+  border: 2px dashed var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 2rem 0 1rem;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-family: var(--sans);
+}
+.followup h4 { margin-top: 0; color: var(--accent); }
+
+.resource-recommend {
+  background: #eef7ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+
+.resume-hook {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+}
+.resume-hook h4 { color: #16a34a; margin-top: 0; }
+
+/* 思考 box */
+.defend {
+  background: #fef2f2;
+  border: 2px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+.defend h4 { margin-top: 0; color: var(--accent); }
+.defend ol { padding-left: 1.4rem; }
+.defend li { margin: 0.5rem 0; }
+
+/* Mermaid 图容器 */
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem -2rem; /* 负 margin：让图突破正文列宽 */
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Mermaid 生成的 SVG 默认会缩放到容器宽度，禁用它以显示真实字号 */
+.diagram .mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+}
+
+.print-only { display: none; }
+@media print {
+  body { max-width: none; margin: 0; padding: 1cm; font-size: 11pt; }
+  .quiz-toggle, .followup { break-inside: avoid; }
+  .print-only { display: block; }
+  a { color: var(--text); text-decoration: none; }
+}
+
+nav.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+
+  </style>
+  <meta charset="UTF-8">
+  <title>M005 — Monet 生成链路</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+
+<div class="lesson-meta"><span><strong>适合人群</strong> 工作新人</span>
+  <span><strong>Lesson</strong> M005</span>
+  <span><strong>项目</strong> Monet Agent</span>
+  <span><strong>时长</strong> ~50 分钟</span>
+  <span><strong>难度</strong> ★★★★☆</span>
+  <span><strong>前置</strong> <a href="M004-canvas-awareness.html">M004 — 画布感知</a></span>
+</div>
+
+<h1>Monet 生成链路（Generation Pipeline）</h1>
+
+<p>M003 讲了工具的定义和组合，但工具内部是怎么真正调用 AI 模型的？这一节深入生成链路的核心——<strong>从 Agent 决定生成到画布上出现节点的完整过程</strong>。学完你能讲清楚：</p>
+
+<ul>
+  <li>生成链路的四层架构（编排 → 执行 → 服务 → 后端）</li>
+  <li>模型注册表如何用 (capability, model_id) 复合键路由</li>
+  <li>submit → poll → fetch 三阶段协议</li>
+  <li>重试策略和错误处理的设计权衡</li>
+</ul>
+
+<h2>一、问题引入</h2>
+
+<p>用户说"帮我生成一张赛博朋克风格的猫"。Agent 决定调用 <code>generate_and_create_node</code> 工具。但工具内部做了什么？</p>
+
+<p>核心问题：</p>
+<ul>
+  <li>怎么根据模型名找到对应的 AI 供应商？</li>
+  <li>怎么把 Agent 的参数转成供应商要求的格式？</li>
+  <li>AI 生图需要几十秒，怎么异步等待结果？</li>
+  <li>网络抖动、服务超时怎么办？</li>
+</ul>
+
+<p>Monet 的答案是<strong>四层架构</strong>：</p>
+
+<div class="highlight-box">
+  <strong>四层架构</strong>：
+  <ol>
+    <li><strong>AgentGenerationService</strong>：编排层，负责完整的业务编排（引用解析 → 参数构建 → 生成执行 → 节点创建）</li>
+    <li><strong>GenerationRunner</strong>：执行原语，提供 submit → poll → fetch → mirror 的可复用原子操作</li>
+    <li><strong>GenerationService</strong>：服务层，负责模型路由、参数转换、后端分发</li>
+    <li><strong>GenerationBackend</strong>：传输层，负责实际的网络通信（调用 DM API / AIGW / Ailab）</li>
+  </ol>
+</div>
+
+<h2>二、整体数据流</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant Tool as Tool
+    participant AGS as AgentGenerationService<br/>(编排层)
+    participant GR as GenerationRunner<br/>(执行原语)
+    participant GS as GenerationService<br/>(服务层)
+    participant B as Backend<br/>(传输层)
+    participant Internal as 内部服务<br/>(DM Platform / AIGW / Ailab)
+    participant Canvas as Canvas Service
+
+    Note over Tool,AGS: 阶段 1：引用解析 + 参数构建
+    Tool->>AGS: generate_and_create(request)
+    AGS->>AGS: validate_node_type() → capability
+    AGS->>AGS: get_definition(capability, model_id)
+    AGS->>AGS: resolve_reference_nodes() → URLs
+    AGS->>AGS: inject_reference_urls(params)
+    AGS->>AGS: params_cls.model_validate() → Params
+
+    Note over AGS,Internal: 阶段 2：生成执行
+    AGS->>GR: run_single_generation(run_spec)
+    GR->>GS: submit(capability, model_id, params)
+    GS->>GS: get_definition → 查路由表
+    GS->>GS: params.to_backend_params()
+    GS->>B: submit(payload, app, sub_app)
+    B->>DM: POST /run
+    DM-->>B: task_id
+    B-->>GS: [task_id]
+    GS-->>GR: SubmitResult
+
+    loop 轮询直到完成
+        GR->>GS: poll(task_id)
+        GS->>B: poll(app, sub_app, task_id)
+        B->>DM: GET /status
+        DM-->>B: {status, progress}
+        B-->>GS: DmTaskStatus
+        GS-->>GR: DmTaskStatus
+    end
+
+    GR->>GS: fetch_result(task_id)
+    GS->>B: fetch_result(app, sub_app, task_id)
+    B->>DM: GET /status (含产物)
+    DM-->>B: response.data
+    B-->>GS: raw dict
+    GS->>GS: output_parser → DmTaskResult
+    GS-->>GR: GenerationResult
+
+    Note over AGS,Canvas: 阶段 3：节点创建
+    GR-->>AGS: GenerationResult
+    AGS->>AGS: to_frontend_model_params()
+    AGS->>Canvas: create_nodes_from_generation(...)
+    Canvas->>Canvas: ADD_NODE + UPSERT_EDGE
+    Canvas-->>AGS: [node_ids]
+    AGS-->>Tool: AgentGenerateResult(success)
+</pre>
+</div>
+
+<h2>三、模型注册表（Registry）</h2>
+
+<p>生成链路的第一步是<strong>路由</strong>：根据 <code>(node_type, model_id)</code> 找到对应的模型定义。</p>
+
+<h3>3.1 复合键设计</h3>
+
+<p>注册表用 <strong>(capability, model_id)</strong> 复合键，而不是单纯的 model_id：</p>
+
+<pre><code># src/monet/generation/registry.py
+
+MODEL_REGISTRY: dict[str, dict[str, ModelDefinition]] = {}
+#                 ↑ capability     ↑ model_id
+
+def get_definition(capability: str, model_id: str) -> ModelDefinition:
+    """通过 (capability, model_id) 查找 ModelDefinition。"""
+    bucket = MODEL_REGISTRY.get(capability)
+    if bucket is None:
+        raise ModelNotFoundError(capability, model_id)
+    definition = bucket.get(model_id)
+    if definition is None:
+        raise ModelNotFoundError(capability, model_id)
+    return definition</code></pre>
+
+<div class="highlight-box">
+  <strong>为什么不直接用 model_id？</strong>
+  <p>同一个 model_id 在不同 capability 下可能是不同的模型。比如 "jimeng" 在 <code>gen-image</code> 下是图片生成，在 <code>gen-video</code> 下是视频生成，对应不同的 sub_app 和参数 schema。复合键避免了歧义。</p>
+</div>
+
+<h3>3.2 ModelDefinition</h3>
+
+<p>每个模型对应一个 <code>ModelDefinition</code>，包含路由和执行所需的全部信息：</p>
+
+<pre><code>@dataclass(frozen=True)
+class ModelDefinition:
+    """单个模型的路由定义。"""
+
+    app: str                          # DM 平台 app 名称（如 "seedream"）
+    sub_app: SubAppResolver           # sub_app 名称或动态解析函数
+    params_schema: type[BaseGenerationParams]  # 参数 schema 类
+    poll_interval: float              # 轮询间隔（秒）
+    backend_type: Literal["api", "aigw", "ailab"] = "api"  # 后端类型
+    output_parser: OutputParser | None = None  # 输出解析器
+    max_references: int | None = None  # 最大参考图数量
+    outputs_per_request: int = 1      # fanout：每次请求产出数
+    agent_catalog: AgentCatalogMetadata | None = None  # Agent 目录展示信息</code></pre>
+
+<div class="defend">
+  <h4>🛡️ 思考：sub_app 为什么是 SubAppResolver 而不是 str？</h4>
+  <p>有些模型的 sub_app 是固定的（如 "seedream-4.5"），有些是动态的（取决于参数）。比如 Kling 视频生成，sub_app 要根据分辨率动态选择。所以 <code>sub_app</code> 可以是字符串，也可以是 <code>Callable[[BaseGenerationParams], str]</code>，在运行时根据参数决定。</p>
+</div>
+
+<h2>四、GenerationBackend（传输层）</h2>
+
+<p>传输层负责实际的网络通信。Monet 有三种 Backend 实现，按<strong>执行模式</strong>分两类：</p>
+
+<table>
+<thead>
+<tr><th>Backend</th><th>用途</th><th>执行模式</th><th>说明</th></tr>
+</thead>
+<tbody>
+<tr><td><code>DmApiBackend</code></td><td>DM 平台 HTTP API<br/>（图片 / 视频 / 3D）</td><td><strong>标准三阶段</strong></td><td>submit 返回 task_id → poll 查状态 → fetch 取产物</td></tr>
+<tr><td><code>AigwBackend</code></td><td>AIGW 网关<br/>（LLM 文本生成）</td><td><strong>同步阻塞</strong></td><td>submit 阶段直接调用 LLM，poll/fetch 从内存取缓存</td></tr>
+<tr><td><code>AilabBackend</code></td><td>Ailab 平台<br/>（动作生成 / 格式转换）</td><td>混合</td><td>text-to-motion / pose-cap 走标准三阶段；<br/>fbx-to-bip 同步阻塞</td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+  <strong>三种后端，两种模式</strong>：
+  <ul>
+    <li><strong>标准三阶段（异步）</strong>：DmApiBackend、AilabBackend 的 text-to-motion / pose-cap。AI 生图/视频/3D 需要几十秒甚至几分钟，必须异步轮询</li>
+    <li><strong>同步阻塞</strong>：AigwBackend、AilabBackend 的 fbx-to-bip。LLM 文本生成通常几秒，格式转换也很快，同步等待更简单</li>
+  </ul>
+</div>
+
+<h3>4.1 GenerationBackend 协议</h3>
+
+<p><strong>"统一接口"统一的是什么？</strong>统一的是<strong>方法签名</strong>（都有 <code>submit</code>、<code>poll</code>、<code>fetch_result</code> 三个方法），而不是<strong>行为模式</strong>。上层代码（GenerationRunner、GenerationService）不需要关心后端是异步还是同步，都按三阶段调用。同步后端的 poll 直接返回 success，fetch_result 从内存取，对上层透明。这是<strong>策略模式</strong>——统一接口封装不同行为。</p>
+
+<p>所有 Backend 实现统一的接口：</p>
+
+<pre><code># src/monet/generation/protocol/backend.py
+
+class GenerationBackend(Protocol):
+    """生成后端的统一接口。"""
+
+    async def submit(
+        self,
+        params: dict[str, Any],
+        app: str,
+        sub_app: str,
+        num: int = 1,
+        auth_headers: dict[str, str] | None = None,
+    ) -> list[str]: ...
+
+    async def poll(
+        self,
+        app: str,
+        sub_app: str,
+        task_id: str,
+        auth_headers: dict[str, str] | None = None,
+    ) -> DmTaskStatus: ...
+
+    async def fetch_result(
+        self,
+        app: str,
+        sub_app: str,
+        task_id: str,
+        auth_headers: dict[str, str] | None = None,
+    ) -> dict[str, Any]: ...</code></pre>
+
+<h3>4.2 DmApiBackend 实现</h3>
+
+<p>最常用的 Backend，调用 DM 平台的 HTTP API：</p>
+
+<pre><code># src/monet/generation/dm_api_backend.py
+
+class DmApiBackend:
+    """dm HTTP API 封装。"""
+
+    async def submit(self, params, app, sub_app, num=1, auth_headers=None):
+        """提交生成任务。"""
+        url = f"{self._api_base_url}/api/v1/apps/{app}/run"
+        query_params = {"sub_app_name": sub_app}
+        payload = {"params": params, "disable_record": True}
+
+        data = await self._request("POST", url, params=query_params,
+                                    json_body=payload, auth_headers=auth_headers)
+        return [str(data["task_id"])]
+
+    async def poll(self, app, sub_app, task_id, auth_headers=None):
+        """查询任务状态，立即返回。"""
+        url = f"{self._api_base_url}/api/v1/apps/{app}/status"
+        query_params = {"task_id": task_id, "sub_app_name": sub_app}
+
+        data = await self._request("GET", url, params=query_params,
+                                    auth_headers=auth_headers)
+        return DmTaskStatus(
+            task_id=task_id,
+            status=data.get("status", "unknown"),
+            progress=data.get("progress", 0),
+        )
+
+    async def fetch_result(self, app, sub_app, task_id, auth_headers=None):
+        """获取已完成任务的结果。"""
+        # 与 poll 相同的 URL，但返回完整的 response.data
+        ...</code></pre>
+
+<h3>4.3 AigwBackend 的特殊处理</h3>
+
+<p>AIGW 后端用于文本生成（如 Claude），它的特点：<strong>submit 阶段直接完成生成</strong>，poll 直接返回 success：</p>
+
+<pre><code># src/monet/generation/aigw_backend.py
+
+class AigwBackend:
+    """阻塞式文本生成后端。"""
+
+    def __init__(self, aigw_base_url, default_model):
+        self._results: dict[str, str] = {}  # 内存缓存结果
+
+    async def submit(self, params, app, sub_app, num=1, auth_headers=None):
+        """submit 阶段直接调用 LLM，结果存入内存。"""
+        prompt = params.get("prompt", "")
+        model = self._create_model(model_name, temperature, max_tokens, auth_headers)
+
+        for _ in range(num):
+            task_id = str(uuid.uuid4())
+            response = await model.ainvoke([system_message, message])
+            self._results[task_id] = str(response.content)
+            task_ids.append(task_id)
+
+        return task_ids
+
+    async def poll(self, app, sub_app, task_id, auth_headers=None):
+        """submit 已完成，直接返回 success。"""
+        return DmTaskStatus(task_id=task_id, status="success", progress=100)
+
+    async def fetch_result(self, app, sub_app, task_id, auth_headers=None):
+        """从内存取结果。"""
+        text = self._results.pop(task_id)
+        return {"task_id": task_id, "text": text}</code></pre>
+
+<div class="highlight-box">
+  <strong>设计权衡</strong>：AIGW 后端用内存缓存结果，是因为文本生成通常很快（几秒），不需要持久化。但如果 Agent 重启，缓存会丢失。这是有意的设计——文本生成任务通常不需要断点续跑。
+</div>
+
+<h4>AIGW 网关的双重角色</h4>
+
+<p>Agent 的"大脑"（推理 + 工具选择）也走 AIGW 网关——<code>factory.py</code> 创建 <code>ChatAIGW</code> 实例传给 Agent Loop。所以 AIGW 网关承担两个角色：</p>
+
+<table>
+<thead>
+<tr><th>角色</th><th>调用方</th><th>用途</th><th>调用方式</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Agent 推理</strong></td>
+  <td>Agent Loop（LangGraph）</td>
+  <td>理解用户意图、决定调用哪个工具、生成回复</td>
+  <td>流式 <code>_astream</code>，带 tools 定义（Tool Calling 模式）</td>
+</tr>
+<tr>
+  <td><strong>文本生成</strong></td>
+  <td>AigwBackend</td>
+  <td>直接产出文本内容（gen-text 能力）</td>
+  <td>非流式 <code>ainvoke</code>，不带 tools（纯对话模式）</td>
+</tr>
+</tbody>
+</table>
+
+<p>两者底层走的是<strong>同一个 AIGW 网关</strong>，只是调用方式不同：Agent 推理传 tools 定义走 Tool Calling 模式（流式），文本生成走纯对话模式（非流式）。</p>
+
+<h2>五、GenerationService（服务层）</h2>
+
+<p>GenerationService 是生成链路的<strong>核心调度者</strong>。它不直接调网络，而是做三件事：路由、参数转换、后端分发。</p>
+
+<p>用一个具体例子走完这三步：</p>
+
+<div class="highlight-box">
+  <strong>例子</strong>：Agent 调用 <code>generate_and_create_node</code>，想生成一张赛博朋克风格的猫。
+  <pre><code>node_type = "gen-image"
+model_id  = "seedream-4.5"
+params    = {"prompt": "一只赛博朋克风格的猫", "aspect_ratio": "1:1"}
+num       = 1  # 用户要 1 张图</code></pre>
+</div>
+
+<h3>5.1 路由：找到模型的"地址簿"</h3>
+
+<p>第一步：根据 <code>(gen-image, seedream-4.5)</code> 查注册表，拿到 <code>ModelDefinition</code>：</p>
+
+<pre><code>definition = get_definition("gen-image", "seedream-4.5")
+# 返回：
+#   app         = "seedream"          ← DM 平台上的 app 名
+#   sub_app     = "seedream-4.5"      ← 具体模型版本
+#   params_schema = Seedream45Params  ← 参数 schema 类
+#   poll_interval = 5.0               ← 轮询间隔 5 秒
+#   backend_type  = "api"             ← 走 DM API 后端
+#   fanout        = 1                 ← 每次请求产出 1 张图</code></pre>
+
+<p>这一步回答了<strong>"去哪调？用什么后端？轮询间隔多少？"</strong>所有问题。</p>
+
+<h3>5.2 参数转换：从强类型到原始 API 格式</h3>
+
+<p>第二步：把 Agent 传入的 dict 转成后端 API 需要的原始格式。</p>
+
+<p>这里涉及两次转换：</p>
+
+<ol>
+  <li><strong>校验</strong>：用 <code>params_schema.model_validate(params)</code> 校验参数（Pydantic 检查类型、必填项）。Agent 传 <code>{"prompt": 123}</code> 会被拦截</li>
+  <li><strong>格式化</strong>：调用 <code>params.to_backend_params()</code> 把强类型对象转成原始 API dict。比如：</li>
+</ol>
+
+<pre><code># 输入（强类型，Pydantic 校验通过）
+Seedream45Params(prompt="一只赛博朋克风格的猫", aspect_ratio="1:1")
+
+# to_backend_params() 输出（原始 API 格式）
+{"text": "一只赛博朋克风格的猫", "ratio": "1:1"}
+#                              ↑ 字段名变了！</code></pre>
+
+<p>为什么字段名会变？因为 Agent 用的是统一的参数命名（<code>prompt</code>），但不同供应商的 API 字段名不同——DM 平台可能叫 <code>text</code>，其他平台可能叫 <code>input_text</code>。<code>to_backend_params()</code> 就是做这个适配。</p>
+
+<h3>5.3 fanout 换算：用户要 N 张，实际发几次请求？</h3>
+
+<p>有些模型一次请求产出多张图（fanout > 1），比如 Midjourney 一次产出 4 张。Agent 说"我要 4 张图"，但 Midjourney 的 fanout = 4，所以只需要发 <strong>1 次请求</strong>：</p>
+
+<pre><code>request_count = num // fanout
+# = 4 // 4 = 1 次请求</code></pre>
+
+<p>而 seedream-4.5 的 fanout = 1（一次请求 1 张），Agent 要 4 张就要发 4 次请求：</p>
+
+<pre><code>request_count = 4 // 1 = 4 次请求</code></pre>
+
+<h3>5.4 后端分发：选后端、调 submit</h3>
+
+<p>第三步：根据 <code>backend_type</code> 选后端，调用 <code>submit</code>：</p>
+
+<pre><code>backend = self._get_backend(definition.backend_type)
+# definition.backend_type = "api" → 取出 DmApiBackend
+
+task_ids = await backend.submit(
+    params=payload,          # ← 转换后的原始 API 参数
+    app=definition.app,      # "seedream"
+    sub_app=sub_app,         # "seedream-4.5"
+    num=request_count,       # 请求次数
+)</code></pre>
+
+<p><code>_get_backend</code> 的逻辑很简单——从初始化时注入的 dict 里按 key 取值：</p>
+
+<pre><code># 初始化时
+backends = {
+    "api":   DmApiBackend(...),
+    "aigw":  AigwBackend(...),
+    "ailab": AilabBackend(...),
+}
+
+# 运行时
+backend = backends["api"]    # → DmApiBackend
+backend = backends["aigw"]   # → AigwBackend
+backend = backends["ailab"]  # → AilabBackend</code></pre>
+
+<div class="highlight-box">
+  <strong>为什么叫"策略模式"？</strong>三个 Backend 都实现同一个 <code>GenerationBackend</code> 接口（submit / poll / fetch_result），Service 只需要 <code>backend.submit(...)</code>，不需要关心后端是 DM API 还是 AIGW 还是 Ailab。新增一个后端只需：<strong>实现接口 + 注册到 dict</strong>，Service 一行代码都不用改。
+</div>
+
+<h3>5.5 poll 和 fetch_result 也是同样逻辑</h3>
+
+<p>提交后，poll 和 fetch_result 也走同样的"选后端 → 调用"流程：</p>
+
+<pre><code># poll：查任务状态
+backend = self._get_backend(backend_type)  # 按 backend_type 选
+return await backend.poll(app, sub_app, task_id, auth_headers)
+
+# fetch_result：取产物 + 解析
+backend = self._get_backend(backend_type)
+raw = await backend.fetch_result(app, sub_app, task_id, auth_headers)
+# raw 是原始 dict，需要解析成统一格式
+
+if output_type == "text":
+    # AIGW 后端：直接取 text 字段
+    return GenerationResult(outputs=[GenerationOutput(url=raw["text"])])
+else:
+    # DM API 后端：用 output_parser 解析
+    parser = definition.output_parser or default_dm_output_parser
+    dm_result = parser(raw)
+    return parse_generation_output(urls=dm_result.urls, ...)</code></pre>
+
+<p>不同后端返回的数据格式不同，GenerationService 根据 <code>capability</code> 推断 <code>output_type</code>，选择对应的解析方式。调用方拿到的是统一的 <code>GenerationResult</code>，不需要关心底层是哪个后端。</p>
+
+<h2>六、GenerationRunner（执行原语）</h2>
+
+<p>上一节 GenerationService 只负责"选后端、调 submit"，但 submit 之后的事它不管。<strong>GenerationRunner 接管后续的轮询、取结果、转存</strong>，把三阶段串成一个完整的生命周期。</p>
+
+<p>继续用刚才的例子：<code>seedream-4.5</code> 生成一张赛博朋克猫咪，submit 已经发出了，拿到了一个 <code>task_id</code>。接下来 Runner 做什么？</p>
+
+<h3>6.1 三步走完生命周期</h3>
+
+<pre><code>async def run_single_generation(spec, generation_service, output_mirror, ...):
+
+    # 第 1 步：submit（委托 Service，上一节已讲）
+    submitted = await submit_generation(spec, generation_service)
+    # 返回 SubmittedGeneration，里面包着 task_id 和路由信息
+
+    # 第 2 步：poll + fetch（轮询直到完成）
+    outcome = await poll_and_fetch_one(submitted, dm_task_id, generation_service, timeout=600)
+    # outcome 有三种可能：Succeeded / Failed / Aborted
+
+    # 第 3 步：mirror（把产物转存到 DM 存储）
+    if isinstance(outcome, Succeeded):
+        return await mirror_result(outcome.result, output_mirror, ...)
+    else:
+        raise GenerationFailedError(reason=outcome.reason)</code></pre>
+
+<p>一句话概括：<strong>submit 拿到句柄，poll 等到完成，fetch 取出产物，mirror 转存归档。</strong></p>
+
+<div class="highlight-box">
+  <strong>为什么拆出独立的 Runner 模块？</strong><code>run_single_generation</code> 不只是 Agent 在用——<code>TaskManager</code>（管理多任务批量生成）也复用同样的逻辑。把"三阶段协议"抽成可复用原语，避免 Agent 和 TaskManager 各写一套轮询代码。
+</div>
+
+<h3>6.2 poll_and_fetch_one：轮询的完整逻辑</h3>
+
+<p>这是 Runner 的核心函数。它做的事情可以用一个循环概括：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    Start([开始轮询]) --> CheckAbort{should_abort?}
+    CheckAbort -->|是| ReturnAborted([返回 Aborted])
+
+    CheckAbort -->|否| Poll[调用 poll 查状态]
+    Poll -->|成功| CheckStatus{状态是什么？}
+    Poll -->|网络错误| Retryable{可重试？}
+
+    Retryable -->|是，重试次数 &lt; 8| Sleep1[sleep 后继续]
+    Retryable -->|否| ReturnFailed1([返回 Failed])
+    Sleep1 --> CheckAbort
+
+    CheckStatus -->|running| Sleep2[sleep 后继续]
+    CheckStatus -->|failed| ReturnFailed2([返回 Failed])
+    CheckStatus -->|success| Fetch[调用 fetch_result 取产物]
+
+    Fetch -->|成功| Mirror([返回 Succeeded])
+    Fetch -->|网络错误| Retryable2{可重试？}
+    Retryable2 -->|是，重试次数 &lt; 8| Sleep3[sleep 后继续]
+    Retryable2 -->|否| ReturnFailed3([返回 Failed])
+    Sleep2 --> CheckAbort
+    Sleep3 --> CheckAbort
+</pre>
+</div>
+
+<p>用具体例子走一遍：seedream-4.5 生成一张图，<code>poll_interval = 5 秒</code>，<code>timeout = 600 秒</code>。</p>
+
+<table>
+<thead>
+<tr><th>时刻</th><th>poll 返回</th><th>Runner 做什么</th></tr>
+</thead>
+<tbody>
+<tr><td>T+0s</td><td>running（生成中）</td><td>sleep 5 秒，继续轮询</td></tr>
+<tr><td>T+5s</td><td>running</td><td>sleep 5 秒</td></tr>
+<tr><td>T+10s</td><td>running</td><td>sleep 5 秒</td></tr>
+<tr><td>T+15s</td><td><strong>success</strong></td><td>调 <code>fetch_result</code> 取产物</td></tr>
+<tr><td>T+15s</td><td>fetch 返回图片 URL</td><td>调 <code>mirror_result</code> 转存</td></tr>
+</tbody>
+</table>
+
+<h3>6.3 重试策略：区分"网络没问到"和"后端确认失败"</h3>
+
+<p>上面表格里假设每次 poll 都成功返回。但现实中可能遇到网络抖动。Runner 的重试策略：</p>
+
+<table>
+<thead>
+<tr><th>错误类型</th><th>示例</th><th>含义</th><th>处理</th></tr>
+</thead>
+<tbody>
+<tr><td><strong>可重试</strong></td><td>网络超时、500/502/503、429</td><td>"网络没问到"——后端可能没问题，只是网络抖了一下</td><td>sleep 后重试，最多连续 8 次</td></tr>
+<tr><td><strong>不可重试</strong></td><td>400、404、参数错误</td><td>"后端确认失败"——请求本身有问题，重试也没用</td><td>立即返回 Failed</td></tr>
+</tbody>
+</table>
+
+<pre><code>_RETRYABLE_STATUS = frozenset({429, *range(500, 600)})
+
+def _is_retryable(exc):
+    if isinstance(exc, httpx.TransportError):     # 网络层错误
+        return True
+    if isinstance(exc, DmApiError) and exc.status_code in _RETRYABLE_STATUS:
+        return True
+    return False</code></pre>
+
+<p>关键变量 <code>consecutive</code>：连续失败计数器。每次 poll 成功就清零；连续失败 8 次才放弃。</p>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么连续 8 次才放弃，而不是 3 次？</h4>
+  <p>AI 生图通常需要 30-120 秒，poll_interval = 5 秒，总共可能轮询 6-24 次。如果连续 3 次失败就放弃（只给了 15 秒的容错窗口），遇到短暂网络波动就会误判失败。<strong>8 次 = 40 秒的容错窗口</strong>，能覆盖大部分网络抖动场景。这是经验值——太少容易误判，太多浪费等待时间。</p>
+</div>
+
+<h3>6.4 mirror：转存到 DM 存储</h3>
+
+<p>拿到生成结果后，还需要把产物 URL 转存到 DM 自己的存储（OutputMirror）。为什么多此一举？</p>
+
+<p>因为 AI 供应商返回的 URL 是<strong>临时的</strong>——可能几小时后就过期了。转存到 DM 存储后，URL 变成持久的，画布节点引用的图片不会因为供应商清理而消失。</p>
+
+<pre><code># OutputMirror.mirror() 的逻辑
+async def mirror(result, canvas_id, task_id, auth_headers):
+    for output in result.outputs:
+        # 下载供应商的图片 → 上传到 DM 存储 → 替换 URL
+        new_url = await storage.upload(output.url, auth_headers)
+        output.url = new_url
+    return result</code></pre>
+
+<p>转存完成后，Runner 把最终的 <code>GenerationResult</code>（含 DM 存储的持久 URL）返回给编排层。</p>
+
+<h2>七、AgentGenerationService（编排层）</h2>
+
+<p>前几节讲了 Runner/Service/Backend 三层——它们只负责"把图生成出来"。但 Agent 调工具时还涉及一堆业务逻辑：参考图怎么处理？参数怎么校验？生成完了怎么创建画布节点？</p>
+
+<p><strong>编排层负责把这一切串起来。</strong>它站在最上面，调用下面三层，同时处理业务编排。</p>
+
+<p>继续用具体例子。这次复杂一点——用户说"参考画布上那张赛博朋克猫咪的风格，帮我生成一张类似的"：</p>
+
+<div class="highlight-box">
+  <strong>例子</strong>：Agent 决定调用 <code>generate_and_create_node</code>
+  <pre><code>node_type     = "gen-image"
+model_id      = "seedream-4.5"
+label         = "类似风格的猫咪"
+model_params  = {"prompt": "参考 {{node-abc}} 的风格，画一只类似的猫"}
+reference_nodes = ["node-abc", "node-def"]
+# node-abc 是之前生成的赛博朋克猫咪（subject 类型）
+# node-def 是用户上传的参考图（普通类型）</code></pre>
+</div>
+
+<h3>7.1 第一步：校验 + 找模型定义</h3>
+
+<pre><code>capability = validate_node_type("gen-image")  # → "gen-image"
+model_def  = get_definition("gen-image", "seedream-4.5")
+# 拿到 ModelDefinition：app、sub_app、params_schema、fanout 等</code></pre>
+
+<p>如果 node_type 或 model_id 不对，直接返回错误字符串给 LLM。</p>
+
+<h3>7.2 第二步：解析 reference_nodes（最复杂的一步）</h3>
+
+<p>Agent 只传了 <code>["node-abc", "node-def"]</code> 两个节点 ID，但生成时需要的是 URL。编排层要做的：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    Refs["reference_nodes<br/>node-abc, node-def"] --> Split{分离节点类型}
+
+    Split -->|"node-abc<br/>(subject 类型)"| Subject["SubjectReferenceResolver"]
+    Subject -->|改写 prompt| NewPrompt["'参考风格，画一只类似的猫'"]
+    Subject -->|构造 character_reference| CharRef["角色参考数据"]
+
+    Split -->|"node-def<br/>(普通类型)"| URLs["resolve_reference_nodes_to_urls"]
+    URLs -->|查画布后端| NodeDetail["获取 node-def 的输出 URL"]
+    NodeDetail -->|注入| Params["params['reference_images'] = [url]"]
+
+    NewPrompt --> MP["最终 model_params"]
+    CharRef --> MP
+    Params --> MP
+</pre>
+</div>
+
+<p>分两种情况处理：</p>
+
+<table>
+<thead>
+<tr><th>节点类型</th><th>示例</th><th>处理方式</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>Subject 类型</strong>（可复用角色/素材）</td>
+  <td>node-abc：之前生成的"赛博朋克猫咪"主体</td>
+  <td>
+    1. 把 prompt 里的 <code>{{node-abc}}</code> 替换成描述文字<br/>
+    2. 构造 <code>character_reference</code>（角色参考数据，告诉模型"保持这个角色的外观"）
+  </td>
+</tr>
+<tr>
+  <td><strong>普通类型</strong>（参考图）</td>
+  <td>node-def：用户上传的图片</td>
+  <td>
+    1. 根据 node_id 查画布后端，拿到输出图片 URL<br/>
+    2. 把 URL 注入到 params 的对应字段（如 <code>reference_images</code>）
+  </td>
+</tr>
+</tbody>
+</table>
+
+<p>处理完后，<code>model_params</code> 变成：</p>
+
+<pre><code>{
+    "prompt": "参考风格，画一只类似的猫",     ← 占位符被替换了
+    "character_reference": {...},            ← 角色参考数据
+    "reference_images": ["https://..."]      ← 普通参考图 URL
+}</code></pre>
+
+<h3>7.3 第三步：Pydantic 参数校验</h3>
+
+<p>把处理好的 params 交给 <code>params_schema</code> 校验：</p>
+
+<pre><code>params = model_def.params_schema.model_validate(mp)
+# Seedream45Params(prompt="...", character_reference=..., reference_images=[...])</code></pre>
+
+<p>如果参数不对（比如必填的 <code>prompt</code> 缺失，或者 <code>aspect_ratio</code> 传了非法值），返回格式化的错误信息给 LLM：</p>
+
+<pre><code># 返回给 LLM 的错误文本：
+"参数校验失败（模型 seedream-4.5），请修正后重试:
+  - aspect_ratio: 值 '3:7' 不在允许的范围内
+提示: 可通过 query_models 查看该模型的完整参数定义。"</code></pre>
+
+<h3>7.4 第四步：调 Runner 执行生成</h3>
+
+<p>校验通过后，构造 <code>GenerationRunSpec</code> 调 Runner，进入前面讲的 submit → poll → fetch → mirror 流程：</p>
+
+<pre><code>run_spec = GenerationRunSpec(
+    capability="gen-image",
+    model_id="seedream-4.5",
+    params=params,
+    num=1,
+)
+result = await run_single_generation(run_spec, ...)
+# 返回：GenerationResult(outputs=[GenerationOutput(url="https://dm-storage/xxx.png")])</code></pre>
+
+<p>如果生成失败（网络超时、后端报错等），返回错误字符串给 LLM。</p>
+
+<h3>7.5 第五步：前端参数转换 + 创建画布节点</h3>
+
+<p>生成完成后，需要创建画布节点。但前端展示用的参数格式和后端 API 不同：</p>
+
+<pre><code># 后端 API 格式（to_backend_params 输出的）
+{"text": "参考风格，画一只类似的猫", "ratio": "1:1"}
+
+# 前端展示格式（to_frontend_model_params 输出的）
+{"prompt": "参考风格，画一只类似的猫", "aspect_ratio": "1:1"}
+#   ↑ 字段名改回用户熟悉的名称</code></pre>
+
+<p>然后调 <code>CanvasService.create_nodes_from_generation</code>，这一步会：</p>
+<ol>
+  <li>把生成结果的 URL 上传到 DM 存储</li>
+  <li>创建画布节点（ADD_NODE）</li>
+  <li>为每个 reference_node 建立连线（UPSERT_EDGE）</li>
+  <li>计算新节点的位置（放在参考节点旁边）</li>
+</ol>
+
+<p>最终返回 <code>[node_ids]</code>，编排层包装成 <code>AgentGenerateResult</code> 返回给工具。</p>
+
+<div class="defend">
+  <h4>️ 思考：为什么错误都返回字符串而不是抛异常？</h4>
+  <p>Agent 的工具返回值是给 LLM 看的。如果抛异常，LangGraph 会中断 Agent Loop，用户看到的是一个错误页面。如果返回错误字符串，LLM 能读懂错误信息，决定下一步——比如告诉用户"参数不对"，或者换个模型重试。这是 Agent 系统的常见模式：<strong>错误是数据，不是控制流</strong>。</p>
+</div>
+
+<h3>7.6 完整流程总结</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    Tool["工具调用<br/>generate_and_create_node"] --> S1["1. 校验 node_type<br/>找 ModelDefinition"]
+    S1 -->|失败| Err1["返回错误字符串"]
+
+    S1 --> S2["2. 解析 reference_nodes"]
+    S2 --> S2a["Subject 节点 →<br/>character_reference<br/>+ 改写 prompt"]
+    S2 --> S2b["普通节点 →<br/>查 URL → 注入 params"]
+
+    S2a --> S3["3. Pydantic 参数校验"]
+    S2b --> S3
+    S3 -->|失败| Err2["返回格式化错误"]
+
+    S3 --> S4["4. 调 Runner 执行生成<br/>submit → poll → fetch → mirror"]
+    S4 -->|失败| Err3["返回错误字符串"]
+
+    S4 --> S5["5. 前端参数转换<br/>+ 创建画布节点<br/>+ 建立连线"]
+    S5 --> Done["返回 AgentGenerateResult<br/>success + node_ids"]
+</pre>
+</div>
+
+<h2>八、Capability → Output Type 蕴含</h2>
+
+<p>不同 capability 的产物类型是固定的：</p>
+
+<pre><code># src/monet/generation/service.py
+
+CAPABILITY_TO_OUTPUT_TYPE: dict[str, str] = {
+    "gen-image": "image",
+    "gen-3d": "model_3d",
+    "gen-video": "video",
+    "gen-text": "text",
+    "gen-motion": "motion",
+    "post-3d-retopo": "model_3d",
+    "post-3d-uv": "model_3d",
+    "post-3d-texture": "model_3d",
+}</code></pre>
+
+<p>这意味着 <code>gen-image</code> 的产物一定是图片，<code>gen-video</code> 的产物一定是视频。GenerationService 根据这个蕴含关系选择解析方式，调用方不需要传 <code>output_type</code>。</p>
+
+<h2>九、总结</h2>
+
+<p>生成链路的核心设计：</p>
+
+<ol>
+  <li><strong>四层架构</strong>：编排 → 执行 → 服务 → 后端，职责分离，易于测试和扩展</li>
+  <li><strong>复合键路由</strong>：<code>(capability, model_id)</code> 避免歧义，支持同名模型在不同能力下有不同的实现</li>
+  <li><strong>协议抽象</strong>：Backend 协议统一三种后端（DM API / AIGW / Ailab），新增后端只需实现接口</li>
+  <li><strong>重试策略</strong>：区分可重试（网络错误）和不可重试（业务错误），避免无意义重试</li>
+  <li><strong>错误即数据</strong>：工具返回错误字符串而不是抛异常，让 LLM 能读懂并决策</li>
+</ol>
+
+<div class="highlight-box">
+  <strong>设计要点</strong>：
+  <ul>
+    <li>设计并实现了 Monet 的四层生成架构（编排 → 执行 → 服务 → 后端），支持 DM API / AIGW / Ailab 三种后端，新增 AI 供应商只需实现 Backend 协议</li>
+    <li>实现了 submit → poll → fetch 三阶段异步协议，包含智能重试策略（区分可重试/不可重试错误），支持最大 600 秒超时</li>
+    <li>设计了 (capability, model_id) 复合键路由机制，支持同名模型在不同能力下的差异化实现</li>
+  </ul>
+</div>
+
+<div class="followup">
+  <h4>💬 followup 问题（跟我继续聊）</h4>
+  <ul>
+    <li>"params_schema 的 to_backend_params 具体怎么转换的？"</li>
+    <li>"output_parser 怎么解析不同后端的返回格式？"</li>
+    <li>"OutputMirror 的转存逻辑是什么？"</li>
+    <li>"怎么测试这个生成链路？"</li>
+  </ul>
+</div>
+
+<nav class="lesson-nav">
+  <a href="M004-canvas-awareness.html">← Lesson M004 — 画布感知</a>
+  <a href="index.html">课程目录 →</a>
+</nav>
+
+</body>
+</html>

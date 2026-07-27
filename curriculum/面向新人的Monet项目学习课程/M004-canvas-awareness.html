@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <style>
+/* 教学课程共享样式 — Tufte 风格 */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.quiz {
+  background: #fef9e7;
+  border: 1px solid #e6d999;
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+}
+.quiz-question { font-weight: 600; margin-bottom: 0.8rem; font-family: var(--sans); }
+.quiz-options { list-style: none; padding: 0; }
+.quiz-options li {
+  padding: 0.5rem 0.8rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin: 0.4rem 0;
+  cursor: pointer;
+  font-family: var(--sans);
+}
+.quiz-options li:hover { background: var(--accent-soft); }
+.quiz-answer {
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: white;
+  border-radius: 4px;
+  display: none;
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+.quiz-answer.visible { display: block; }
+.quiz-toggle {
+  margin-top: 0.5rem;
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 0.4rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--sans);
+  font-size: 0.85em;
+}
+
+.followup {
+  border: 2px dashed var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 2rem 0 1rem;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  font-family: var(--sans);
+}
+.followup h4 { margin-top: 0; color: var(--accent); }
+
+.resource-recommend {
+  background: #eef7ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+
+.resume-hook {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+}
+.resume-hook h4 { color: #16a34a; margin-top: 0; }
+
+/* 思考 box */
+.defend {
+  background: #fef2f2;
+  border: 2px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+.defend h4 { margin-top: 0; color: var(--accent); }
+.defend ol { padding-left: 1.4rem; }
+.defend li { margin: 0.5rem 0; }
+
+/* Mermaid 图容器 */
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem -2rem; /* 负 margin：让图突破正文列宽 */
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+/* Mermaid 生成的 SVG 默认会缩放到容器宽度，禁用它以显示真实字号 */
+.diagram .mermaid svg {
+  max-width: none !important;
+  height: auto !important;
+}
+}
+
+.print-only { display: none; }
+@media print {
+  body { max-width: none; margin: 0; padding: 1cm; font-size: 11pt; }
+  .quiz-toggle, .followup { break-inside: avoid; }
+  .print-only { display: block; }
+  a { color: var(--text); text-decoration: none; }
+}
+
+nav.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+
+  </style>
+  <meta charset="UTF-8">
+  <title>M004 — Monet 画布感知</title>
+  
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default' });
+  </script>
+</head>
+<body>
+
+<div class="lesson-meta"><span><strong>适合人群</strong> 工作新人</span>
+  <span><strong>Lesson</strong> M004</span>
+  <span><strong>项目</strong> Monet Agent</span>
+  <span><strong>时长</strong> ~45 分钟</span>
+  <span><strong>难度</strong> ★★★★☆</span>
+  <span><strong>前置</strong> <a href="M002-monet-agent-core-factory-runner-loop.html">M002 — Agent 核心</a>、<a href="M003-monet-tool-use-system.html">M003 — Tool Use 系统</a></span>
+  
+</div>
+
+<h1>Monet 画布感知（Canvas Awareness）</h1>
+
+<p>前两节讲了 Agent 的核心循环和工具系统。这一节聚焦一个核心问题：<strong>Agent 怎么"看见"画布？</strong></p>
+
+<p>Agent 在画布上操作——生成节点、查询节点、建立连线——但 LLM 本身不知道画布长什么样。Monet 设计了一套三层感知机制，让 Agent 能实时感知画布状态，并根据需要按需查询细节。学完这节你能讲清楚：</p>
+
+<ul>
+  <li>Agent 怎么在每次 /chat 请求时自动感知画布概览</li>
+  <li>为什么注入点在模型层而不是 System Prompt</li>
+  <li>为什么用 contextvar 做请求作用域缓存</li>
+  <li>按需查询工具怎么复用缓存</li>
+  <li>canvas.render 事件怎么通知前端刷新</li>
+</ul>
+
+<h2>一、问题引入</h2>
+
+<p>Agent 在画布上操作，但 LLM 本身不知道画布长什么样。如果每次都让 Agent 调工具查画布，token 消耗太大；如果硬编码在 System Prompt 里，画布状态又是动态变化的。</p>
+
+<p>Monet 的解决方案是<strong>三层感知机制</strong>：</p>
+
+<ol>
+  <li><strong>对话入口预加载</strong>：每次 /chat 请求开始时，自动拉取画布概览写入 contextvar</li>
+  <li><strong>模型层动态注入</strong>：每次 LLM 调用前，把概览注入到 HumanMessage 前缀</li>
+  <li><strong>按需查询细节</strong>：Agent 需要细节时，调 <code>canvas_node_detail</code> / <code>canvas_subgraph</code></li>
+</ol>
+
+<div class="highlight-box">
+  <strong>核心洞察</strong>：Agent 的"视觉"不是实时的，而是<strong>每次 /chat 请求前刷新一次快照</strong>。这跟人眼不一样——人眼是实时流，Agent 是"拍照→看照片→操作→再拍照"。好处是简单可靠，坏处是在一次 /chat 请求的 Agent 工作过程中（可能调用多轮 LLM），如果画布被其他人改了，Agent 不知道。
+</div>
+
+<h2>二、三层感知机制详解</h2>
+
+<h3>2.1 第一层：对话入口预加载</h3>
+
+<p>每次 <code>/chat</code> 请求进来，<code>routes.py</code> 的 <code>_prime_canvas_context</code> 函数会拉取画布详情并写入两个 contextvar：</p>
+
+<pre><code>async def _prime_canvas_context(canvas_id: str) -> None:
+    """为本次 /chat 请求拉取画布并写入 contextvar，失败时静默降级。"""
+    # 清空上一轮缓存
+    set_canvas_detail(None)
+    set_canvas_overview_text(None)
+
+    canvas_client = get_canvas_client()
+    if canvas_client is None:
+        logger.warning("画布客户端未初始化，跳过画布概览注入")
+        return
+
+    try:
+        # 1. 拉取画布详情（原始 dict）
+        detail = await canvas_client.get_canvas_detail(canvas_id)
+    except Exception as e:
+        logger.warning(f"拉取画布概览失败: canvas_id={canvas_id}, err={e}")
+        return
+
+    # 2. 写入 contextvar：原始详情
+    set_canvas_detail(detail)
+
+    try:
+        # 3. 渲染为 markdown 概览文本
+        overview = build_canvas_overview_text(detail)
+    except Exception as e:
+        logger.warning(f"渲染画布概览失败: canvas_id={canvas_id}, err={e}")
+        return
+
+    # 4. 写入 contextvar：渲染后的概览
+    set_canvas_overview_text(overview)</code></pre>
+
+<p>两个 contextvar 的定义在 <code>canvas_context.py</code>：</p>
+
+<pre><code># src/monet/services/canvas_context.py
+
+_canvas_overview_text: ContextVar[str | None] = ContextVar(
+    "canvas_overview_text", default=None
+)
+
+_canvas_detail: ContextVar[dict[str, Any] | None] = ContextVar(
+    "canvas_detail", default=None
+)</code></pre>
+
+<h4>为什么用 contextvar？</h4>
+
+<p><code>contextvar</code> 是 Python 标准库提供的<strong>协程作用域变量</strong>，专门解决异步编程中的状态传递问题。</p>
+
+<p>Monet 是并发服务，多个用户同时对话。如果用全局变量存储画布上下文，不同请求会互相污染——用户 A 的画布数据可能被用户 B 的请求覆盖。而 contextvar 是协程作用域的，每个 <code>/chat</code> 请求都有独立的副本，既避免污染，又不需要层层传参。</p>
+
+<div class="highlight-box">
+  <strong>类比理解</strong>：把 contextvar 想象成每个协程的"随身背包"。全局变量是公共储物柜（所有人都能存取，容易拿错），参数传递是手动交接物品（每经过一个函数就要传递一次），而 contextvar 是每个人背自己的包（需要时从自己包里拿，不会拿错）。
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么不在 System Prompt 里硬编码画布状态？</h4>
+  <p>System Prompt 是静态的，画布状态是动态的。如果硬编码，每次画布变化都要重新编译 Agent，成本太高。而且 System Prompt 是所有请求共享的，不同用户看到不同的画布，硬编码会导致串号。</p>
+  <p>更好的做法是<strong>每次 /chat 请求前动态注入</strong>，让 LLM 看到当前画布的快照。这样既保证实时性，又避免串号。</p>
+</div>
+
+<h3>2.2 第二层：模型层动态注入</h3>
+
+<p>拉取了概览之后，怎么让 LLM 看到？Monet 的做法是<strong>在模型层拦截</strong>，而不是塞进 System Prompt。</p>
+
+<p><code>ChatAIGW</code> 继承自 <code>ChatOpenAI</code>，重写了 <code>_astream</code> 和 <code>_agenerate</code>：</p>
+
+<pre><code># src/monet/model/aigw.py
+
+async def _astream(self, messages, stop=None, run_manager=None, **kwargs):
+    """流式推理前注入画布概览和图片 URL 转 base64。"""
+    # 1. 注入画布概览到最新 HumanMessage 前缀
+    with_canvas = self._inject_canvas_overview(messages)
+    # 2. 图片 URL 转 base64
+    processed = await self._replace_image_urls(with_canvas, self.aigw_headers)
+    # 3. 调用父类流式推理
+    async for chunk in super()._astream(processed, stop, run_manager, **kwargs):
+        yield chunk
+
+@staticmethod
+def _inject_canvas_overview(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """把 contextvar 中的画布概览拼到最新 HumanMessage 前缀。"""
+    overview = get_canvas_overview_text()
+    if not overview:
+        return messages  # 没有概览，原样返回
+
+    # 找到最后一条 HumanMessage
+    last_human_idx = None
+    for i in range(len(messages) - 1, -1, -1):
+        if isinstance(messages[i], HumanMessage):
+            last_human_idx = i
+            break
+    if last_human_idx is None:
+        return messages  # 没有 HumanMessage，原样返回
+
+    # 深拷贝最后一条 HumanMessage
+    original = messages[last_human_idx]
+    new_msg = copy.deepcopy(original)
+
+    # 构造注入块
+    injected_block = {
+        "type": "text",
+        "text": CANVAS_CONTEXT_HEADER + overview,
+    }
+
+    # 插入到 content 列表最前面
+    if isinstance(new_msg.content, list):
+        new_msg.content = [injected_block, *new_msg.content]
+    elif isinstance(new_msg.content, str):
+        new_msg.content = [injected_block, {"type": "text", "text": new_msg.content}]
+
+    # 替换原消息
+    messages = list(messages)
+    messages[last_human_idx] = new_msg
+    return messages</code></pre>
+
+<p><code>CANVAS_CONTEXT_HEADER</code> 是一个标记，告诉 LLM 这是系统注入的画布上下文：</p>
+
+<pre><code>CANVAS_CONTEXT_HEADER: str = "[CanvasContext 系统注入·仅本轮可见]\n"</code></pre>
+
+<h4>为什么注入到 HumanMessage 而不是 SystemMessage？</h4>
+
+<p>System Prompt 是静态的，所有请求共享。如果注入到 SystemMessage，需要重新编译 Agent，成本太高。而且 SystemMessage 的权重很高，LLM 会认为这是"永恒真理"，但实际上画布状态是动态变化的。</p>
+
+<p>注入到 HumanMessage 前缀，LLM 会认为这是"用户当前提供的上下文"，权重适中。而且 HumanMessage 是每次请求独立的，不会污染其他请求。</p>
+
+<h4>为什么用深拷贝？</h4>
+
+<p>LangGraph 的 messages 是状态机的一部分，会被 checkpoint 持久化。如果我们直接修改 messages，会污染 checkpoint，导致后续对话恢复时看到错误的画布状态。</p>
+
+<p>深拷贝确保<strong>改写只作用于发给 LLM 的内存副本</strong>，原始 messages 不变，checkpoint 不被污染。</p>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么不直接把概览作为 Tool 的返回值？</h4>
+  <p>Tool 的返回值是给 LLM 看的，但 LLM 需要先调 Tool 才能看到。如果 Agent 不知道画布长什么样，它不知道该调哪个 Tool。这是一个<strong>鸡生蛋蛋生鸡</strong>的问题。</p>
+  <p>更好的做法是<strong>每次 /chat 请求前自动注入概览</strong>，让 LLM 先看到画布的大致形态，再决定要不要调 Tool 查细节。这样既减少 Tool 调用次数，又保证 LLM 有全局视角。</p>
+</div>
+
+<h3>2.3 第三层：按需查询细节</h3>
+
+<p>概览只能让 LLM 知道画布的大致形态（节点数量、类型分布、连线关系）。如果 LLM 需要某个节点的详细信息（参数、输出、位置），需要调 Tool 查询。</p>
+
+<p>Monet 提供了两个查询 Tool：</p>
+
+<table>
+<thead>
+<tr><th>Tool</th><th>作用</th><th>返回</th></tr>
+</thead>
+<tbody>
+<tr><td><code>canvas_node_detail</code></td><td>查询单个节点的完整详情</td><td>节点的 type、label、位置、参数、输出</td></tr>
+<tr><td><code>canvas_subgraph</code></td><td>查询一组节点及其连线</td><td>子图的节点列表、连线列表</td></tr>
+</tbody>
+</table>
+
+<p>这两个 Tool 的实现都在 <code>canvas_query.py</code>。但它们的缓存策略<strong>不同</strong>：</p>
+
+<h4><code>canvas_node_detail</code>：直接查后端</h4>
+
+<p>这个工具查询<strong>单个节点</strong>的详情，每次调用都会直接请求后端 API（<code>canvas_client.get_node_detail</code>），不使用 contextvar 缓存。原因是：</p>
+
+<ul>
+  <li>单节点查询很轻量（只查一个节点的数据），不值得缓存</li>
+  <li>Agent 可能需要最新数据（比如刚生成的节点），缓存可能过时</li>
+</ul>
+
+<h4><code>canvas_subgraph</code>：复用 contextvar 缓存</h4>
+
+<p>这个工具查询<strong>一组节点及其连线</strong>，需要整张画布的数据。它优先复用 <code>_prime_canvas_context</code> 预加载的 <code>_canvas_detail</code> contextvar：</p>
+
+<pre><code># src/monet/tools/canvas_query.py
+
+@tool
+async def canvas_subgraph(node_ids: list[str]) -> str:
+    """查询一组节点及其连线关系。"""
+    canvas_id = _resolve_canvas_id()
+    if not canvas_id:
+        return "错误：无法获取画布 ID，请确认在画布上下文中发起对话。"
+
+    # 优先复用 contextvar 缓存
+    detail = get_canvas_detail()
+    if detail is None:
+        # 缓存不存在，现拉一次
+        canvas_client = get_canvas_client()
+        detail = await canvas_client.get_canvas_detail(canvas_id)
+        # 写回 contextvar，后续工具调用复用
+        set_canvas_detail(detail)
+
+    # 从 detail 中筛选目标节点和连线
+    nodes = detail.get("nodes", [])
+    target_nodes = [n for n in nodes if n.get("id") in node_ids]
+    edges = detail.get("edges", [])
+    target_edges = [e for e in edges
+                    if e.get("source") in node_ids and e.get("target") in node_ids]
+
+    # 格式化为 markdown
+    return _format_subgraph(target_nodes, target_edges)</code></pre>
+
+<div class="highlight-box">
+  <strong>设计哲学</strong>：按需查询工具的缓存策略取决于查询粒度。单节点查询轻量，直接查后端保证数据新鲜；子图查询重量，复用预加载的缓存避免重复 HTTP。
+</div>
+
+<div class="defend">
+  <h4>🛡️ 思考：既然 _prime_canvas_context 已经预加载了缓存，canvas_subgraph 里的 <code>if detail is None</code> 分支什么时候会触发？</h4>
+  <p><strong>正常情况下不会触发</strong>——<code>_prime_canvas_context</code> 在 /chat 入口已经预加载了 <code>_canvas_detail</code>，后续所有工具调用都能从 contextvar 读到。</p>
+  <p><strong>但有一种降级场景会触发</strong>：如果 <code>_prime_canvas_context</code> 预加载失败（网络错误、后端 500、超时），异常被捕获后 contextvar 保持 None。此时 <code>canvas_subgraph</code> 被调用，<code>get_canvas_detail()</code> 返回 None，就会触发"现拉一次"分支。</p>
+  <p>这段代码是<strong>防御性编程</strong>：让工具在概览注入失败时仍然能工作（只是多一次 HTTP 请求），而不是直接返回错误。如果没有这段代码，预加载失败后 Agent 就没办法查询子图了。</p>
+</div>
+
+<h2>三、画布概览渲染策略</h2>
+
+<p><code>build_canvas_overview_text</code> 函数负责把画布详情渲染为 markdown 文本。它根据节点数量选择不同的渲染策略：</p>
+
+<table>
+<thead>
+<tr><th>节点数 N</th><th>策略</th><th>内容</th></tr>
+</thead>
+<tbody>
+<tr><td>N = 0</td><td>empty</td><td>单行"画布为空"</td></tr>
+<tr><td>1–5</td><td>detailed</td><td>全部节点 id/type/label/位置/输出 + 全部 edges/groups</td></tr>
+<tr><td>6–30</td><td>medium</td><td>全部节点 id/type/label + 全部 edges/groups</td></tr>
+<tr><td>31–100</td><td>brief</td><td>前 60 节点 + 前 60 edges + groups</td></tr>
+<tr><td>N > 100</td><td>summary</td><td>只列总数 + 类型分布 + groups</td></tr>
+</tbody>
+</table>
+
+<p>示例（detailed 策略）：</p>
+
+<pre><code>## 画布概览
+节点：3（gen-image: 2, input-image: 1）
+连线：2 条
+分组：1 个
+
+### 节点列表
+- node-abc | gen-image | 赛博朋克猫咪 | 位置 (100, 200) | 输出 1×completed
+- node-def | gen-image | 霓虹灯光效 | 位置 (300, 200) | 输出 1×completed
+- node-xyz | input-image | 用户上传参考图 | 位置 (100, 400) | 输出 1×completed
+
+### 连线列表
+- node-xyz → node-abc
+- node-xyz → node-def
+
+### 分组列表
+- group-001 | 猫咪系列 | 2 节点 [node-abc, node-def]</code></pre>
+
+<p>示例（summary 策略，节点数 > 100）：</p>
+
+<pre><code>## 画布概览
+节点：150（gen-image: 80, gen-video: 30, input-image: 20, gen-3d: 20）
+连线：200 条
+分组：5 个
+
+（节点过多，仅显示统计信息。如需查看具体节点，请使用 canvas_node_detail 工具。）</code></pre>
+
+<h4>为什么要分级？</h4>
+
+<p>LLM 的 context window 是有限的。如果画布有 500 个节点，全列出来会占用大量 token，而且 LLM 也看不过来。分级策略的核心思想是：<strong>小画布看细节，大画布看统计</strong>。</p>
+
+<p>阈值 <code>5 / 30 / 100</code> 是经验值，可以根据实际使用场景调整。比如如果用户经常操作大画布，可以把阈值调低，让 LLM 更早进入 summary 模式。</p>
+
+<div class="defend">
+  <h4>🛡️ 思考：为什么不直接让 LLM 调 Tool 查画布？</h4>
+  <p>LLM 需要先知道"画布长什么样"才能决定"要不要调 Tool"。如果每次都要调 Tool 查画布，会增加一次 Tool 调用，消耗额外的 token 和时间。</p>
+  <p>更好的做法是<strong>每次 /chat 请求前自动注入概览</strong>，让 LLM 先看到画布的大致形态，再决定要不要调 Tool 查细节。这样既减少 Tool 调用次数，又保证 LLM 有全局视角。</p>
+  <p>这跟人的认知方式类似——你进入一个房间，先扫一眼全局（概览），再决定要不要走过去看某个东西的细节（Tool）。</p>
+</div>
+
+<h2>四、canvas.render 自定义事件</h2>
+
+<p>Agent 调 Tool 创建了节点之后，怎么通知前端刷新？Monet 的做法是<strong>发一个自定义事件</strong>，前端收到后主动拉取最新画布数据。</p>
+
+<pre><code># 工具内部
+await adispatch_custom_event(name="canvas.render", data={})</code></pre>
+
+<p>LangGraph 的 <code>astream_events</code> 会把这个事件 yield 出来，Adapter 透传为 SSE 事件：</p>
+
+<pre><code># Adapter 内部
+elif event_kind == "on_custom_event":
+    event_name = event.get("name")
+    event_data = event.get("data", {})
+    yield SSEFrame(
+        event=event_name,
+        data={"message_id": message_id, **event_data},
+    )</code></pre>
+
+<p>前端收到 <code>canvas.render</code> 事件后，主动调 HTTP 接口拉取最新画布数据，局部刷新渲染。</p>
+
+<div class="highlight-box">
+  <strong>设计哲学</strong>：后端只负责"通知"，前端负责"拉取+渲染"。这样既避免后端推大量数据，又让前端有完全的渲染控制权。这跟 Git 的 webhook 类似——webhook 只告诉你"有 push 了"，具体变了什么你要自己 <code>git fetch</code>。
+</div>
+
+<p>关于 <code>canvas.render</code> 的详细机制，参见 <a href="M003-monet-tool-use-system.html#六canvasrender-自定义事件">M003 第六节</a>。</p>
+
+<h2>五、完整数据流</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant U as 用户
+    participant R as routes.py
+    participant CC as canvas_context.py
+    participant CO as canvas_overview.py
+    participant AIGW as ChatAIGW
+    participant LLM as 大模型
+    participant T as Tool
+    participant CB as Canvas Backend
+
+    U->>R: POST /chat {canvas_id, messages}
+    R->>CC: _prime_canvas_context(canvas_id)
+    CC->>CB: GET /canvas/{canvas_id}
+    CB-->>CC: detail (原始 dict)
+    CC->>CO: build_canvas_overview_text(detail)
+    CO-->>CC: overview (markdown 文本)
+    CC->>CC: set_canvas_detail(detail)<br/>set_canvas_overview_text(overview)
+    CC-->>R: 缓存写入完成
+
+    R->>AIGW: create_agent(canvas_id, messages)
+    AIGW->>AIGW: _inject_canvas_overview(messages)
+    AIGW->>AIGW: 深拷贝最后一条 HumanMessage
+    AIGW->>AIGW: 注入概览到 content 前缀
+    AIGW->>LLM: stream(messages_with_canvas)
+    LLM-->>AIGW: token 流
+
+    alt LLM 决定调 Tool
+        AIGW->>T: canvas_node_detail(node_id)
+        T->>CC: get_canvas_detail()
+        alt 缓存存在
+            CC-->>T: detail (从 contextvar)
+        else 缓存不存在
+            T->>CB: GET /canvas/{canvas_id}
+            CB-->>T: detail
+            T->>CC: set_canvas_detail(detail)
+        end
+        T-->>AIGW: node_detail (markdown)
+        AIGW->>LLM: stream(messages + tool_result)
+        LLM-->>AIGW: token 流
+    end
+
+    AIGW-->>U: SSE 流（token 流）</code></pre>
+</div>
+
+<h2>六、设计要点汇总</h2>
+
+<table>
+<thead>
+<tr><th>问题</th><th>答案要点</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td>为什么不在 System Prompt 里硬编码画布状态？</td>
+  <td>System Prompt 是静态的、所有请求共享的；画布状态是动态的、每个用户独立的。硬编码会导致串号，且每次画布变化都要重新编译 Agent。</td>
+</tr>
+<tr>
+  <td>为什么用 contextvar 做缓存？</td>
+  <td>contextvar 是协程作用域的，每个请求独立，不会污染其他请求。如果用全局变量，多个请求并发时会互相覆盖；如果用参数传递，需要层层透传，代码臃肿。</td>
+</tr>
+<tr>
+  <td>为什么注入到 HumanMessage 而不是 SystemMessage？</td>
+  <td>SystemMessage 权重太高，LLM 会认为这是"永恒真理"；HumanMessage 是每次请求独立的，权重适中，LLM 会认为这是"用户当前提供的上下文"。</td>
+</tr>
+<tr>
+  <td>为什么用深拷贝？</td>
+  <td>LangGraph 的 messages 会被 checkpoint 持久化。如果直接修改，会污染 checkpoint，导致后续对话恢复时看到错误的画布状态。深拷贝确保改写只作用于发给 LLM 的内存副本。</td>
+</tr>
+<tr>
+  <td>为什么不直接让 LLM 调 Tool 查画布？</td>
+  <td>LLM 需要先知道"画布长什么样"才能决定"要不要调 Tool"。如果每次都要调 Tool 查画布，会增加一次 Tool 调用，消耗额外的 token 和时间。自动注入概览可以减少 Tool 调用次数。</td>
+</tr>
+<tr>
+  <td>为什么画布概览要分级渲染？</td>
+  <td>LLM 的 context window 有限。小画布看细节，大画布看统计。分级策略既保证 LLM 有全局视角，又避免占用过多 token。</td>
+</tr>
+<tr>
+  <td>canvas.render 事件的作用是什么？</td>
+  <td>Agent 调 Tool 创建了节点后，发一个轻量通知，前端收到后主动拉取最新画布数据，局部刷新渲染。后端只负责"通知"，前端负责"拉取+渲染"。</td>
+</tr>
+</tbody>
+</table>
+
+<h2>七、代码地图</h2>
+
+<p>画布感知相关的代码分布在以下几个文件：</p>
+
+<table>
+<thead>
+<tr><th>文件</th><th>职责</th></tr>
+</thead>
+<tbody>
+<tr><td><code>src/monet/api/routes.py</code></td><td>对话入口，调用 <code>_prime_canvas_context</code> 预加载画布</td></tr>
+<tr><td><code>src/monet/services/canvas_context.py</code></td><td>contextvar 定义，提供 get/set 接口</td></tr>
+<tr><td><code>src/monet/services/canvas_overview.py</code></td><td>画布概览渲染，分级策略</td></tr>
+<tr><td><code>src/monet/model/aigw.py</code></td><td>模型层拦截，注入画布概览到 HumanMessage</td></tr>
+<tr><td><code>src/monet/tools/canvas_query.py</code></td><td>查询 Tool，复用 contextvar 缓存</td></tr>
+<tr><td><code>src/monet/sse/deepagent.py</code></td><td>Adapter 透传 <code>canvas.render</code> 事件</td></tr>
+</tbody>
+</table>
+
+<h2>八、总结</h2>
+
+<p>Monet 的画布感知机制是一个典型的<strong>"快照+按需查询"</strong>设计：</p>
+
+<ul>
+  <li><strong>快照</strong>：每次 /chat 请求前预加载画布概览，注入到 LLM 的上下文</li>
+  <li><strong>按需查询</strong>：LLM 需要细节时，调 Tool 查询，优先复用缓存</li>
+  <li><strong>通知刷新</strong>：Agent 操作画布后，发 <code>canvas.render</code> 事件通知前端</li>
+</ul>
+
+<p>这个设计的好处是：</p>
+
+<ul>
+  <li><strong>简单可靠</strong>：每次 /chat 请求前刷新快照，避免状态不一致</li>
+  <li><strong>性能友好</strong>：contextvar 缓存避免重复 HTTP 请求</li>
+  <li><strong>token 节约</strong>：分级渲染避免占用过多 context window</li>
+  <li><strong>职责分离</strong>：后端只通知，前端负责渲染</li>
+</ul>
+
+<p>坏处是：</p>
+
+<ul>
+  <li><strong>非实时</strong>：如果对话中途画布被其他人改了，Agent 不知道</li>
+  <li><strong>快照过时</strong>：Agent 操作画布后，如果不调 Tool 重新查询，看到的还是旧快照</li>
+</ul>
+
+<p>但在 Monet 的场景下，这些坏处可以接受——因为画布操作通常是单用户的，不会有多人并发修改。</p>
+
+<div class="highlight-box">
+  <strong>设计要点</strong>：设计并实现了 Monet 的画布感知系统，包括 contextvar 请求作用域缓存、模型层动态注入、分级渲染策略，使 Agent 能实时感知画布状态并按需查询细节，同时避免占用过多 context window。
+</div>
+
+<div class="followup">
+  <h4>💬 followup 问题（跟我继续聊）</h4>
+  <ul>
+    <li>"contextvar 在 asyncio 里是怎么工作的？" → 涉及 Python 协程作用域</li>
+    <li>"为什么 <code>_inject_canvas_overview</code> 要深拷贝？浅拷贝不行吗？" → 涉及 LangGraph checkpoint 机制</li>
+    <li>"画布概览的阈值 5/30/100 是怎么定的？" → 涉及经验值和实际使用场景</li>
+    <li>"如果画布被其他人改了，Agent 怎么知道？" → 涉及 WebSocket 实时推送（Monet 目前没做）</li>
+    <li>"帮我设计一个多用户协作的画布感知系统" → 开放性问题</li>
+  </ul>
+</div>
+
+<div class="resource-recommend">
+  <h4>📚 延伸阅读</h4>
+  <ul>
+    <li><a href="https://docs.python.org/3/library/contextvars.html" target="_blank">Python contextvars 官方文档</a> — 理解协程作用域变量的工作原理</li>
+    <li><a href="https://langchain-ai.github.io/langgraph/concepts/low_level/#checkpointing" target="_blank">LangGraph Checkpointing</a> — 理解为什么不能直接修改 messages</li>
+    <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events" target="_blank">Server-Sent Events (SSE)</a> — 理解 <code>canvas.render</code> 事件的传输机制</li>
+  </ul>
+</div>
+
+<nav class="lesson-nav">
+  <a href="M003-monet-tool-use-system.html">← M003 — Tool Use 系统</a>
+  <a href="M005-generation-pipeline.html">M005 — 生成链路 →</a>
+</nav>
+
+</body>
+</html>

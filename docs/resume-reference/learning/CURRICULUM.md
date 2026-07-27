@@ -51,15 +51,28 @@
 - **目标**：能讲清五层架构、三大核心组件（app-gateway / worker-scheduler / worker-sidecar）职责边界
 - **产出**：架构图 + 关键数据流（任务从入口到 Worker）+ 3 个面试常问点
 
-### S002 — Scheduler 任务调度全链路（待定）
-- **模块**：`app/app-gateway` → Redis queue → `app/worker-scheduler` → `app/worker-sidecar`
-- **目标**：讲清一个任务从提交到执行完的完整流程
-- **候选亮点**：分布式任务调度（可写入简历）
+### S002 — 任务调度全链路与 Redis 队列设计 ✅
+- **文件**：`lessons/S002-task-scheduling-redis-queue.html`
+- **模块**：`app/app-gateway/action/` + `pkg/priority/` + `app/worker-scheduler/manager/`
+- **目标**：讲清任务状态机、Action 编排模式、Redis ZSet vs List 队列设计、优先级调度（WeightedScheduler）、用户并发控制（ConcurrentManager + CAS）
+- **产出**：状态机图 + 编排函数链图 + 乐观抢占流程图 + 完整时序图 + Redis 选型对比表 + 4 道 Quiz
+- **主线故事**：一次任务从提交到完成的完整链路
+  1. **状态机**：queued → running → success/failed/stopped
+  2. **Action 编排**：BeforeProduce → Produce → Consume → GenerateTask → AfterCall
+  3. **Redis 队列**：ZSet 入队（ZAdd）→ 批量扫描（ZRange）→ 乐观抢占（ZRem）
+  4. **优先级调度**：加权轮询 + 降序兜底
+  5. **并发控制**：ConcurrentManager 内存计数 + CAS + etcd Watch 驱动
 
-### S003 — Scheduler GPU/Worker 调度 + 高可用（待定）
-- **模块**：`app/worker-scheduler` + etcd worker registry + Leader 选举
-- **目标**：讲清资源分配和高可用机制
-- **候选亮点**：Leader 选举 + GPU 调度（可写入简历）
+### S003 — Worker 调度与高可用 ✅
+- **文件**：`lessons/S003-worker-scheduling-high-availability.html`
+- **模块**：`app/scheduler/main.go` + `app/worker-scheduler/dao/dao.go` + `app/worker-scheduler/service/` + `app/worker-sidecar/service/service.go`
+- **目标**：讲清 Leader 选举（K8s LeaseLock）、etcd Worker/Task 注册（Lease + Watch + Txn 乐观锁）、心跳与故障检测、应用层 Autoscaler
+- **产出**：全景架构图 + Leader 选举时序图 + 故障检测流程图 + Worker 状态机 + Sidecar 优雅关闭时序图 + Autoscaler 架构图 + 4 道 Quiz
+- **主线故事**：谁来做调度？调度器挂了怎么办？Worker 挂了怎么检测？队列积压怎么自动扩容？
+  1. **Leader 选举**：K8s LeaseLock（15s/10s/2s），OnStoppedLeading → os.Exit(0) 防脑裂
+  2. **etcd 注册**：/worker/{env}/{pod} + /task/{env}/{taskID}，Lease TTL=7200s，Grant 间隔 300s
+  3. **心跳故障检测**：sidecar 30s 心跳 → UpdateWorker 续约 → 崩溃后 Lease 过期 → Watch Delete → 清理恢复
+  4. **Autoscaler**：30s 轮询 + Redis 分布式锁，扩容条件 workerCount ≤ queueLength/2，缩容条件空闲超时
 
 ---
 

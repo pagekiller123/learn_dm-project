@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Lesson S002 — 任务调度全链路与 Redis 队列设计</title>
+  <link rel="stylesheet" href="../assets/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'default' });</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span><strong>Lesson</strong> S002</span>
+  <span><strong>项目</strong> DreamMaker Scheduler</span>
+  <span><strong>时长</strong> ~45 分钟</span>
+  <span><strong>难度</strong> ★★★☆☆</span>
+  <span><strong>上一节</strong> <a href="S001-scheduler-architecture-overview.html">← S001 架构总览</a></span>
+</div>
+
+<h1>任务调度全链路与 Redis 队列设计</h1>
+
+<p>S001 画出了 Scheduler 的整体骨架。这一节我们<strong>钻进去</strong>——从一个任务被提交到最终返回结果，每一步到底调了什么函数、经过了哪个 Redis 数据结构、状态怎么转换。重点是 <strong>Redis 队列设计</strong>（ZSet vs List）和<strong>优先级调度</strong>，这两块是后端面试的高频考点。</p>
+
+<div class="highlight-box">
+  <strong>本节的面试价值</strong>：Redis 数据结构选型、分布式任务队列、乐观抢占（CAS 思想）、加权调度算法——这些是后端校招面试的常客。本节所有内容都来自项目真实代码，面试时可以直接用"我们项目里是这样做的"来回答。
+</div>
+
+<!-- ====== 一、任务状态机 ====== -->
+<h2>一、任务状态机</h2>
+
+<p>所有任务都遵循同一套状态机。5 种内部状态、5 条转换路径（注：对外接口把 <code>queued</code> 展示为 <code>waiting</code>，但内部状态机只认 5 种）：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> queued : Add（入库+入队）
+    queued --> running : Run（被 Worker 消费）
+    running --> success : Success（执行成功）
+    running --> failed : Failed（执行失败/超时）
+    running --> stopped : Stop（用户主动取消）
+    queued --> failed : Failed（入队后异常）
+</pre>
+</div>
+
+<table>
+<thead><tr><th>状态</th><th>含义</th><th>触发函数（action_base.go）</th><th>Mongo 操作（dao_record.go）</th></tr></thead>
+<tbody>
+<tr><td><code>queued</code></td><td>已入库 + 已入队列，等待消费</td><td><code>Base.Add()</code></td><td><code>AddAppRecord()</code></td></tr>
+<tr><td><code>running</code></td><td>Worker 已拉取，正在执行</td><td><code>Base.Run()</code></td><td><code>RunAppRecord()</code></td></tr>
+<tr><td><code>success</code></td><td>执行成功，结果已写入</td><td><code>Base.Success()</code></td><td><code>SuccessAppRecord()</code></td></tr>
+<tr><td><code>failed</code></td><td>执行失败，错误已记录</td><td><code>Base.Failed()</code></td><td><code>FailedAppRecord()</code></td></tr>
+<tr><td><code>stopped</code></td><td>用户主动取消</td><td><code>Base.Stop()</code></td><td><code>StopAppRecord()</code></td></tr>
+</tbody>
+</table>
+
+<p>每次状态转换后，都会调 <code>SetCache()</code> 更新 Redis 缓存，供前端 <code>/status</code> 轮询秒级返回。状态常量定义在 <code>model/constance.go</code>：</p>
+
+<pre><code>TaskStatusQueued  = "queued"
+TaskStatusRunning = "running"
+TaskStatusSuccess = "success"
+TaskStatusFailed  = "failed"
+TaskStatusStopped = "stopped"</code></pre>
+
+<!-- ====== 二、Action 编排模式 ====== -->
+<h2>二、Action 编排模式</h2>
+
+<p>Action 是 Scheduler 里<strong>任务状态推进的核心抽象</strong>。它定义了一个任务从入库到完成的所有操作。设计模式是<strong>模板方法 + 策略</strong>的混合。</p>
+
+<h3>2.1 Action 接口（8 个核心方法）</h3>
+
+<p>定义在 <code>app/app-gateway/action/interface.go</code>：</p>
+
+<pre><code>type Action interface {
+    ActionName() string
+    Add(ctx, msg) error           // 入库（Mongo）
+    Run(ctx, msg) error           // 标记 running
+    Stop(ctx, msg) error          // 用户取消
+    Success(ctx, msg) error       // 标记成功
+    UpdateOutput(ctx, msg) error  // 中间结果更新
+    Failed(ctx, msg, err) error   // 标记失败
+    GetAppMsg(ctx, taskID, msg) error    // 读 Mongo 任务记录
+    ProduceResult(ctx, msg) error        // 写结果到 Kafka
+}</code></pre>
+
+<h3>2.2 可选接口（Go 类型断言实现策略模式）</h3>
+
+<p>除了 <code>Action</code> 核心接口，还有一系列<strong>可选接口</strong>，action 实现哪个就具备哪种能力：</p>
+
+<table>
+<thead><tr><th>可选接口</th><th>职责</th><th>检查方式</th></tr></thead>
+<tbody>
+<tr><td><code>RequestMapper</code></td><td>参数映射（APP 配置 → 请求参数）</td><td><code>action.(RequestMapper)</code></td></tr>
+<tr><td><code>MsgProducer</code></td><td>入队列（Produce pending task）</td><td><code>action.(MsgProducer)</code></td></tr>
+<tr><td><code>MsgConsumer</code></td><td>出队列（Consume pending task）</td><td><code>action.(MsgConsumer)</code></td></tr>
+<tr><td><code>Generator</code></td><td>生成 JobReportData 下发 Worker</td><td><code>action.(Generator)</code></td></tr>
+<tr><td><code>CallResponseMapper</code></td><td>Worker 结果映射</td><td><code>action.(CallResponseMapper)</code></td></tr>
+<tr><td><code>Progressor</code></td><td>进度读写</td><td><code>action.(Progressor)</code></td></tr>
+<tr><td><code>PreprocessProducer</code></td><td>预处理入队</td><td><code>action.(PreprocessProducer)</code></td></tr>
+<tr><td><code>Caller</code></td><td>直接调用后端（非 Worker 模式）</td><td><code>action.(Caller)</code></td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+  <strong>为什么用 Go 类型断言而不是全部放 Action 接口？</strong><br/>
+  因为不同类型的 action 需要的能力不同。比如 ComfyUI 需要 <code>Caller</code>（直连本地后端），而 commonAction 需要 <code>Generator</code>（生成 JobData 下发 Worker）。把所有方法塞进一个接口会产生大量空实现。Go 的类型断言就是天然的"可选接口"机制，等价于其他语言的 interface segregation。
+</div>
+
+<h4>类型断言怎么工作的？</h4>
+
+<p>关键点：<strong>编排函数的参数类型统一是 <code>Action</code>（核心接口），但通过 <code>action.(XxxInterface)</code> 在运行时探测具体实现是否"额外"实现了某个可选接口</strong>。<code>ok == true</code> 就调用该能力，<code>ok == false</code> 就跳过或报错。</p>
+
+<p>以 <code>Produce</code> 编排函数为例（<code>interface.go</code> 第 140 行）：</p>
+
+<pre><code>func Produce(ctx context.Context, appComponent *model.AppComponent,
+        action Action, msg *model.AppTaskMsg) error {
+    //         ^^^^^^ 参数类型是 Action 核心接口
+    //         但运行时的具体值可能是 commonAction、comfyuiAction 等
+
+    // 类型断言 ① —— 问："你实现了 MsgProducer 吗？"
+    msgProducer, ok := action.(MsgProducer)
+    if !ok {
+        // 没实现 → 报错（入队是必须能力）
+        return
+    }
+    action.Add(ctx, msg)                              // 入库
+    msgProducer.Produce(ctx, appComponent, msg)        // 入队
+
+    // 类型断言 ② —— 问："你还实现了 PreprocessProducer 吗？"
+    preprocessProducer, doPreprocess := action.(PreprocessProducer)
+    if appComponent.Preprocess && doPreprocess {
+        // 有预处理能力 + 配置启用了预处理 → 走预处理分支
+        return preprocessProducer.PreprocessProduce(ctx, msg)
+    }
+    // 没有预处理 → 走正常入队
+    return msgProducer.Produce(ctx, appComponent, msg)
+}</code></pre>
+
+<p>同理，<code>AfterCall</code> 里断言 <code>action.(CallResponseMapper)</code>，<code>GenerateTask</code> 里断言 <code>action.(Generator)</code>——整条编排链都是同一个套路。</p>
+
+<p><strong>类比</strong>：编排函数 = 流水线工位，<code>Action</code> 核心接口 = 工人的基本资质（人人都有），可选接口 = 工人的额外技能证书。流水线每个工位都会问：</p>
+<ul>
+  <li>"你有 <code>MsgProducer</code> 证吗？" → 有就干入队的活</li>
+  <li>"你有 <code>PreprocessProducer</code> 证吗？" → 有就先走预处理</li>
+  <li>"你有 <code>Caller</code> 证吗？" → 有就直接调外部 API</li>
+  <li>"你有 <code>Generator</code> 证吗？" → 有就生成任务等 Worker 消费</li>
+</ul>
+
+<p><strong>好处</strong>：新增一种 AI 能力时，只需要写一个 struct 实现需要的接口组合，编排函数完全不用改。比如新接一个供应商，只要 <code>commonAction</code> 能覆盖（它已经实现了 <code>MsgProducer</code> + <code>MsgConsumer</code> + <code>Generator</code> + <code>CallResponseMapper</code>），连新文件都不用建。</p>
+
+<h3>2.3 编排函数链</h3>
+
+<p>编排函数在 <code>interface.go</code> 中定义为包级函数，串联 action 的各个阶段：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    A["BeforeProduce<br/>参数映射"] --> B["Produce<br/>入库+入队"]
+    B --> C["Consume<br/>出队列"]
+    C --> D["BeforeCall<br/>调用前映射"]
+    D --> E["GenerateTask<br/>生成 JobData"]
+    E --> F["AfterCall<br/>结果处理"]
+
+    style A fill:#fef2f2,stroke:#b91c1c
+    style B fill:#fef2f2,stroke:#b91c1c
+    style C fill:#eef7ff,stroke:#2563eb
+    style D fill:#eef7ff,stroke:#2563eb
+    style E fill:#eef7ff,stroke:#2563eb
+    style F fill:#f0fdf4,stroke:#16a34a
+</pre>
+</div>
+
+<p>红色阶段在 <code>app-gateway</code>（提交侧）执行，蓝色阶段在 <code>worker-scheduler</code>（调度侧）执行，绿色是结果回写。</p>
+
+<h3>2.4 Base vs commonAction vs 专属 action</h3>
+
+<table>
+<thead><tr><th>层级</th><th>文件</th><th>角色</th></tr></thead>
+<tbody>
+<tr><td><code>Base</code></td><td><code>action_base.go</code></td><td>所有 action 的公共实现——Add/Run/Success/Failed/ProduceResult + 参数映射 MapRequest</td></tr>
+<tr><td><code>commonAction</code></td><td><code>action_common.go</code></td><td>嵌入 Base，实现 ZSet 队列入队/出队/抢占。<strong>大多数新供应商直接复用</strong></td></tr>
+<tr><td>专属 action</td><td><code>action_comfyui.go</code> / <code>action_midjourney.go</code> 等</td><td>只有流程差异很大的后端才需要单独写</td></tr>
+</tbody>
+</table>
+
+<!-- ====== 三、Redis 队列设计（重点） ====== -->
+<h2>三、Redis 队列设计（重点）</h2>
+
+<p>这是本节的核心内容。Scheduler 里<strong>同时存在两种 Redis 队列</strong>——旧版 List 和新版 Sorted Set。理解两者的区别和选型理由，是后端面试的高频考点。</p>
+
+<div class="highlight-box">
+  <strong>Redis 基础知识速补</strong>（已经熟悉 Redis 的可以跳过）<br/><br/>
+
+  <strong>Redis 是什么？</strong><br/>
+  Redis 是一个<strong>内存数据库</strong>（所有数据存在内存里，读写极快，单机 10 万+ QPS）。它不像 MySQL/Mongo 主要靠磁盘，所以速度快几个数量级，但代价是容量受内存限制。常用于：缓存、消息队列、分布式锁、计数器、排行榜等。<br/><br/>
+
+  <strong>Redis 的数据结构</strong>（面试必知）：<br/>
+  Redis 不是 key-value 那么简单，它的 value 可以是多种数据结构：<br/><br/>
+
+  <table>
+  <thead><tr><th>数据结构</th><th>类比</th><th>核心操作</th><th>典型场景</th></tr></thead>
+  <tbody>
+  <tr>
+    <td><strong>String</strong></td>
+    <td>一个变量</td>
+    <td><code>SET key value</code> / <code>GET key</code></td>
+    <td>缓存、计数器、分布式锁</td>
+  </tr>
+  <tr>
+    <td><strong>List</strong></td>
+    <td>双端链表（可当队列/栈）</td>
+    <td><code>LPush</code>（左推入）/ <code>RPop</code>（右弹出）/ <code>BRPop</code>（阻塞弹出）</td>
+    <td>消息队列（FIFO）、最近 N 条记录</td>
+  </tr>
+  <tr>
+    <td><strong>Hash</strong></td>
+    <td>一个对象 / dict</td>
+    <td><code>HSet key field value</code> / <code>HGet</code></td>
+    <td>存储对象的多个字段（用户信息等）</td>
+  </tr>
+  <tr>
+    <td><strong>Set</strong></td>
+    <td>无序去重集合</td>
+    <td><code>SAdd</code> / <code>SMembers</code> / <code>SInter</code>（交集）</td>
+    <td>标签、共同好友、去重</td>
+  </tr>
+  <tr>
+    <td><strong>Sorted Set (ZSet)</strong></td>
+    <td>有序去重集合（每个元素带一个分数 score）</td>
+    <td><code>ZAdd key score member</code> / <code>ZRange</code>（按 score 排序取）/ <code>ZRem</code>（删除）</td>
+    <td>排行榜、优先级队列、延时队列</td>
+  </tr>
+  <tr>
+    <td><strong>Stream</strong></td>
+    <td>日志流（类似 Kafka topic）</td>
+    <td><code>XAdd</code> / <code>XRead</code> / <code>XAck</code></td>
+    <td>消息队列（有消费组、ACK 机制）</td>
+  </tr>
+  </tbody>
+  </table>
+  <br/>
+
+  <strong>本项目用到的两种队列数据结构：</strong><br/><br/>
+
+  <strong>① List 当队列</strong>（旧版 ComfyUI 用）：<br/>
+  想象一根管子——左边推入（<code>LPush</code>），右边弹出（<code>BRPop</code>），先进先出（FIFO）。<code>BRPop</code> 的 "B" 是 Block（阻塞），意思是"如果队列空了，就傻等直到有新元素"——不需要轮询，等到就取。<br/><br/>
+
+  <pre><code>LPush myqueue "task-1"    → 队列: [task-1]
+LPush myqueue "task-2"    → 队列: [task-2, task-1]
+BRPop myqueue 0           → 弹出 "task-1"（最早的），队列: [task-2]
+                            （0 表示无限等待）</code></pre>
+
+  <strong>优点</strong>：简单，<code>BRPop</code> 天然原子（弹出 = 取走，不可能两人取到同一个）。<br/>
+  <strong>缺点</strong>：纯 FIFO 没法插队（优先级）、没法"先看一眼再决定要不要取"。<br/><br/>
+
+  <strong>② Sorted Set (ZSet) 当优先级队列</strong>（新版 commonAction 用）：<br/>
+  想象一个排行榜——每个元素有一个 score（分数），按 score 从小到大排列。<br/><br/>
+
+  <pre><code>ZAdd myqueue 1000 "user1::task-A"   → 按 score=1000 插入
+ZAdd myqueue 900  "user2::task-B"   → 按 score=900 插入
+ZAdd myqueue 1100 "user3::task-C"   → 按 score=1100 插入
+
+ZRange myqueue 0 -1                 → 按 score 排序返回:
+                                      ["user2::task-B",    score=900
+                                       "user1::task-A",    score=1000
+                                       "user3::task-C"]    score=1100
+
+ZRem myqueue "user2::task-B"        → 删除该元素，返回 1（成功删了 1 个）
+                                      如果另一个消费者也 ZRem 同一个元素 → 返回 0（已经被删了）</code></pre>
+
+  <strong>优点</strong>：可以按 score 排序（实现优先级或时间排序）、可以先 <code>ZRange</code> 看一批再决定取哪个（选择性消费）、<code>ZRem</code> 的返回值天然实现原子抢占。<br/>
+  <strong>缺点</strong>：不像 <code>BRPop</code> 能阻塞等待，需要轮询（定时去看有没有新的）。<br/><br/>
+
+  <strong>ZSet 的底层实现</strong>（面试加分项）：<br/>
+  Redis ZSet 内部用 <strong>跳表（Skip List）+ 哈希表</strong> 双结构：跳表维护 score 排序（支持范围查询 <code>ZRange</code>），哈希表维护 member → score 映射（支持 O(1) 查找 / 删除 <code>ZRem</code>）。时间复杂度：<code>ZAdd</code> / <code>ZRem</code> = O(log N)，<code>ZRange(0, K)</code> = O(log N + K)。<br/><br/>
+
+  <strong>为什么不用 Redis Stream？</strong><br/>
+  Stream 有消费组和 ACK 机制，看似更适合做消息队列。但 DM 的场景需要"先扫描一批 → 检查每个用户的并发 → 选择性消费"，Stream 的 <code>XReadGroup</code> 是"分配给你就是你的"，不支持这种"看了但不一定要"的模式。ZSet 的 <code>ZRange</code>（看）+ <code>ZRem</code>（选择性取）天然匹配。
+</div>
+
+<h3>3.1 两种队列对比</h3>
+
+<table>
+<thead><tr><th>维度</th><th>旧版 — List（ComfyUI/SD）</th><th>新版 — Sorted Set（commonAction）</th></tr></thead>
+<tbody>
+<tr><td><strong>数据结构</strong></td><td>Redis List</td><td>Redis Sorted Set (ZSet)</td></tr>
+<tr><td><strong>入队</strong></td><td><code>LPush</code></td><td><code>ZAdd(key, score, member)</code></td></tr>
+<tr><td><strong>出队</strong></td><td><code>BRPop</code>（阻塞弹出）</td><td><code>ZRange</code> + <code>ZRem</code>（轮询扫描 + 原子删除）</td></tr>
+<tr><td><strong>排序</strong></td><td>FIFO（先进先出）</td><td>按 score 排序（支持优先级 + 时间戳）</td></tr>
+<tr><td><strong>消息体</strong></td><td>完整 AppTaskMsg JSON</td><td>只存 <code>user::taskID</code>，完整数据在 Mongo</td></tr>
+<tr><td><strong>优先级</strong></td><td>不支持</td><td>多 key 隔离不同优先级</td></tr>
+<tr><td><strong>并发控制</strong></td><td>无</td><td>通过 member 里的 user 前缀做用户级限制</td></tr>
+<tr><td><strong>竞争安全</strong></td><td><code>BRPop</code> 原子弹出，天然安全</td><td><code>ZRem</code> 返回值 ≥ 1 才算抢到</td></tr>
+</tbody>
+</table>
+
+<div class="highlight-box">
+  <strong>为什么新版只在 Redis 存 ID 不存完整消息？</strong><br/>
+  <ul>
+    <li><strong>消息体大小</strong>：AppTaskMsg 可能包含 base64 图片、ComfyUI workflow JSON 等大字段，存完整消息会占用大量 Redis 内存</li>
+    <li><strong>ZSet member 限制</strong>：ZSet 对 member 做排序，member 越短性能越好</li>
+    <li><strong>一致性</strong>：任务参数可能在预处理阶段被修改，如果 Redis 里也存了一份，就要同步两处</li>
+    <li><strong>面试话术</strong>：Redis 做"索引层"、Mongo 做"数据层"，职责分离</li>
+  </ul>
+</div>
+
+<h3>3.2 ZSet 入队细节</h3>
+
+<p>入队代码在 <code>commonAction.Produce()</code>：</p>
+
+<pre><code>// key 格式：apps_pending_task::{priority}::{source}::{task_mode}::{cluster}::{env}
+key = priority.BuildPendingKey(pri, msg.Source, msg.TaskMode, msg.Cluster, dmfr.ENV())
+
+// member = "user::taskID"
+member := fmt.Sprintf("%s::%s", msg.GetRealUser(), msg.TaskID)
+
+// score = preprocessTime（毫秒时间戳）→ 先提交先消费
+c.dao.GetRedis().ZAdd(ctx, key, msg.PreprocessTime, member)</code></pre>
+
+<p>几个关键设计点：</p>
+
+<table>
+<thead><tr><th>设计点</th><th>做法</th><th>为什么</th></tr></thead>
+<tbody>
+<tr>
+  <td><strong>key 格式</strong></td>
+  <td><code>apps_pending_task::{priority}::{source}::{task_mode}::{cluster}::{env}</code></td>
+  <td>不同优先级用不同 key 隔离队列，消费时按优先级挑 key</td>
+</tr>
+<tr>
+  <td><strong>priority=0 时 key 少一段</strong></td>
+  <td><code>apps_pending_task::{source}::{task_mode}::{cluster}::{env}</code>（无 priority 段）</td>
+  <td>向后兼容——旧任务没有优先级概念，key 格式不能变</td>
+</tr>
+<tr>
+  <td><strong>score = 毫秒时间戳</strong></td>
+  <td><code>msg.PreprocessTime</code></td>
+  <td>同优先级内先来先服务（FIFO 语义）</td>
+</tr>
+<tr>
+  <td><strong>member 包含 user</strong></td>
+  <td><code>user::taskID</code></td>
+  <td>出队时用 user 前缀做并发控制，不需要额外查询</td>
+</tr>
+</tbody>
+</table>
+
+<p><code>BuildPendingKey</code> 的实现在 <code>pkg/priority/queue_key.go</code>，只有 18 行：</p>
+
+<pre><code>func BuildPendingKey(priority int, source, taskMode, cluster, env string) string {
+    if priority == 0 {
+        return fmt.Sprintf("apps_pending_task::%s::%s::%s::%s",
+            source, taskMode, cluster, env)
+    }
+    return fmt.Sprintf("apps_pending_task::%d::%s::%s::%s::%s",
+        priority, source, taskMode, cluster, env)
+}</code></pre>
+
+<h3>3.3 ZSet 出队 — 乐观抢占模式</h3>
+
+<p>出队是整个队列设计最精妙的部分。代码在 <code>commonAction.tryConsume()</code>：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    A["ZRange(0, 255)<br/>批量扫描前 256 个 member"] --> B{遍历每个 member}
+    B --> C{"splitMember(member)<br/>解析出 user 和 taskID"}
+    C --> D{"user 为空或 taskID 为空？"}
+    D -->|是| E["ZRem 清理脏数据"]
+    D -->|否| F{"ConcurrentManager.GetUser()<br/>该用户是否已有任务在跑？"}
+    F -->|有并发冲突| G["加入 queueJob 跳过"]
+    F -->|无冲突| H["grabJob() 尝试抢占"]
+    H --> I{"ZRem 返回值 ≥ 1？"}
+    I -->|是，抢到了| J["从 Mongo 加载完整消息<br/>注册到 etcd<br/>返回成功"]
+    I -->|否，被别人抢了| K["继续遍历"]
+    G --> L["第一轮结束后<br/>遍历 queueJob（第二轮）"]
+    L --> H
+</pre>
+</div>
+
+<p>核心代码简化版：</p>
+
+<pre><code>func (c *commonAction) tryConsume(ctx context.Context, pri int, msg *model.AppTaskMsg) error {
+    pendingTaskKey := priority.BuildPendingKey(pri, ...)
+    members, _ := rds.ZRange(ctx, pendingTaskKey, 0, 255)
+
+    queueJob := []string{}  // 有并发冲突的 member，第二轮再试
+    for _, member := range members {
+        user, taskID := c.splitMember(member)
+
+        // 检查该用户是否已有任务在跑
+        if c.concurrentManager.GetUser(source, taskMode, cluster, user) >= 1 {
+            queueJob = append(queueJob, member)
+            continue  // 先跳过，给其他用户机会
+        }
+        if err := c.grabJob(ctx, pendingTaskKey, member, msg); err == nil {
+            return nil  // 抢到了！
+        }
+    }
+    // 第二轮：消费有并发冲突的任务（所有无冲突的都没抢到时）
+    for _, member := range queueJob {
+        if err := c.grabJob(ctx, pendingTaskKey, member, msg); err == nil {
+            return nil
+        }
+    }
+    return err
+}
+
+func (c *commonAction) grabJob(ctx context.Context, key, member string, msg *model.AppTaskMsg) error {
+    num, _ := c.dao.GetRedis().ZRem(ctx, key, member)
+    if num < 1 {
+        return err  // 被别的 scheduler 抢走了
+    }
+    // 抢到了：从 Mongo 加载完整消息 + 注册到 etcd
+    c.dao.GetAppRecord(ctx, taskID, msg)
+    c.schedulerDao.AddTask(ctx, msg)
+    return nil
+}</code></pre>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：ZRem 的"乐观抢占"为什么不需要 Lua 脚本？</h4>
+  <ol>
+    <li><strong>ZRem 本身是原子操作</strong>：Redis 单线程模型下，<code>ZRem</code> 返回的 removed count 天然保证只有一个消费者能抢到同一个 member</li>
+    <li><strong>无需 "读-判断-删" 的原子包装</strong>：<code>ZRange</code> 只是"看一眼"候选列表，真正的竞争点在 <code>ZRem</code>。多个 scheduler 实例同时 <code>ZRange</code> 到同一个 member 没关系——谁先 <code>ZRem</code> 成功谁赢</li>
+    <li><strong>对比 BRPop</strong>：List 的 <code>BRPop</code> 也是原子弹出，但它是阻塞式的（没消息时会 block），而且不支持"跳过某些消息"——ZSet + ZRange 可以先扫描、按条件过滤（如并发检查），再决定抢哪个</li>
+    <li><strong>什么时候需要 Lua？</strong> 如果需要"读 → 检查条件 → 删"三步原子化（比如"只删 score 小于某个值的 member"），就需要 Lua 脚本。这里不需要，因为条件检查（并发控制）是在应用层做的，Redis 侧只负责原子抢占</li>
+  </ol>
+</div>
+
+<h3>3.4 两轮扫描策略</h3>
+
+<p>为什么要分两轮？</p>
+
+<ol>
+  <li><strong>第一轮</strong>：跳过有并发冲突的用户（<code>GetUser() >= 1</code>），优先消费没有任务在跑的用户——<strong>公平性</strong>，防止一个高频用户霸占所有 Worker</li>
+  <li><strong>第二轮</strong>：如果第一轮没抢到任何任务（可能所有无冲突用户的任务都被别的 scheduler 抢了），再回来消费有并发冲突的用户——<strong>吞吐量</strong>，不让 Worker 空转</li>
+</ol>
+
+<p>这是一个典型的 <strong>公平性 vs 吞吐量</strong> 的权衡。第一轮保公平，第二轮保吞吐。</p>
+
+<h3>3.5 后端面试延伸：Redis 数据结构选型</h3>
+
+<div class="defend">
+  <h4>🛡️ 面试题：Redis List vs ZSet vs Stream 各自适合什么场景？</h4>
+
+  <table>
+  <thead><tr><th>数据结构</th><th>适用场景</th><th>优势</th><th>劣势</th></tr></thead>
+  <tbody>
+  <tr>
+    <td><strong>List</strong></td>
+    <td>简单 FIFO 队列、不需要优先级</td>
+    <td><code>BRPop</code> 阻塞等待，零轮询开销；原子弹出天然安全</td>
+    <td>不支持按条件跳过消息、不支持优先级、不支持消费确认</td>
+  </tr>
+  <tr>
+    <td><strong>Sorted Set</strong></td>
+    <td>需要优先级、需要按条件过滤的任务队列</td>
+    <td>score 支持排序/优先级；member 可以编码业务信息；<code>ZRem</code> 原子抢占</td>
+    <td>需要轮询（无阻塞等待语义）；底层 skiplist 内存开销略大于 List</td>
+  </tr>
+  <tr>
+    <td><strong>Stream</strong></td>
+    <td>消息流、需要消费组和 ACK 的场景</td>
+    <td>原生支持消费组（Consumer Group）、消息确认（ACK）、消息回溯</td>
+    <td>API 复杂；不适合"按条件跳过某条消息"的场景；消息堆积时内存增长</td>
+  </tr>
+  </tbody>
+  </table>
+
+  <p><strong>DM 为什么选 ZSet 不选 Stream？</strong></p>
+  <ul>
+    <li>DM 需要"按用户并发数跳过某些任务"——Stream 的 Consumer Group 是顺序消费，做不到跳过</li>
+    <li>DM 的消费确认通过 etcd 注册 + Mongo 状态机实现，不需要 Stream 的 ACK</li>
+    <li>ZSet 的 member 天然支持编码 <code>user::taskID</code>，解析简单</li>
+  </ul>
+</div>
+
+<div class="highlight-box">
+  <strong>ZSet 底层实现（面试常问）</strong><br/>
+  Redis ZSet 底层有两种编码：
+  <ul>
+    <li><strong>ziplist</strong>（元素少且小时）：紧凑数组，内存友好但查找 O(n)</li>
+    <li><strong>skiplist + hashtable</strong>（元素多时）：skiplist 支持 O(log n) 范围查询（ZRange），hashtable 支持 O(1) 单元素查找（ZScore/ZRem）</li>
+  </ul>
+  <p>DM 的 pending 队列通常有几十到上千个 member，走的是 skiplist + hashtable 编码。<code>ZRange(0, 255)</code> 的时间复杂度是 O(log n + 256)，<code>ZRem</code> 是 O(log n)。</p>
+</div>
+
+<!-- ====== 四、优先级调度 — WeightedScheduler ====== -->
+<h2>四、优先级调度 — WeightedScheduler</h2>
+
+<p>不同的任务可以有不同优先级（由 APP 配置决定）。高优先级任务应该更快被消费——但不能让低优先级永远饿死。解决方案是<strong>加权轮询（Weighted Round-Robin）</strong>。</p>
+
+<h3>4.1 算法原理</h3>
+
+<p>代码在 <code>pkg/priority/scheduler.go</code>：</p>
+
+<pre><code>// NextPriority 选出本次应消费的 priority
+func (s *WeightedScheduler) NextPriority(qctx QueueContext, cfg *Config) (int, bool) {
+    // 1. 按 priority 降序排列所有队列配置
+    sortedCfg := cfg.SortedQueues()
+
+    // 2. 找到第一个还有配额的 priority
+    if pri, found := pickPriority(st, sortedCfg); found {
+        st.counters[pri]--   // 消耗一个配额
+        return pri, true
+    }
+
+    // 3. 所有配额耗尽 → 重置，重新开始一轮
+    resetCounters(st, sortedCfg)
+    if pri, found := pickPriority(st, sortedCfg); found {
+        st.counters[pri]--
+        return pri, true
+    }
+    return 0, false
+}</code></pre>
+
+<p>举个例子：配置 <code>[{priority:2, weight:5}, {priority:1, weight:3}, {priority:0, weight:2}]</code>，那么一轮 10 次消费中，priority=2 被选 5 次，priority=1 被选 3 次，priority=0 被选 2 次。一轮消耗完后，配额重置，开始新一轮。</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    A["NextPriority()"] --> B{"有配额的 priority？"}
+    B -->|有| C["选中，配额 -1"]
+    B -->|全耗尽| D["resetCounters()<br/>所有配额重置为 weight"]
+    D --> E["再选一次"]
+    E --> C
+</pre>
+</div>
+
+<h3>4.2 Consume 的三层消费策略</h3>
+
+<p><code>commonAction.Consume()</code> 实际消费时有三层策略（代码在 <code>action_common.go</code>）：</p>
+
+<ol>
+  <li><strong>无 queues 配置</strong> → 等价于旧行为，只消费 priority=0 的队列</li>
+  <li><strong>加权选择</strong> → 调 <code>WeightedScheduler.NextPriority()</code> 选一个 priority，尝试 <code>tryConsume</code></li>
+  <li><strong>降序兜底</strong> → 如果加权选的队列空了，按 priority 降序逐个试所有声明的队列</li>
+</ol>
+
+<pre><code>// 1. 无 queues 配置 → 原行为
+if cfg == nil || len(cfg.Queues) == 0 {
+    c.tryConsume(ctx, 0, msg)
+    return
+}
+// 2. 加权选
+if cfg.Enabled && c.prioScheduler != nil {
+    if pri, ok := c.prioScheduler.NextPriority(qctx, cfg); ok {
+        if c.tryConsume(ctx, pri, msg) == nil && msg.TaskID != "" {
+            return
+        }
+    }
+}
+// 3. 降序兜底
+for _, p := range priority.AllPriorities(cfg) {
+    if c.tryConsume(ctx, p, msg) == nil && msg.TaskID != "" {
+        return
+    }
+}</code></pre>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：加权调度怎么解决低优先级饥饿问题？</h4>
+  <ol>
+    <li><strong>配额制保底</strong>：即使 priority=0 的 weight 只有 2，每 10 次消费也至少被选 2 次——不会永远饿死</li>
+    <li><strong>降序兜底</strong>：加权选空后，会按 priority 降序遍历所有队列。如果高优先级队列恰好空了，低优先级任务就有机会被消费</li>
+    <li><strong>对比纯优先级（strict priority）</strong>：如果用"高优先级队列非空就不看低优先级"的策略，低优先级在高负载时会完全饿死。加权轮询是经典的公平调度方案</li>
+  </ol>
+</div>
+
+<!-- ====== 五、用户并发控制 ====== -->
+<h2>五、用户并发控制</h2>
+
+<p>DM 需要限制单个用户在同一类任务上的并发数（防止一个用户的大量请求占满 Worker）。实现方式是内存级计数 + CAS 原子操作。</p>
+
+<h3>5.1 ConcurrentManager</h3>
+
+<p>代码在 <code>app/worker-scheduler/manager/concurrent.go</code>：</p>
+
+<pre><code>type ConcurrentManager struct {
+    taskMap *ConcurrentMap[string, *atomic.Int64]  // source::taskMode::cluster → 计数
+    userMap *ConcurrentMap[string, *atomic.Int64]  // source::taskMode::cluster::user → 计数
+}</code></pre>
+
+<p>两个 map 分别跟踪<strong>任务维度</strong>和<strong>用户维度</strong>的并发数。</p>
+
+<h3>5.2 CAS 原子操作</h3>
+
+<p>增减计数时使用 CAS（Compare-And-Swap）循环，保证并发安全且不加锁：</p>
+
+<pre><code>func (c *ConcurrentManager) addClampNonNegative(v *atomic.Int64, delta int64) int64 {
+    for {
+        curr := v.Load()
+        if delta < 0 && curr == 0 { return 0 }     // 不能减到负数
+        next := curr + delta
+        if delta < 0 && next < 0 { next = 0 }      // 钳位到 0
+        if v.CompareAndSwap(curr, next) {           // CAS：成功则返回，失败则重试
+            return next
+        }
+    }
+}</code></pre>
+
+<div class="highlight-box">
+  <strong>CAS vs 互斥锁（面试常问）</strong><br/>
+  <ul>
+    <li><strong>CAS</strong>（乐观锁）：不阻塞其他 goroutine，竞争低时性能好；竞争激烈时会空转重试</li>
+    <li><strong>Mutex</strong>（悲观锁）：竞争时直接阻塞等待，不空转；但有 goroutine 调度开销</li>
+    <li>这里用 CAS 合适，因为并发计数的更新频率不高（每个任务开始/结束时各一次），竞争极低</li>
+  </ul>
+</div>
+
+<h3>5.3 etcd Watch 驱动</h3>
+
+<p>ConcurrentManager 的计数由 <code>worker-scheduler</code> 维护。当一个新任务被注册到 etcd（<code>/task/{env}/{taskID}</code>），Watch 事件会触发 <code>ConcurrentManager.Add(..., +1)</code>；当任务完成或 Worker 挂掉导致 etcd key 过期删除，Watch 事件触发 <code>Add(..., -1)</code>。</p>
+
+<p>这意味着 ConcurrentManager 的计数是<strong>最终一致</strong>的——etcd 保证 Watch 事件的有序投递，内存计数跟随 etcd 的真实状态。</p>
+
+<!-- ====== 六、完整数据流：一次任务的全链路 ====== -->
+<h2>六、完整数据流：一次任务的全链路</h2>
+
+<p>把前面所有内容串起来，一次任务从提交到完成的完整链路：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant O as api-outer
+    participant AG as app-gateway
+    participant R as Redis (ZSet)
+    participant M as MongoDB
+    participant WS as worker-scheduler
+    participant E as etcd
+    participant W as worker-sidecar
+    participant K as Kafka
+
+    C->>O: POST /apps/{app}/run
+    O->>O: JWT 认证 + API 模块权限
+
+    rect rgb(254,242,242)
+    Note over AG: 提交阶段（BeforeProduce → Produce）
+    O->>AG: RunApp(...)
+    AG->>AG: CheckAppAccess + MapRequest（参数映射）
+    AG->>M: AddAppRecord(status=queued)
+    AG->>R: ZAdd(pendingKey, preprocessTime, "user::taskID")
+    AG-->>O: task_id
+    O-->>C: task_id
+    end
+
+    rect rgb(238,247,255)
+    Note over WS: 调度阶段（Consume → GenerateTask）
+    W->>WS: report consume（我空闲了）
+    WS->>WS: WeightedScheduler.NextPriority()
+    WS->>R: ZRange(0, 255) 扫描候选
+    WS->>WS: 并发检查 + 两轮扫描
+    WS->>R: ZRem(pendingKey, member) 原子抢占
+    WS->>M: GetAppRecord 加载完整消息
+    WS->>E: AddTask 注册 running task
+    WS->>M: RunAppRecord(status=running)
+    WS-->>W: JobReportData
+    end
+
+    rect rgb(240,253,244)
+    Note over W: 执行 + 结果回写阶段
+    W->>W: 执行推理（调后端 API）
+    W->>WS: report result
+    WS->>WS: AfterCall + MapCallResponse
+    WS->>M: SuccessAppRecord(status=success)
+    WS->>K: WriteResult（Kafka）
+    WS->>E: DeleteTask 删除注册
+    end
+
+    C->>O: GET /apps/{app}/status?task_id=xxx
+    O->>AG: GetStatus
+    AG->>M: 读取 record
+    AG-->>C: status + output
+</pre>
+</div>
+
+<!-- ====== 七、面试防守 ====== -->
+<h2>七、面试防守合集</h2>
+
+<div class="defend">
+  <h4>🛡️ Q1：Redis ZSet 为什么比 List 更适合任务队列？</h4>
+  <p>List 只支持 FIFO，不能按优先级排序，不能跳过某些消息。ZSet 的 score 天然支持排序（优先级 + 时间戳），member 可以编码业务信息（用户 ID），<code>ZRange</code> 可以批量扫描后按条件过滤再 <code>ZRem</code> 抢占。但 List 的 <code>BRPop</code> 是阻塞式零轮询，延迟比 ZSet 的轮询模式更低——如果不需要优先级和并发控制，List 反而更好（这就是 ComfyUI 还在用 List 的原因）。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ Q2：ZRange + ZRem 和 BRPop 各自怎么保证竞争安全？</h4>
+  <p><strong>BRPop</strong>：Redis 单线程 + 原子弹出，多个消费者同时 <code>BRPop</code> 时只有一个能拿到消息。<strong>ZRange + ZRem</strong>：<code>ZRange</code> 只是"看"，多个消费者可以同时看到同一个 member；竞争点在 <code>ZRem</code>——Redis 单线程保证只有一个 <code>ZRem</code> 返回 1，其他返回 0。本质都是利用 Redis 单线程的原子性，只是切入点不同。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ Q3：为什么新版队列只在 Redis 存 ID 不存完整消息？</h4>
+  <p>三个原因：① AppTaskMsg 可能含 base64 图片等大字段，存 Redis 浪费内存且拖慢 ZSet 排序；② 任务参数在预处理阶段可能被修改，如果 Redis 也存了一份就要双写同步；③ Redis 做"索引"、Mongo 做"数据"，职责分离——这是分布式系统常见的"热索引 + 冷存储"模式。</p>
+</div>
+
+<div class="defend">
+  <h4>🛡️ Q4：加权优先级调度的饥饿问题怎么解决？</h4>
+  <p>用配额制：每个 priority 有固定 weight，一轮内按 weight 比例分配消费次数，耗尽后重置。即使 weight=1，每轮也至少被选一次。加上"降序兜底"策略——加权选空后会遍历所有队列，如果高优先级队列恰好空了，低优先级立刻有机会。跟 Linux CFS 调度器的 vruntime 思路类似，但实现更简单。</p>
+</div>
+
+<!-- ====== 八、Quiz ====== -->
+<h2>八、检索练习</h2>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. commonAction 的 ZSet 入队时，score 用的是什么值？</p>
+  <ul class="quiz-options">
+    <li>A. 用户 ID 的 hash</li>
+    <li>B. 任务优先级数值</li>
+    <li>C. preprocessTime（毫秒时间戳）</li>
+    <li>D. 随机数</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>C</strong>。score = <code>msg.PreprocessTime</code>，即任务预处理完成的毫秒时间戳。ZSet 按 score 升序排列，所以先提交的任务 score 更小、排在前面——实现同优先级内的 FIFO 语义。优先级通过不同的 Redis key 隔离，不是通过 score。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. tryConsume 的两轮扫描，第一轮跳过、第二轮才消费的是什么任务？</p>
+  <ul class="quiz-options">
+    <li>A. 优先级低的任务</li>
+    <li>B. 已经超时的任务</li>
+    <li>C. 该用户已有任务在跑的（并发冲突）</li>
+    <li>D. score 太大的任务</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>C</strong>。第一轮通过 <code>ConcurrentManager.GetUser() >= 1</code> 检查，如果该用户已有任务在运行，就先跳过，放入 <code>queueJob</code> 列表。这样优先消费没有任务在跑的用户，保证公平性。第二轮再回来消费有并发冲突的任务，保证吞吐量。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q3. grabJob() 里用什么操作来实现"乐观抢占"？</p>
+  <ul class="quiz-options">
+    <li>A. Redis Lua 脚本</li>
+    <li>B. 分布式锁（SETNX）</li>
+    <li>C. ZRem 返回值判断（≥ 1 则抢到）</li>
+    <li>D. 乐观锁（Mongo 版本号）</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>C</strong>。<code>ZRem</code> 在 Redis 单线程下是原子的，返回被删除的元素数量。多个 scheduler 实例同时 <code>ZRem</code> 同一个 member，只有一个返回 1（抢到），其他返回 0。不需要 Lua 脚本，因为竞争点只在这一个操作上。
+  </div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q4. WeightedScheduler 的加权轮询，当所有 priority 的配额都耗尽时会怎样？</p>
+  <ul class="quiz-options">
+    <li>A. 返回错误，等待下一轮</li>
+    <li>B. 随机选一个 priority</li>
+    <li>C. 重置所有配额为初始 weight，重新开始一轮</li>
+    <li>D. 只消费 priority=0 的队列</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">
+    <strong>C</strong>。<code>resetCounters()</code> 把所有 priority 的计数器重置为配置的 weight 值，然后再 <code>pickPriority()</code> 选一次。这保证了加权比例在长期运行中保持稳定。如果 reset 后仍然选不到（所有 weight ≤ 0），才返回 false。
+  </div>
+</div>
+
+<div class="resource-recommend">
+  <strong>📖 推荐阅读</strong>：<code>docs/dreammaker-architecture/dm-architecture.md</code>（团队架构文档，含任务流完整描述）+ <code>docs/dreammaker-architecture/gpu-resource-scheduling.md</code>（GPU 调度相关）。
+</div>
+
+<div class="followup">
+  <h4>💬 followup 问题（跟我继续聊）</h4>
+  <ul>
+    <li>"worker-scheduler 的 Leader 选举怎么做的？" → 下一节 S003</li>
+    <li>"etcd 的 Worker/Task 注册和心跳机制？" → 下一节 S003</li>
+    <li>"自研 Autoscaler 是怎么决定扩缩容的？" → 下一节 S003</li>
+    <li>"ComfyUI 的 List 队列代码在哪？我想对比看看"</li>
+    <li>"priority 配置从哪来的？怎么热加载？"</li>
+  </ul>
+</div>
+
+<nav class="lesson-nav">
+  <a href="S001-scheduler-architecture-overview.html">← S001 架构总览</a>
+  <a href="S003-worker-scheduling-high-availability.html">S003 Worker 调度与高可用 →</a>
+</nav>
+
+</body>
+</html>

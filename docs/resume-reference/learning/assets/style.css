@@ -219,9 +219,9 @@ li { margin: 0.35rem 0; }
   overflow-x: auto;
   overflow-y: hidden;
 }
-/* Mermaid 生成的 SVG 默认会缩放到容器宽度，禁用它以显示真实字号 */
+/* Mermaid SVG：限制宽度不超出容器，高度自适应 */
 .diagram .mermaid svg {
-  max-width: none !important;
+  max-width: 100% !important;
   height: auto !important;
 }
 }

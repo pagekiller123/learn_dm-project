@@ -303,6 +303,39 @@ ZRem myqueue "user2::task-B"        → 删除该元素，返回 1（成功删�
   </ul>
 </div>
 
+<div class="highlight-box">
+  <strong>重要认知：不是一个大队列，而是很多小队列</strong><br/><br/>
+
+  你可能以为所有任务都堆在同一个 Redis 队列里——不是的。DM 按 <strong>4 个维度</strong> 拆成了很多独立的 ZSet 队列，每个 Redis key 就是一个队列：<br/><br/>
+
+  <code>apps_pending_task::{priority}::{source}::{taskMode}::{cluster}::{env}</code><br/><br/>
+
+  <table>
+  <thead><tr><th>维度</th><th>含义</th><th>示例值</th></tr></thead>
+  <tbody>
+  <tr><td><strong>priority</strong></td><td>优先级等级</td><td>0、1、2</td></tr>
+  <tr><td><strong>source</strong></td><td>请求来源</td><td><code>dm</code>、<code>sf</code>、<code>mj</code></td></tr>
+  <tr><td><strong>taskMode</strong></td><td>任务模式</td><td><code>default</code>、<code>fast</code></td></tr>
+  <tr><td><strong>cluster</strong></td><td>资源集群</td><td><code>v2prod</code>、<code>aliyun-hangzhou-1</code></td></tr>
+  </tbody>
+  </table>
+  <br/>
+
+  再加上 <code>env</code>（test/prod），每一种组合就是一个独立队列。比如线上可能同时存在：<br/>
+  <pre><code>apps_pending_task::dm::default::v2prod::prod          ← 普通优先级
+apps_pending_task::2::dm::default::v2prod::prod       ← 高优先级（priority=2）
+apps_pending_task::dm::fast::aliyun-hangzhou-1::prod  ← 快速模式、阿里云集群
+apps_pending_task::sf::default::v2prod::prod          ← sf 来源</code></pre>
+
+  <strong>为什么要拆？</strong><br/>
+  <ul>
+    <li><strong>隔离性</strong>：不同 cluster 的 Worker 只能消费自己 cluster 的任务，拆开后直接盯对应 key，不用过滤</li>
+    <li><strong>限流独立</strong>：不同 source / taskMode 的消费规则和限流策略不同</li>
+    <li><strong>优先级调度</strong>：拆成多个 key 后，WeightedScheduler 才能在不同 priority 之间按权重轮询</li>
+    <li><strong>性能</strong>：小队列的 ZRange 扫描量小，不用在一个巨大 ZSet 里翻找"哪些是我能消费的"</li>
+  </ul>
+</div>
+
 <h3>3.2 ZSet 入队细节</h3>
 
 <p>入队代码在 <code>commonAction.Produce()</code>：</p>
@@ -359,20 +392,21 @@ c.dao.GetRedis().ZAdd(ctx, key, msg.PreprocessTime, member)</code></pre>
 
 <p>出队是整个队列设计最精妙的部分。代码在 <code>commonAction.tryConsume()</code>：</p>
 
-<div class="diagram">
+<div class="diagram" style="max-width: 600px; margin-left: auto; margin-right: auto;">
 <pre class="mermaid">
+%%{init: {'flowchart': {'nodeSpacing': 15, 'rankSpacing': 25}, 'themeVariables': {'fontSize': '12px'}}}%%
 flowchart TB
-    A["ZRange(0, 255)<br/>批量扫描前 256 个 member"] --> B{遍历每个 member}
-    B --> C{"splitMember(member)<br/>解析出 user 和 taskID"}
+    A["ZRange(0, 255) 批量扫描前 256 个 member"] --> B{遍历每个 member}
+    B --> C{"splitMember 解析出 user 和 taskID"}
     C --> D{"user 为空或 taskID 为空？"}
     D -->|是| E["ZRem 清理脏数据"]
-    D -->|否| F{"ConcurrentManager.GetUser()<br/>该用户是否已有任务在跑？"}
+    D -->|否| F{"GetUser() 该用户已有任务在跑？"}
     F -->|有并发冲突| G["加入 queueJob 跳过"]
     F -->|无冲突| H["grabJob() 尝试抢占"]
     H --> I{"ZRem 返回值 ≥ 1？"}
-    I -->|是，抢到了| J["从 Mongo 加载完整消息<br/>注册到 etcd<br/>返回成功"]
+    I -->|是，抢到了| J["从 Mongo 加载消息 → 注册 etcd → 成功"]
     I -->|否，被别人抢了| K["继续遍历"]
-    G --> L["第一轮结束后<br/>遍历 queueJob（第二轮）"]
+    G --> L["第一轮结束 → 遍历 queueJob（第二轮）"]
     L --> H
 </pre>
 </div>
@@ -612,8 +646,138 @@ for _, p := range priority.AllPriorities(cfg) {
 
 <p>这意味着 ConcurrentManager 的计数是<strong>最终一致</strong>的——etcd 保证 Watch 事件的有序投递，内存计数跟随 etcd 的真实状态。</p>
 
-<!-- ====== 六、完整数据流：一次任务的全链路 ====== -->
-<h2>六、完整数据流：一次任务的全链路</h2>
+<!-- ====== 六、Kafka 事件广播 ====== -->
+<h2>六、Kafka 事件广播</h2>
+
+<p>前面讲的 Redis 队列负责<strong>任务调度</strong>（谁下一个被消费），但任务完成后，结果怎么通知给下游系统？这就是 Kafka 的角色——<strong>事件广播</strong>。</p>
+
+<div class="highlight-box">
+  <strong>Kafka 基础知识速补</strong>（已经熟悉 Kafka 的可以跳过）<br/><br/>
+
+  <strong>Kafka 是什么？</strong><br/>
+  Kafka 是一个<strong>分布式消息队列</strong>（更准确地说是"分布式事件流平台"）。它的核心能力是：生产者把消息写入 Kafka，消费者按自己的节奏读取——生产和消费完全解耦。<br/><br/>
+
+  跟 Redis 队列最大的区别：<strong>Kafka 的消息被消费后不会消失</strong>，它会按配置的保留时间（比如 7 天）一直存着，多个消费者可以独立读取同一批消息。而 Redis 的 <code>BRPop</code> / <code>ZRem</code> 是"取走就没了"。<br/><br/>
+
+  <strong>四个核心概念：</strong><br/><br/>
+
+  <table>
+  <thead><tr><th>概念</th><th>类比</th><th>说明</th></tr></thead>
+  <tbody>
+  <tr>
+    <td><strong>Topic</strong></td>
+    <td>频道 / 主题</td>
+    <td>消息的分类。比如"任务结果"一个 topic，"状态变更"一个 topic</td>
+  </tr>
+  <tr>
+    <td><strong>Partition</strong></td>
+    <td>频道里的多条车道</td>
+    <td>一个 topic 拆成多个 partition，并行写入和消费。同一个 key 的消息总是落在同一个 partition（保序）</td>
+  </tr>
+  <tr>
+    <td><strong>Consumer Group</strong></td>
+    <td>订阅组</td>
+    <td>同一个 group 内的消费者瓜分 partition（每条消息只被组内一个消费者处理）；不同 group 各自独立消费全量消息</td>
+  </tr>
+  <tr>
+    <td><strong>Offset</strong></td>
+    <td>书签 / 读到第几页</td>
+    <td>每个 consumer group 在每个 partition 上记录"读到哪了"，下次从这里继续</td>
+  </tr>
+  </tbody>
+  </table>
+  <br/>
+
+  <strong>一句话理解 Kafka 和 Redis 队列的定位差异：</strong><br/>
+  Redis 队列是"<strong>抢活干</strong>"——多个消费者竞争同一个任务，抢到就是你的（调度）。<br/>
+  Kafka 是"<strong>广播通知</strong>"——一条消息可以被多个下游系统各自消费一遍（事件分发）。
+</div>
+
+<h3>6.1 DM 里 Kafka 怎么用的</h3>
+
+<p>Scheduler 里有两个 Kafka 写入点：</p>
+
+<table>
+<thead><tr><th>函数</th><th>写入时机</th><th>消息内容</th><th>下游消费者（内部服务）</th></tr></thead>
+<tbody>
+<tr>
+  <td><code>WriteResult</code></td>
+  <td>任务成功 / 失败后</td>
+  <td>完整的 <code>AppTaskMsg</code>（含 output）</td>
+  <td><code>consumer</code> 服务：数据上报、告警、埋点、模型统计</td>
+</tr>
+<tr>
+  <td><code>WriteStep</code></td>
+  <td>任务每一步状态变化时</td>
+  <td><code>AppTaskMsgStep</code>（状态转换事件）</td>
+  <td><code>monitor</code> 服务：Prometheus 指标（运行时间、排队时间等）</td>
+</tr>
+</tbody>
+</table>
+
+<p><strong>注意</strong>：Kafka 通知的是<strong>内部后台服务</strong>（统计、监控、告警），不是用户。用户获取结果走的是 <code>GET /apps/{app}/status</code> 查 Mongo——Kafka 和用户之间没有直接关系。</p>
+
+<p>核心代码非常简单：</p>
+
+<pre><code>func (d *Dao) WriteResult(ctx context.Context, taskMsg *model.AppTaskMsg) error {
+    dataBytes, _ := json.Marshal(taskMsg)
+    return d.kafkaResult.WriteMessages(ctx, kafka.Message{
+        Key:   []byte(taskMsg.TaskID),   // 同一个 task 的消息落在同一个 partition
+        Value: dataBytes,
+    })
+}</code></pre>
+
+<p>注意 <code>Key = TaskID</code>——Kafka 按 key 做 partition 路由，这保证<strong>同一个任务的所有消息在同一个 partition 内有序</strong>。</p>
+
+<h3>6.2 为什么不直接用 Redis 或 Mongo 通知下游？</h3>
+
+<table>
+<thead><tr><th>方案</th><th>问题</th></tr></thead>
+<tbody>
+<tr>
+  <td>直接查 Mongo</td>
+  <td>下游要轮询 Mongo"有没有新结果"，延迟高、浪费查询</td>
+</tr>
+<tr>
+  <td>Redis Pub/Sub</td>
+  <td>不持久化——消费者没在线时消息就丢了，无法回溯</td>
+</tr>
+<tr>
+  <td>Redis 再搞一个队列</td>
+  <td>一个消息只能被一个消费者取走，无法多下游各自消费</td>
+</tr>
+<tr>
+  <td><strong>Kafka</strong></td>
+  <td>持久化 + 多 consumer group 独立消费 + 按 key 保序 ✅</td>
+</tr>
+</tbody>
+</table>
+
+<h3>6.3 面试对比：Redis 队列 vs Kafka</h3>
+
+<div class="highlight-box">
+  <table>
+  <thead><tr><th>维度</th><th>Redis 队列（ZSet / List）</th><th>Kafka</th></tr></thead>
+  <tbody>
+  <tr><td><strong>定位</strong></td><td>任务调度——"谁下一个被消费"</td><td>事件广播——"通知所有关心的人"</td></tr>
+  <tr><td><strong>消费模式</strong></td><td>竞争消费（取走就没了）</td><td>每个 consumer group 独立消费全量</td></tr>
+  <tr><td><strong>持久化</strong></td><td>内存为主，重启可能丢</td><td>磁盘持久化，可配置保留天数</td></tr>
+  <tr><td><strong>吞吐量</strong></td><td>单机 10万+ QPS，但单线程</td><td>分布式多 partition 并行，百万级 QPS</td></tr>
+  <tr><td><strong>顺序性</strong></td><td>单 key 内有序</td><td>单 partition 内有序（按 key 路由）</td></tr>
+  <tr><td><strong>延迟</strong></td><td>微秒级（内存）</td><td>毫秒级（要落盘）</td></tr>
+  <tr><td><strong>回溯</strong></td><td>不支持（消费了就没了）</td><td>支持（重置 offset 就能重新消费）</td></tr>
+  <tr><td><strong>DM 里用在</strong></td><td>任务排队 + 乐观抢占</td><td>结果通知 + 状态变更事件</td></tr>
+  </tbody>
+  </table>
+</div>
+
+<div class="defend">
+  <h4>🛡️ 面试防守：为什么 DM 同时用 Redis 和 Kafka，不统一用一个？</h4>
+  <p><strong>场景不同，选型不同。</strong>任务调度需要低延迟 + 竞争消费 + 灵活的选择性消费（ZRange 看一批再决定取哪个），Redis 天然适合。结果通知需要持久化 + 多下游独立消费 + 可回溯，Kafka 天然适合。硬要统一反而会牺牲各自的优势——用 Kafka 做调度延迟太高且不支持选择性消费，用 Redis 做事件广播不持久化且不支持多消费组。</p>
+</div>
+
+<!-- ====== 七、完整数据流：一次任务的全链路 ====== -->
+<h2>七、完整数据流：一次任务的全链路</h2>
 
 <p>把前面所有内容串起来，一次任务从提交到完成的完整链路：</p>
 
@@ -674,8 +838,8 @@ sequenceDiagram
 </pre>
 </div>
 
-<!-- ====== 七、面试防守 ====== -->
-<h2>七、面试防守合集</h2>
+<!-- ====== 八、面试防守 ====== -->
+<h2>八、面试防守合集</h2>
 
 <div class="defend">
   <h4>🛡️ Q1：Redis ZSet 为什么比 List 更适合任务队列？</h4>
@@ -697,8 +861,8 @@ sequenceDiagram
   <p>用配额制：每个 priority 有固定 weight，一轮内按 weight 比例分配消费次数，耗尽后重置。即使 weight=1，每轮也至少被选一次。加上"降序兜底"策略——加权选空后会遍历所有队列，如果高优先级队列恰好空了，低优先级立刻有机会。跟 Linux CFS 调度器的 vruntime 思路类似，但实现更简单。</p>
 </div>
 
-<!-- ====== 八、Quiz ====== -->
-<h2>八、检索练习</h2>
+<!-- ====== 九、Quiz ====== -->
+<h2>九、检索练习</h2>
 
 <div class="quiz">
   <p class="quiz-question">Q1. commonAction 的 ZSet 入队时，score 用的是什么值？</p>

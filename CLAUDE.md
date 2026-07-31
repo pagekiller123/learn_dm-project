@@ -1,186 +1,171 @@
+﻿# 实习与面试学习工作区说明
 
-## 一、项目快速定位
+## 1. 这个仓库的唯一目标
 
-DreamMaker(DM)是网易互娱内部的 AI 美术平台,把市面上的 AI 模型(文/图/视频/3D/音频)统一封装成内部服务。
+本仓库**不是生产开发仓库，也不是团队协作规范仓库**。它服务于以下目标：
 
-**三个仓库**:
-| 仓库 | 语言 / 框架 | 角色 |
-|---|---|---|
-| `dm-monet-agent` | Python 3.13 + DeepAgent | 本地 Agent 服务,跟 Monet 桌面客户端打包 |
-| `dreammaker-gateway` | Go + dmfr(Hertz) | 美术 AI 供应商网关,接入各类外部 AI 供应商 |
-| `dreammaker-scheduler` | Go + dmfr(Hertz / Fiber) | 后端微服务集合,主站走这边 |
+1. 理解实习期间接触到的 AI Agent、后端和微服务系统。
+2. 把真实项目经验整理成可信、可量化、能经得住追问的简历内容。
+3. 为秋招准备技术面试，包括架构理解、项目细节、技术选型和问题复盘。
+4. 记录学习过程中的疑问、结论、证据和待补数据，避免凭印象背诵。
 
-各仓库的细节、模块划分,以各自仓库根的 `CLAUDE.md` / `AGENTS.md` / `openspec/project.md` 为准。
+所有 AI 协作都应优先服务于“**学会、讲清楚、写进简历、答得住**”，而不是追求把学习项目改造成生产代码。
 
-**环境链接**：
-| 环境 | 主站 URL |
-|------|----------|
-| 测试 | https://dreammaker-test.netease.com |
-| 生产 | https://dreammaker.netease.com |
+## 2. 目录定位
 
----
+### `current_project/`
 
-## 二、跨仓库共识
+这里存放用于学习和阅读的项目代码，主要包括 DreamMaker 相关仓库。
 
-只列**长期成立**的事实,接口字段、payload 不在这里,要查具体接口去 spec。
+- 代码是理解真实系统的主要证据来源。
+- 可以阅读、搜索、运行必要的本地检查和编写学习笔记。
+- 默认不要把它当作正式开发任务处理，不主动实现无关功能、不做大规模重构、不创建生产级方案。
+- 如果讨论“我在实习中做了什么”，必须区分：**本人实际参与的工作**、**通过代码理解的系统能力**、**仅用于学习的推断**。
+- 子目录中的 `CLAUDE.md`、`AGENTS.md` 和项目文档，仅用于帮助理解对应代码；除非用户明确要求，不要把其中的开发流程当作本工作区的总目标。
+
+### `docs/`
+
+这里是实习复盘、技术报告、简历素材和用户背景的主要工作区。
+
+- `docs/user-background.md`：用户背景、经验水平和学习目标。
+- `docs/resume-reference/README.md`：简历素材总入口，新会话处理简历或面试任务时优先阅读。
+- `docs/resume-reference/04-monet-full-tech-report.md`：Monet 项目技术事实、亮点池和面试防守材料。
+- `docs/resume-reference/05-monet-resume-bullets-draft.md`：Monet 项目简历描述草稿。
+- `docs/resume-reference/learning/`：架构课程、学习记录和关键认知纠偏。
+- `docs/work_history/`：具体实习任务、配置和工作记录。
+- `docs/guide-*.md`：面向学习和复盘的技术教程。
+
+### `curriculum/`
+
+这是学习课程和可视化材料，不是生产代码。需要建立整体理解时，优先使用其中的课程和 `docs/resume-reference/learning/` 下的课程。
+
+### `worktree/`
+
+用于保存临时实验、练习或隔离工作区。除非用户明确要求，不把临时实验直接包装成实习成果。
+
+## 3. 任务路由
+
+收到任务后，先判断它属于哪一类：简历、面试准备、技术学习、代码阅读或小实验。不要默认进入生产开发模式。
+
+### 简历任务
+
+1. 读取 `docs/resume-reference/README.md`。
+2. 根据项目主题读取对应技术报告、学习记录和代码证据。
+3. 明确用户的真实参与范围，不把“看过代码”写成“主导开发”。
+4. 用“问题/场景 → 我的行动 → 技术方案 → 结果/指标”的结构组织内容。
+5. 标出缺少的量化数据和需要用户确认的事实，不擅自编造。
+
+### 面试准备
+
+目标是让用户能够用自己的话解释项目，而不是生成一段无法防守的标准答案。每个知识点尽量整理为：
+
+- 一句话结论。
+- 业务背景和要解决的问题。
+- 系统架构或代码路径。
+- 为什么这样设计，以及替代方案。
+- 用户本人实际做过什么。
+- 面试官可能追问什么。
+- 当前证据、确定性和待确认项。
+
+解释时先讲业务和整体链路，再讲模块、接口、数据流和代码细节。技术术语保留英文原文，沟通默认使用中文。
+
+### 技术学习
+
+目标是补足用户从“Python + 本地 Agent demo”到“可理解后端和线上系统”的能力。
+
+1. 先建立系统全貌：用户请求、Agent、Gateway、Scheduler、Worker、外部模型服务。
+2. 再追一条真实链路：入口、参数、队列/调度、执行、状态和结果回传。
+3. 最后补实现细节：并发、重试、超时、幂等、可观测性、部署和故障处理。
+4. 每次学习结束都沉淀为可复述的笔记，并说明它能对应哪条简历或哪类面试题。
+
+### 代码阅读或小实验
+
+可以修改代码，但目的应是验证理解、复现问题或完成学习练习。
+
+- 先搜索已有实现和调用关系，再下结论。
+- 优先做最小、可回滚的实验。
+- 不为“看起来更工程化”而引入无关抽象。
+- 说明实验结论是否能代表真实线上行为。
+- 实验结果不能自动升级为实习经历或简历成果。
+
+## 4. 事实与简历真实性规则
+
+这是本文件最重要的约束。
+
+### 事实分层
+
+对每个项目结论，明确区分：
+
+1. **已确认事实**：来自用户明确描述、当前代码、正式技术文档或工作记录。
+2. **合理推断**：根据代码或架构推导出的结论，必须标注“推断”，不能当作用户亲自完成的工作。
+3. **待确认信息**：参与范围、线上数据、QPS、延迟、成功率、收益等尚未确认的内容。
 
 
-### 2.1 Scheduler 仓库专属共识
+### 技术报告与代码冲突时
 
-- 设计理念:**以 App 为原子能力**,上层系统(2d、story-board 等)由 App 组装。
-- 五层架构:外部请求层 → 业务服务层(含 `app-gateway`)→ 基础服务层(`worker-scheduler`)→ Worker 执行层(`sidecar` + 各类 worker)→ 外部供应商层。
-- 三大核心组件分工:
-  - `app-gateway`:任务入口、参数校验、入队;
-  - `worker-scheduler`:Leader 选举 + 任务分配;
-  - `worker-sidecar`:任务执行 + 状态 / 结果上报。
-- Worker 分 10 大类(图像 / 视频 / 3D / 腾讯混元 / 火山 / 语音 / LLM / 工具 / 工作流 / 桌面软件)。
+- 架构愿景、设计意图：优先参考正式技术方案或技术报告。
+- 当前实现、调用方式和文件位置：优先参考当前代码。
+- 两者不一致时，保留“双层表述”：设计上是什么，当前代码实际上是什么。
+- 面试回答必须诚实说明差异，不能为了统一答案而掩盖版本或实现差异。
 
-> Gateway 自己的内部约定(包依赖边界、ecode 使用、HTTP 响应写法)详见 `dreammaker-gateway` 仓库根的 `CLAUDE.md`,不在团队版重复。
-> Monet 桌面端 + Agent 侧的链路待补充。
+## 5. 输出标准
 
----
+### 简历输出
 
-## 三、开发流程约定
+- 优先给 1-3 个不同力度的版本，而不是堆砌关键词。
+- 每个技术关键词都说明它解决了什么问题。
+- 尽量使用动作、技术方案和结果，而不是只写“负责/参与”。
+- 把需要补充的数据单独列出。
 
-### 3.1 SDD（Spec-Driven Development）
+### 面试输出
 
-- **每个改动都必须有关联 spec**，无 spec 不进 MR。
-- 例外：spec 文档自身的改动豁免。
+- 先给简短口述版，再给深入追问版。
+- 使用第一人称时，只代表用户已经确认的参与内容。
+- 对可能被追问的地方主动补充“如何验证”和“诚实边界”。
+- 必要时提供模拟面试题、参考回答和追问链路。
 
-#### 开发前必须执行的流程
+### 学习输出
 
-1. **明确要改哪个仓库** — 确定目标仓库（`dreammaker-scheduler` / `dreammaker-gateway` / `dm-monet-agent`）。
-2. **（可选）用 `superpowers:brainstorming` 梳理思路** — 需求模糊、方案不确定、或涉及多模块协作时，先用 brainstorming 理清设计方向。
-3. **必须在目标仓库目录下用 openspec 写 spec** — 进入对应仓库的工作目录，使用 `/opsx:propose` 生成 spec 到该仓库的 `openspec/changes/` 下。spec 通过后用 `/opsx:apply` 归档到 `openspec/specs/`。
-4. **spec 就绪后才开始写代码。**
+- 先给结论，再解释原因。
+- 先讲业务背景，再讲代码。
+- 对陌生概念给出类比，但必须说明类比的边界。
+- 最后补充“这能写进简历吗”和“面试可能怎么问”。
 
-示例：要给 `dreammaker-scheduler` 接入新能力 →
-```
-cd current_project/dreammaker_scheduler/
-# 用 openspec skill 在这个仓库的 openspec/ 下生成 spec
-/opsx:propose
-# spec 审核通过后
-/opsx:apply
-# 然后才开始写代码
-```
+### 文件修改
 
-### 3.2 质量门禁
+- 说明修改了哪些文件、为什么修改、产生了什么结果。
+- 默认使用中文沟通，代码和技术专有名词保留原文。
+- 不修改与当前目标无关的文件。
+- 不主动提交 commit、push 或修改远程分支。
 
-- 任何改动 commit 前必须通过本仓库的**类型检查 + 格式化 + lint**(无论 Python 还是 Go);push 前必须通过相关**单元测试**。
-- 具体命令以各仓库 `AGENTS.md` / `CLAUDE.md` 为准,团队版不固化(避免命令变更后这里过时)。
+## 6. 推荐的学习闭环
 
-### 3.3 Commit / MR
+处理一个新主题时，按以下闭环推进：
 
-- 一次 commit 只做一个逻辑变更。
-- commit message **不带任何 AI 工具生成的署名 / 水印**(Claude / Codex / 等)。
-- 各仓库的 commit 格式约定不同(行动类型前缀 vs Emoji 前缀),沿用各仓库 `AGENTS.md` / `CLAUDE.md` 现有约定,不强行统一。
-- MR 合入目标分支由各仓库自身分支模型决定(如 dm-monet-agent 走 `feature/* → develop → master`),不在团队版强求统一。
+1. **定位问题**：它属于哪个项目、哪个模块、解决什么业务问题。
+2. **建立全貌**：画出或文字描述请求链路和组件职责。
+3. **核对证据**：阅读文档、代码、配置和调用方，记录文件位置。
+4. **理解取舍**：说明为什么这样设计，以及失败时如何处理。
+5. **确认参与**：区分用户亲自做过的工作和仅学习到的系统知识。
+6. **沉淀表达**：形成简历句子、面试口述版和追问清单。
+7. **补齐数据**：列出需要从工作记录、监控、MR 或同事处确认的指标。
 
----
+## 7. 重要工作原则
 
-## 四、危险动作清单
+- 不确定就明确说不确定，不用专业措辞掩盖空白。
+- 先做最小可行的学习或验证，不做无关的大改动。
+- 解释可以详细，但结论必须能被代码、文档或用户经历支撑。
+- 优先帮助用户形成自己的理解和表达，避免让用户背诵 AI 生成的答案。
+- 每个重要学习成果都尽量关联到：简历哪一行、面试哪一题、还缺什么证据。
 
-凡是**会扣真钱 / 影响线上 / 不可逆**的动作,必须先获得明确授权再执行。
+## 8. 新会话默认动作
 
-- ❌ **禁止主动跑 e2e 测试**:`dm-monet-agent` 的 `tests/e2e/` 调真实付费接口(DM / AIGW / 画布后端);未经用户明确要求,不执行 `pytest -m e2e` 或任何能触发 e2e 的命令。
-- ❌ **禁止改对外协议(HTTP 响应字段、错误码、capability 注册项)而不走 spec**:接口被多方依赖,改一处影响一片。
-- ❌ **禁止 `git push` / `git reset --hard` / 强制覆盖远端分支**:这些动作不可逆,执行前必须用户授权。
-- ❌ **禁止新增 capability 时漏配限流规则**:gateway 侧 `CodeRateLimitMiddleware` 要求命中规则才放行,无规则会被 429 拦截。
-- ⚠️ 改协议 / 改公共数据模型 / 改 ecode 前,先翻对应仓库 `docs/system/` 或 `openspec/specs/`,确认影响面。
+如果用户没有说明具体目标，先判断当前是在做简历、面试、架构学习、代码阅读还是小实验；不要默认进入生产开发模式。
 
----
+开始简历或面试任务时，优先读取：
 
-## 五、工具与 skill 约定
+1. `docs/user-background.md`
+2. `docs/resume-reference/README.md`
+3. 与当前项目最相关的技术报告、学习记录和 `current_project` 代码
 
-- **OpenSpec**:npm 全局已装,新项目目录首次使用前要 `openspec init`;改动写 spec 用 `/opsx:propose` / `/opsx:apply` / `/opsx:archive`。
-- **测试 / lint 命令**:以各仓库 `AGENTS.md` / `CLAUDE.md` 为准(Python 走 `pyright` + `ruff` + `pytest`,Go 走 `go vet` + `go test`)。
-- **dmfr**:Go 仓库的脚手架,**能用 dmfr 解决的不要重复造轮子**(HTTP client、logging、ecode、tracing、配置、启动模板)。
-- **领域 skill**:各仓库自己装了若干本地 skill(如 `dm-monet-agent` 的 `mr` / `review` / `write-model-api-doc`,`dreammaker-gateway` 的 `seed-gateway-capability`),仅在对应工作目录下使用。
-
----
-
-## 六、AI 协作具体要求
-
-> **为什么立这些规则**:不立规则的话,AI 在团队代码里持续犯三类错 ——
->
-> 1. **错误假设**:替你假设业务设计,然后一路跑下去不回头检查;
-> 2. **过度复杂化**:100 行能解决的事写 1000 行,加不必要的抽象;
-> 3. **附带伤害**:顺手改不理解的注释和代码,即使跟任务无关。
->
-> 上面每一条都对应一种已经发生过 / 容易发生的事故,不是形式主义。
-
-### 6.1 四条铁律(任何任务前都先满足)
-
-1. **Ask, don't assume(问,不要假设)** — 不清楚需求 / 接口 / 业务背景时,写一行代码前先问。永不静默假设。
-2. **Simplest solution first(先实现最简单的版本)** — 总是先实现能工作的最简单的东西。不要添加没被要求的抽象。
-3. **Don't touch unrelated code(不碰无关代码)** — 文件不在当前任务直接范围内,不要修改它(包括"顺手优化注释 / 格式")。
-4. **Flag uncertainty explicitly(显式标出不确定)** — 对方法不自信时,在继续前说出来。自信但有错的损害,远大于承认缺口的损害。
-
-### 6.2 DreamMaker 场景特别强调的两条
-
-5. ★★★ **不凭训练数据猜函数签名 / API / 配置项,先用 Grep / Read 查实际代码** — DM 跨仓库 + 跨语言(Python / Go),且 Go 仓库 Hertz 与 Fiber 混用,DeepAgent / dmfr 都是内部封装,凭印象写错误率极高。
-6. **写代码前先搜项目里有没有现成的工具函数 / 常量** — 三个仓库已经实现了大量功能,`pkg/`、`util/`、`internal/` 下经常有现成的;不要重复造轮子。
-
-### 6.3 沟通要求
-
-- **中文回复**(代码、技术术语、专有名词用原文)。
-- **diff 透明**:改完代码主动告诉用户改了哪几个文件、加了什么、删了什么,让用户能快速 review。
-- **不知道就说不知道**,不要为了"显得专业"编造事实或脑补业务背景。
-
----
-
-## 七、关键文件索引
-
-不放具体相对路径(各人本地 clone 位置不同),只列**每个仓库根下能找到的文件名**,自己用 `find` / IDE 跳转。
-
-### 各仓库入口
-
-- `dm-monet-agent` 仓库根:`AGENTS.md` / `CLAUDE.md` / `README.md`
-- `dreammaker-gateway` 仓库根:`CLAUDE.md` — 含包依赖边界、ecode 清单、响应协议
-- `dreammaker-scheduler` 仓库根:`AGENTS.md` — 含服务清单、dmfr 用法
-
-### 各仓库 OpenSpec(若已 init)
-
-- `openspec/project.md` — 项目顶层介绍
-- `openspec/specs/` — 各 capability 的设计文档
-- `openspec/changes/` — 待合入的变更
-
-### 团队空间(用 popo-doc / km-ask skill 读取)
-
-- POPO 团队空间:`dreammaker`,team space ID = `332e46c02522490f9856818cc0668462`。具体文档随项目阶段会变,需要时用 popo-doc skill 在团队空间内现查,不在本文写死 docId 清单。
-
-### Agent 官方技术方案（用户秋招简历核心背书来源）
-
-`docs/resume-reference/learning/RESOURCES.md` 里维护了 POPO 团队空间"Agent"目录下 9 篇官方技术文档的 docId 索引（如"DreamMaker Agent 技术方案"`793c642c8ae94c94baa5f8e99ecacbe7`、"AI Agent 框架深度选型对比报告"`af805de3582d4fbda67ad60b6dbf1a36` 等）。
-
-**AI session 处理 Monet 相关话题时**:
-- 讲整体架构、设计意图、产品愿景 → 优先引这些文档（用 popo-doc skill 读取，稳定不变）
-- 讲具体实现、"我做了什么" → 以 `current_project/dm-monet-agent/src/` 代码为准（易变）
-- 两者冲突时 → 按 [docs/resume-reference/learning/learning-records/0004-tech-spec-vs-actual-code-strategy.md](docs/resume-reference/learning/learning-records/0004-tech-spec-vs-actual-code-strategy.md) 的双层策略处理
-
-### 简历学习工作区
-
-`docs/resume-reference/` 是学员秋招简历的所有落盘素材。**AI session 帮学员做简历相关任务时,必读 [docs/resume-reference/README.md](docs/resume-reference/README.md) 作为入口**——它索引了：
-
-- **04-monet-full-tech-report.md**: POPO Agent 目录 9 篇文档整合报告,含 7 大简历亮点池、面试防守金句、亮点池代码锚点
-- **05-monet-resume-bullets-draft.md**: Monet 项目 4 条简历条目初稿(等量化数据回填)
-- **01-03**: 简历案例、写作指南、整体设计方案
-- **learning/**: teach skill 建立的学习工作区,含 HTML 课程和学习记录
-
-**不要重新探索这些内容**;直接读 README 定位到具体文件。
-
----
-
-## 八、用户背景
-
-详见 [docs/user-background.md](docs/user-background.md) — 包含角色定位、学习目标、协作偏好。AI 协作时应据此调整解释深度和沟通方式。
-
----
-
-## 九、开发参考文档
-
-| 文档 | 内容 | 何时读 |
-|------|------|--------|
-| [docs/guide-new-ai-capability.md](docs/guide-new-ai-capability.md) | 基于 dreammaker-scheduler 接入新 AI 能力的完整链路、代码产物清单、编译测试流程、踩坑清单 | 需要在 scheduler 仓库给 DM 接入新的 AI 供应商能力时 |
-| [docs/guide-mongo-app-config.md](docs/guide-mongo-app-config.md) | 小程序商城"配置即界面"机制、dreamworker_apps 文档结构、params 类型系统、静态图片上传 | 需要写 mongo 商城登记脚本或理解前端表单渲染逻辑时 |
-| [docs/guide-dreammaker-docs.md](docs/guide-dreammaker-docs.md) | `dreammaker-docs` 文档站项目、`/dreammaker-doc-gen` skill 完整流程(以 `volcengine-seed-audio` 为端到端示例)、发布上线、常见踩坑 | 需要给 DM 新接入的 AI 能力生成 API 文档、或排查文档站相关问题时 |
+本仓库的最终衡量标准不是“改了多少代码”，而是用户是否能**真正理解项目、准确描述贡献、用证据回答追问，并把经验转化为可信的求职材料**。

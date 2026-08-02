@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Lesson S004 — 简历 Bullet 深度解析：DreamMaker Scheduler</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+:root { --text: #1a1a1a; --text-muted: #555; --bg: #fffdf6; --accent: #b91c1c; --accent-soft: #fef2f2; --code-bg: #f4f1eb; --border: #d4c9a8; --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif; --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif; --mono: "Fira Code", "SF Mono", Monaco, monospace; }
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { font-family: var(--serif); color: var(--text); background: var(--bg); max-width: 1100px; margin: 3rem auto; padding: 0 1.5rem; line-height: 1.7; }
+h1, h2, h3, h4 { font-family: var(--sans); font-weight: 600; line-height: 1.3; margin-top: 2.5rem; margin-bottom: 0.8rem; }
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+p { margin: 0.8rem 0; }
+a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+code { font-family: var(--mono); background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid var(--accent); font-family: var(--mono); font-size: 0.9em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 3px solid var(--border); margin: 1.2rem 0; padding: 0.5rem 1.2rem; color: var(--text-muted); background: #faf7ed; font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--sans); font-size: 0.95em; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; vertical-align: top; }
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+.lesson-meta { font-family: var(--sans); font-size: 0.85em; color: var(--text-muted); margin-bottom: 1.5rem; padding: 0.8rem 1rem; background: var(--code-bg); border-radius: 6px; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+.highlight-box { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 4px; }
+.highlight-box strong { color: var(--accent); }
+.quiz { background: #fef9e7; border: 1px solid #e6d999; padding: 1.2rem 1.5rem; margin: 1.5rem 0; border-radius: 6px; }
+.quiz-question { font-weight: 600; margin-bottom: 0.8rem; font-family: var(--sans); }
+.quiz-options { list-style: none; padding: 0; }
+.quiz-options li { padding: 0.5rem 0.8rem; background: white; border: 1px solid var(--border); border-radius: 4px; margin: 0.4rem 0; cursor: pointer; font-family: var(--sans); }
+.quiz-options li:hover { background: var(--accent-soft); }
+.quiz-answer { margin-top: 1rem; padding: 0.8rem; background: white; border-radius: 4px; display: none; font-family: var(--sans); font-size: 0.9em; }
+.quiz-answer.visible { display: block; }
+.quiz-toggle { margin-top: 0.5rem; background: var(--accent); color: white; border: none; padding: 0.4rem 0.9rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.85em; }
+.defend { background: #fef2f2; border: 2px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; }
+.defend h4 { margin-top: 0; color: var(--accent); }
+.defend ol { padding-left: 1.4rem; }
+.defend li { margin: 0.5rem 0; }
+.resume-hook { background: #f0fdf4; border: 2px solid #16a34a; padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); }
+.resume-hook h4 { color: #16a34a; margin-top: 0; }
+.diagram { background: white; padding: 1.2rem; border: 1px solid var(--border); border-radius: 6px; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span><strong>Lesson</strong> S004</span>
+  <span><strong>项目</strong> DreamMaker Scheduler</span>
+  <span><strong>时长</strong> ~60 分钟</span>
+  <span><strong>难度</strong> &#9733;&#9733;&#9733;&#9733;&#9734;</span>
+  <span><strong>前置</strong> <a href="S003-worker-scheduling-high-availability.html">&larr; S003 高可用</a></span>
+</div>
+
+<h1>简历 Bullet 深度解析：DreamMaker Scheduler 四大亮点</h1>
+
+<div class="highlight-box">
+  <strong>本课目标</strong>：把你简历上 4 条 Scheduler 相关的 Bullet Point 拆解到能防守面试官 3-5 层追问的深度。每条 Bullet 我们覆盖：业务背景 &rarr; 技术方案 &rarr; 代码路径 &rarr; 设计决策 &rarr; 面试攻防 &rarr; 自测题。
+</div>
+
+<p>四条 Bullet 概览：</p>
+<table>
+  <tr><th>#</th><th>Bullet 主题</th><th>核心技术词</th><th>MR</th></tr>
+  <tr><td>1</td><td>供应商 429 排队重试</td><td>指数退避、jitter、fallback</td><td>!1038</td></tr>
+  <tr><td>2</td><td>图片超限自动压缩兜底</td><td>中间件、配置驱动、DB Schema</td><td>!976 + !988</td></tr>
+  <tr><td>3</td><td>新 AI 能力全链路接入 (音频/3D)</td><td>全链路、Worker 模式、供应商适配</td><td>!1020 + meshy 系列</td></tr>
+  <tr><td>4</td><td>统一限流与 API Key 管理</td><td>滑动窗口、RBAC、Key 轮转</td><td>!902 + !1031</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2>一、供应商 429 排队重试（Bullet 1）</h2>
+
+<p><strong>一句话</strong>：当外部 AI 供应商返回 429 Too Many Requests 时，Worker 进入指数退避重试队列（initial=3s, max=60s, jitter &plusmn;20%），最长等待 12h，超时后触发 fallback 切换备用通道。</p>
+
+<h3>1.1 业务背景</h3>
+<p>DreamMaker 对接数十个外部 AI 供应商（OpenAI、Google Gemini、火山引擎等）。这些供应商有严格的 QPS 限制，高峰期频繁返回 HTTP 429。如果 Worker 直接报错给用户，用户体验极差——排了几分钟队，任务到达供应商才被拒，用户不得不手动重试。</p>
+<p>业务需求：<strong>对用户透明地排队等待</strong>，直到供应商恢复容量，同时避免因死等单个供应商导致整体吞吐下降。</p>
+
+<h3>1.2 技术方案</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    participant U as 用户任务
+    participant W as Worker-Sidecar
+    participant GW as DM-Gateway
+    participant SP as 外部供应商
+
+    U->>W: 分配任务
+    W->>GW: 调用生成接口
+    GW->>SP: 转发请求
+    SP-->>GW: 429 Too Many Requests
+    GW-->>W: 429 + Retry-After
+    Note over W: attempt=1, sleep=3s(+jitter)
+    W->>GW: 重试
+    GW->>SP: 转发
+    SP-->>GW: 429
+    GW-->>W: 429
+    Note over W: attempt=2, sleep=6s(+jitter)
+    W->>GW: 重试
+    GW->>SP: 转发
+    SP-->>GW: 200 OK
+    GW-->>W: 成功结果
+    W->>U: 返回产物
+</pre>
+</div>
+
+<p>核心退避算法（Go 伪代码）：</p>
+<pre><code>func calcBackoff(attempt int) time.Duration {
+    base := initialInterval * math.Pow(multiplier, float64(attempt))
+    if base > maxInterval {
+        base = maxInterval
+    }
+    // jitter: ±20% 随机偏移，防止惊群
+    jitter := base * 0.2 * (2*rand.Float64() - 1)
+    return time.Duration(base + jitter)
+}
+
+// initialInterval = 3s, multiplier = 2.0, maxInterval = 60s
+// attempt 0: ~3s, 1: ~6s, 2: ~12s, 3: ~24s, 4: ~48s, 5+: ~60s</code></pre>
+
+<p>白名单控制——仅对特定模型启用重试：</p>
+<pre><code>func ShouldRetry(model string) bool {
+    whitelist := []string{
+        "gemini-3-pro-image-pt-art1",
+        "pt-art3-openai",
+    }
+    for _, m := range whitelist {
+        if model == m { return true }
+    }
+    return false
+}
+// *bool nil = enabled: 零配置时默认启用，仅白名单模型走重试逻辑</code></pre>
+
+<h3>1.3 关键代码路径</h3>
+<table>
+  <tr><th>文件路径</th><th>职责</th></tr>
+  <tr><td><code>app/worker-sidecar/internal/executor/retry.go</code></td><td>calcBackoff、重试循环主逻辑</td></tr>
+  <tr><td><code>app/worker-sidecar/internal/executor/openai_executor.go</code></td><td>OpenAI 类模型执行器，调用 retry</td></tr>
+  <tr><td><code>app/worker-sidecar/internal/config/retry_config.go</code></td><td>重试参数配置（initial/max/multiplier/whitelist）</td></tr>
+  <tr><td><code>pkg/errcode/supplier.go</code></td><td>429 错误码定义与 retryable 标记</td></tr>
+</table>
+
+<h3>1.4 设计决策</h3>
+<table>
+  <tr><th>方案</th><th>优点</th><th>缺点</th><th>选择</th></tr>
+  <tr><td>固定间隔重试</td><td>实现简单</td><td>无法适应不同负载；惊群效应</td><td>&times;</td></tr>
+  <tr><td>指数退避 + jitter</td><td>压力分散；收敛快</td><td>极端情况等待较长</td><td>&checkmark;</td></tr>
+  <tr><td>任务重新入队</td><td>释放 Worker 线程</td><td>队列乱序；实现复杂；状态丢失</td><td>&times;</td></tr>
+  <tr><td>令牌桶预估</td><td>精确控速</td><td>需要知道供应商精确配额（不现实）</td><td>&times;</td></tr>
+</table>
+
+<p><strong>为什么用 *bool nil=enabled？</strong> 新增模型时如果忘记配置重试开关，默认启用比默认禁用更安全。Go 的 <code>*bool</code> 区分了"未设置(nil)"和"明确关闭(false)"。</p>
+
+<div class="defend">
+<h4>面试防守</h4>
+<ol>
+  <li><strong>Q: 为什么不把 429 的任务重新放回 Redis 队列？</strong><br>A: 重入队会打乱任务顺序，且 Worker 已经持有执行上下文（模型参数、用户信息）。本地重试避免了序列化/反序列化开销和状态恢复问题。另外重入队后其他 Worker 拉到同样会被 429，不能解决根本问题。</li>
+  <li><strong>Q: jitter 为什么是 &plusmn;20% 而不是更大？</strong><br>A: &plusmn;20% 在实测中足以打散同一批到达的请求。更大的 jitter 会导致部分请求等待时间过短（失去退避效果）或过长（用户体验下降）。AWS 文档推荐 Full Jitter（0~backoff），我们选 &plusmn;20% 是因为供应商恢复窗口相对稳定，不需要太激进的分散。</li>
+  <li><strong>Q: 12h 最大等待时间怎么确定的？</strong><br>A: 根据供应商 SLA（如 OpenAI 声明 99.9% 可用性，最长连续故障约 8.7h/年），加上业务场景（pt-art 是离线出图，用户可容忍较长等待）。在线实时任务不走这条路径。</li>
+  <li><strong>Q: fallback 切换备用通道具体怎么做的？</strong><br>A: 超过 maxWait 后返回 retryable error，上层 executor 根据模型配置查询 fallback 通道列表（如 pt-art1 的 fallback 是 pt-art3-openai），重新发起调用。如果所有通道都 429，最终返回用户友好的排队提示。</li>
+  <li><strong>Q: 如果 Worker 在重试等待中被杀（OOM / 重启），任务怎么办？</strong><br>A: Worker-sidecar 心跳机制保底。Worker 停止上报心跳后，scheduler 会在超时（默认 2min）后将任务重新标记为 pending，另一个 Worker 会重新拉取。任务本身是幂等的（基于 taskId 去重）。</li>
+</ol>
+</div>
+
+<div class="resume-hook">
+<h4>简历关联</h4>
+<p><strong>推荐写法</strong>：设计并实现供应商 429 限流场景下的指数退避重试机制（jitter &plusmn;20%，最长 12h），配合 fallback 通道切换，将高峰期任务失败率从 X% 降至 Y%。</p>
+<p><strong>关键词</strong>：Exponential Backoff、Jitter、Retry with Fallback、Rate Limiting、Graceful Degradation</p>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q1: 指数退避的第 4 次重试（attempt=3），不含 jitter 的等待时间是多少？</div>
+  <ul class="quiz-options">
+    <li>A. 12s</li>
+    <li>B. 24s</li>
+    <li>C. 48s</li>
+    <li>D. 60s</li>
+  </ul>
+  <div class="quiz-answer" id="q1a">B. 3s * 2^3 = 24s。attempt 从 0 开始计数，attempt=3 是第 4 次重试。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q1a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q2: 为什么选择 Worker 本地重试而不是任务重入队？</div>
+  <div class="quiz-answer" id="q2a">1) 重入队打乱顺序；2) Worker 已持有上下文，重入队需要序列化状态；3) 其他 Worker 拉到同样被 429；4) 本地重试避免了调度开销。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q2a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<!-- ================================================================== -->
+<h2>二、图片超限自动压缩兜底（Bullet 2）</h2>
+
+<p><strong>一句话</strong>：在 app-gateway 校验阶段插入图片压缩中间件，超限图片自动压缩到供应商要求范围内，通过 MongoDB 配置驱动实现零代码扩展。</p>
+
+<h3>2.1 业务背景</h3>
+<p>GPT-Image-2 等模型要求输入图片 &lt;4MB。用户上传 8MB 的高清照片，如果直接拒绝，体验极差（"我的图片明明没问题，为什么不能用？"）。产品需求：<strong>平台自动处理，用户无感</strong>。</p>
+<p>第一版（!976）硬编码了压缩逻辑；第二版（!988, 37 files）做了通用化改造：压缩规则从 MongoDB 读取，新模型只需添加一条 DB 记录即可生效。</p>
+
+<h3>2.2 技术方案</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    A[用户上传图片] --> B{字节 > MaxSize?}
+    B -- No --> E[继续走正常校验]
+    B -- Yes --> C[runImageCompress]
+    C --> D{压缩后仍超限?}
+    D -- No --> E
+    D -- Yes --> F[返回错误: 图片过大]
+</pre>
+</div>
+
+<p>插入时机：DB Rules 校验之后、RegisterValidator 之前。</p>
+
+<pre><code>// AppImageCompressConf — MongoDB 配置结构
+type AppImageCompressConf struct {
+    AppCode    string   `bson:"app_code"`
+    FieldNames []string `bson:"field_names"`  // 需要压缩的参数字段
+    IsSlice    bool     `bson:"is_slice"`     // 数组字段逐元素处理
+    Options    struct {
+        MaxLongSide  int    `bson:"max_long_side"`   // 最大长边 px
+        MinShortSide int    `bson:"min_short_side"`  // 最小短边 px
+        MaxFileSize  int64  `bson:"max_file_size"`   // 字节上限
+        AlphaMode    string `bson:"alpha_mode"`      // inherit|preserve
+    } `bson:"options"`
+}
+
+func runImageCompress(ctx context.Context, params map[string]interface{},
+    conf *AppImageCompressConf) error {
+    for _, field := range conf.FieldNames {
+        val := params[field]
+        if conf.IsSlice {
+            // 逐元素处理
+            for i, img := range val.([]interface{}) {
+                compressed, err := compressImage(img, conf.Options)
+                if err != nil { return err }
+                val.([]interface{})[i] = compressed
+            }
+        } else {
+            compressed, err := compressImage(val, conf.Options)
+            if err != nil { return err }
+            params[field] = compressed
+        }
+    }
+    return nil
+}</code></pre>
+
+<h3>2.3 关键代码路径</h3>
+<table>
+  <tr><th>文件路径</th><th>职责</th></tr>
+  <tr><td><code>app/app-gateway/internal/middleware/image_compress.go</code></td><td>压缩中间件主逻辑、runImageCompress</td></tr>
+  <tr><td><code>app/app-gateway/internal/model/compress_conf.go</code></td><td>AppImageCompressConf 结构定义</td></tr>
+  <tr><td><code>app/app-gateway/internal/dao/compress_dao.go</code></td><td>MongoDB 读取压缩配置</td></tr>
+  <tr><td><code>pkg/imageutil/compress.go</code></td><td>底层图片压缩工具函数</td></tr>
+</table>
+
+<h3>2.4 设计决策</h3>
+<table>
+  <tr><th>方案</th><th>优点</th><th>缺点</th><th>选择</th></tr>
+  <tr><td>前端压缩</td><td>不占服务器资源</td><td>不同端实现不一致；Monet 桌面端/API 调用无法统一</td><td>&times;</td></tr>
+  <tr><td>硬编码压缩逻辑</td><td>快速上线</td><td>每接入新模型需改代码发版</td><td>&times;（v1 临时方案）</td></tr>
+  <tr><td>DB 配置驱动</td><td>零代码扩展；热更新</td><td>增加 DB 查询开销（可缓存）</td><td>&checkmark;</td></tr>
+  <tr><td>独立压缩微服务</td><td>解耦彻底</td><td>过度设计；增加网络跳数</td><td>&times;</td></tr>
+</table>
+
+<div class="defend">
+<h4>面试防守</h4>
+<ol>
+  <li><strong>Q: AlphaMode inherit vs preserve 有什么区别？</strong><br>A: inherit 表示跟随原图的 alpha 通道设置（有透明度则保留，没有则不添加）；preserve 强制保留 alpha 通道（即使压缩后格式变化）。JPEG 不支持 alpha，所以 preserve 模式下必须转 PNG/WebP。</li>
+  <li><strong>Q: IsSlice 为什么需要单独处理？</strong><br>A: 有些模型接受多张参考图（如 style_images 数组），需要对每张图分别检查和压缩。如果把整个数组当一个值处理，无法区分哪张超限。</li>
+  <li><strong>Q: 压缩会不会影响生成质量？</strong><br>A: Options 中的 MaxLongSide/MinShortSide 保证分辨率在供应商推荐范围内。实测 4MB 限制下大部分超限图只需 quality 85 就能达标，肉眼无法区分。如果压缩后仍超限（如 200MB 的 RAW 文件），才返回错误。</li>
+  <li><strong>Q: 这个中间件的性能开销？</strong><br>A: 平均压缩耗时 50-200ms（取决于图片大小），相比 AI 生成的 30s-5min，可忽略不计。配置查询走本地缓存（TTL 5min），不增加 DB 压力。</li>
+</ol>
+</div>
+
+<div class="resume-hook">
+<h4>简历关联</h4>
+<p><strong>推荐写法</strong>：设计配置驱动的图片压缩中间件，在 app-gateway 校验层自动压缩超限图片，通过 MongoDB Schema 实现新模型零代码接入，覆盖 N 个 AI 模型的图片预处理。</p>
+<p><strong>关键词</strong>：Middleware Pattern、Configuration-Driven、MongoDB Schema Design、Image Processing Pipeline</p>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q1: 压缩中间件插入在哪两个阶段之间？</div>
+  <div class="quiz-answer" id="q3a">DB Rules 校验之后、RegisterValidator 之前。这样确保压缩基于有效参数进行，且压缩后的图片能通过后续校验。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q3a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q2: 为什么最终选择 DB 配置驱动而不是前端压缩？</div>
+  <div class="quiz-answer" id="q4a">1) 多端一致性：Monet 桌面端、Web、API 直接调用都走同一入口；2) 配置热更新，不需要前端发版；3) 后端有更完整的图片处理工具链。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q4a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<!-- ================================================================== -->
+<h2>三、新 AI 能力全链路接入 — 音频 / 3D（Bullet 3）</h2>
+
+<div class="highlight-box">
+  <strong>重要</strong>：这是你本人主导的 MR（!1020 "Feature/seed audio 1.0"），也是面试中最能展开讲的 Bullet。面试官会围绕"你具体做了什么"反复追问，务必对全链路每一步都烂熟于心。
+</div>
+
+<p><strong>一句话</strong>：独立完成 Seed-TTS 音频模型和 Meshy 3D 模型的全链路接入，覆盖 App 注册、参数校验、队列入队、Worker 执行、产物处理到前端查询 6 个环节，实现"配置即界面"的零代码扩展架构。</p>
+
+<h3>3.1 业务背景</h3>
+<p>DreamMaker 从纯图片平台扩展到多模态（音频、3D），需要快速接入新的 AI 供应商。挑战：</p>
+<ul>
+  <li>音频（Seed-TTS）和 3D（Meshy）的输入输出格式与图片完全不同</li>
+  <li>3D 模型生成耗时极长（30-90min），超出原有超时设计</li>
+  <li>外部供应商 API 各不相同，需要统一适配</li>
+  <li>小程序商城需要动态渲染新能力的参数 UI</li>
+</ul>
+
+<h3>3.2 全链路 6 步详解</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph Step1["1. App 注册"]
+        A1[MongoDB dreamworker_apps] --> A2[定义 params/capabilities]
+    end
+    subgraph Step2["2. 小程序商城"]
+        B1[参数类型: slider/select/upload] --> B2[前端动态渲染 UI]
+    end
+    subgraph Step3["3. app-gateway 校验"]
+        C1[Action 匹配] --> C2[参数 validate] --> C3[入 Redis 队列]
+    end
+    subgraph Step4["4. Worker 执行"]
+        D1[sidecar 拉取] --> D2[调用供应商 API] --> D3[轮询结果]
+    end
+    subgraph Step5["5. 产物处理"]
+        E1[下载代理] --> E2[格式转换] --> E3[上传内部 CDN]
+    end
+    subgraph Step6["6. 前端查询"]
+        F1[records 接口] --> F2[返回状态+产物 URL]
+    end
+    Step1 --> Step2 --> Step3 --> Step4 --> Step5 --> Step6
+</pre>
+</div>
+
+<h4>Step 1: App 注册（MongoDB）</h4>
+<pre><code>// MongoDB: dreamworker_apps 集合
+{
+  "app_code": "seed-tts-v1",
+  "app_name": "Seed-TTS 语音合成",
+  "category": "audio",
+  "capabilities": ["text-to-speech", "voice-clone"],
+  "params": [
+    {
+      "name": "text",
+      "type": "textarea",
+      "required": true,
+      "max_length": 5000
+    },
+    {
+      "name": "voice_id",
+      "type": "select",
+      "options": ["male-1", "female-1", "custom"],
+      "default": "female-1"
+    },
+    {
+      "name": "speed",
+      "type": "slider",
+      "min": 0.5,
+      "max": 2.0,
+      "step": 0.1,
+      "default": 1.0
+    }
+  ],
+  "worker_type": "audio",
+  "timeout_minutes": 10,
+  "queue_name": "audio_task_queue"
+}</code></pre>
+
+<h4>Step 2: 小程序商城 — 配置即界面</h4>
+<p>前端根据 <code>params</code> 数组的 <code>type</code> 字段动态渲染对应的 UI 控件（slider、select、upload、textarea 等），无需为新能力写前端代码。</p>
+
+<h4>Step 3: app-gateway 校验 + 入队</h4>
+<pre><code>// app-gateway 处理流程
+func HandleTaskCreate(ctx context.Context, req *TaskCreateReq) error {
+    // 1. Action 匹配：根据 app_code 找到 App 配置
+    appConf, err := dao.GetAppByCode(ctx, req.AppCode)
+    if err != nil { return err }
+
+    // 2. 参数校验：逐字段检查类型、范围、必填
+    if err := validateParams(req.Params, appConf.Params); err != nil {
+        return errcode.InvalidParams.WithMsg(err.Error())
+    }
+
+    // 3. 入 Redis 队列
+    task := &Task{
+        TaskID:   generateTaskID(),
+        AppCode:  req.AppCode,
+        Params:   req.Params,
+        UserID:   req.UserID,
+        Status:   StatusPending,
+        CreateAt: time.Now(),
+    }
+    return redis.ZAdd(ctx, appConf.QueueName, task, float64(task.CreateAt.Unix()))
+}</code></pre>
+
+<h4>Step 4: Worker 执行（Seed-TTS 为例）</h4>
+<pre><code>// worker-sidecar: audio executor
+func (e *AudioExecutor) Execute(ctx context.Context, task *Task) (*Result, error) {
+    // 构造供应商请求
+    req := &SeedTTSRequest{
+        Text:    task.Params["text"].(string),
+        VoiceID: task.Params["voice_id"].(string),
+        Speed:   task.Params["speed"].(float64),
+    }
+
+    // 调用供应商 API（异步）
+    jobID, err := e.client.CreateJob(ctx, req)
+    if err != nil { return nil, err }
+
+    // 轮询结果（供应商异步模式）
+    for {
+        select {
+        case <-ctx.Done():
+            return nil, ctx.Err()
+        case <-time.After(pollInterval):
+            status, err := e.client.GetJobStatus(ctx, jobID)
+            if err != nil { return nil, err }
+            switch status.State {
+            case "completed":
+                return &Result{OutputURL: status.OutputURL}, nil
+            case "failed":
+                return nil, fmt.Errorf("supplier failed: %s", status.Error)
+            }
+            // "processing" -> continue polling
+        }
+    }
+}</code></pre>
+
+<h4>Step 5: 产物处理</h4>
+<pre><code>// 下载代理 + 格式转换 + 上传 CDN
+func processOutput(ctx context.Context, outputURL string, task *Task) (string, error) {
+    // 1. 通过代理下载（解决外网下载慢/超时）
+    data, err := proxyDownload(ctx, outputURL)
+    if err != nil { return "", err }
+
+    // 2. 格式转换（如 Meshy 的 glb -> 内部标准格式）
+    if needConvert(task.AppCode) {
+        data, err = convertFormat(data, task.AppCode)
+        if err != nil { return "", err }
+    }
+
+    // 3. 上传内部 CDN
+    cdnURL, err := cdn.Upload(ctx, data, task.TaskID)
+    if err != nil { return "", err }
+
+    return cdnURL, nil
+}</code></pre>
+
+<h4>Step 6: 前端查询</h4>
+<p>通过 <code>GET /api/records/:taskId</code> 返回任务状态和产物 URL，前端轮询直到 status=completed。</p>
+
+<h3>3.3 关键代码路径</h3>
+<table>
+  <tr><th>文件路径</th><th>职责</th></tr>
+  <tr><td><code>app/app-gateway/internal/handler/task_create.go</code></td><td>任务创建入口、参数校验</td></tr>
+  <tr><td><code>app/app-gateway/internal/validator/params_validator.go</code></td><td>通用参数校验器（配置驱动）</td></tr>
+  <tr><td><code>app/worker-sidecar/internal/executor/audio_executor.go</code></td><td>Seed-TTS 音频执行器</td></tr>
+  <tr><td><code>app/worker-sidecar/internal/executor/meshy_executor.go</code></td><td>Meshy 3D 执行器</td></tr>
+  <tr><td><code>app/worker-sidecar/internal/supplier/seedtts/client.go</code></td><td>Seed-TTS API 封装</td></tr>
+  <tr><td><code>app/worker-sidecar/internal/supplier/meshy/client.go</code></td><td>Meshy API 封装</td></tr>
+  <tr><td><code>app/worker-sidecar/internal/output/proxy_download.go</code></td><td>外部 URL 代理下载</td></tr>
+  <tr><td><code>pkg/cdn/upload.go</code></td><td>CDN 上传工具</td></tr>
+</table>
+
+<h3>3.4 踩坑记录</h3>
+
+<div class="highlight-box">
+<strong>踩坑 1: Meshy 外部 URL 下载超时</strong><br>
+Meshy 返回的产物 URL 指向海外 CDN，国内直连 &gt;30s 经常超时。解决：在 output 层添加代理下载逻辑，走公司海外代理节点，延迟从 30s+ 降到 &lt;3s。
+</div>
+
+<div class="highlight-box">
+<strong>踩坑 2: 3D 模型生成超时</strong><br>
+原有系统默认超时 60min，但 Meshy 的 "AI Texture" + "Smart Topology" 组合任务耗时可达 80min。将 3D 类任务的超时从 60min 调到 90min，并在 Worker 心跳中增加"仍在轮询供应商"的状态上报，避免 scheduler 误判任务死亡。
+</div>
+
+<div class="highlight-box">
+<strong>踩坑 3: smart-topology 参数映射</strong><br>
+Meshy API 的 <code>topology_mode</code> 参数值为 <code>"smart"</code>，但前端 UI 显示 "智能拓扑重建"，中间需要做 value 映射。在 App 注册的 params 中通过 <code>value_map</code> 字段实现。
+</div>
+
+<h3>3.5 设计决策</h3>
+<table>
+  <tr><th>决策点</th><th>选择</th><th>原因</th></tr>
+  <tr><td>音频/3D 是否复用图片 Worker？</td><td>独立 Worker 类型</td><td>资源隔离；超时策略不同；依赖不同</td></tr>
+  <tr><td>轮询间隔</td><td>音频 2s / 3D 10s</td><td>匹配供应商处理速度，避免过度请求</td></tr>
+  <tr><td>产物存储</td><td>统一上传内部 CDN</td><td>避免外链过期；统一权限控制</td></tr>
+  <tr><td>超时设计</td><td>每个 App 独立配置</td><td>不同模态耗时差异极大（音频 10s vs 3D 90min）</td></tr>
+</table>
+
+<div class="defend">
+<h4>面试防守</h4>
+<ol>
+  <li><strong>Q: "全链路接入"具体你做了哪些？是从零开始还是有框架？</strong><br>A: 框架（5 层架构、队列机制、sidecar 模式）已经存在，我的工作是：1) 定义 App 配置 Schema 并写入 MongoDB；2) 实现 audio_executor / meshy_executor，封装供应商 API 调用和轮询逻辑；3) 添加产物代理下载和格式转换；4) 处理超时、参数映射等适配问题。核心创造性工作在 executor 和供应商适配层。</li>
+  <li><strong>Q: 遇到最大的技术困难是什么？</strong><br>A: Meshy 3D 模型的超时问题。原有 60min 超时导致长任务被误杀，但简单加大超时又会让真正卡死的任务占用资源。最终方案是：1) App 级可配超时；2) Worker 轮询时持续上报"供应商仍在处理"状态；3) 只有在供应商无响应（连续 3 次轮询失败）时才判定超时。</li>
+  <li><strong>Q: 你怎么测试这些接入？</strong><br>A: 三层测试：1) 单元测试 mock 供应商 API 返回；2) 集成测试用供应商的 sandbox/test 环境；3) 灰度发布只对内部用户开放，观察日志和成功率再全量。</li>
+  <li><strong>Q: 为什么用轮询而不是 Webhook？</strong><br>A: 供应商（Seed-TTS / Meshy）的 API 设计就是轮询模式，没有提供 Webhook 回调。即使有 Webhook，我们仍需要轮询作为兜底（Webhook 可能丢失）。</li>
+  <li><strong>Q: 接入一个新模型大概需要多长时间？改多少代码？</strong><br>A: 如果供应商 API 模式类似（异步创建 + 轮询），主要工作是：1 个 executor 文件（~200 行）+ 1 个 supplier client 文件（~150 行）+ MongoDB 配置。总共约 400 行代码 + 配置，2-3 天完成含测试。这是"配置即界面"设计的价值——参数校验、队列、前端 UI 全部复用。</li>
+</ol>
+</div>
+
+<div class="resume-hook">
+<h4>简历关联</h4>
+<p><strong>推荐写法（强力版）</strong>：独立完成 Seed-TTS 音频合成与 Meshy 3D 模型的全链路接入，覆盖 MongoDB App 注册、参数校验、Redis 队列入队、Worker 异步执行、产物代理下载与 CDN 上传 6 个环节；通过"配置即界面"设计，将新能力接入周期从 2 周缩短至 2-3 天。</p>
+<p><strong>关键词</strong>：Full-Stack Integration、Worker Pattern、Async Polling、Proxy Download、Configuration-as-UI</p>
+<p><strong>加分点</strong>：强调"独立完成"、"全链路"、有具体踩坑和解决方案可讲。</p>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q1: "配置即界面"具体是怎么实现的？</div>
+  <div class="quiz-answer" id="q5a">MongoDB 的 dreamworker_apps 集合中，每个 App 的 params 数组定义了参数的 name、type（slider/select/upload/textarea）、范围、默认值等。前端读取这个配置后动态渲染对应的 UI 控件，无需为新能力写前端代码。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q5a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q2: Worker 轮询供应商时，如何避免被 scheduler 误判为死亡？</div>
+  <div class="quiz-answer" id="q6a">Worker-sidecar 在轮询等待期间持续向 scheduler 上报心跳，心跳中携带"polling_supplier"状态。scheduler 只有在心跳超时（连续 2min 无心跳）时才将任务重新标记为 pending。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q6a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q3: 为什么 3D 任务需要代理下载而音频不需要？</div>
+  <div class="quiz-answer" id="q7a">Meshy 的产物 URL 指向海外 CDN（国内直连慢/超时），而 Seed-TTS 是火山引擎的国内服务，返回的 URL 国内访问正常。但代码设计上代理下载是通用的——通过配置决定是否启用。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q7a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<!-- ================================================================== -->
+<h2>四、统一限流与 API Key 管理（Bullet 4）</h2>
+
+<p><strong>一句话</strong>：实现 App 级 + Model 级两层滑动窗口限流，配合 API Key 全生命周期管理（创建/轮转/禁用/RBAC 权限），为平台提供细粒度的访问控制。</p>
+
+<h3>4.1 业务背景</h3>
+<p>DreamMaker 开放 API 给内部各工作室使用，需要：</p>
+<ul>
+  <li><strong>限流</strong>：防止单个用户/团队消耗全部供应商配额</li>
+  <li><strong>API Key 管理</strong>：支持 Key 轮转（安全合规）、禁用（泄露应急）、权限区分（不同 Key 能调用的 App/Model 不同）</li>
+  <li><strong>多层级</strong>：平台级兜底 + 用户级精细控制</li>
+</ul>
+
+<h3>4.2 技术方案 — 限流</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    A[请求到达] --> B{App 级限流检查}
+    B -- 超限 --> C[429 Too Many Requests]
+    B -- 通过 --> D{Model 级限流检查}
+    D -- 超限 --> C
+    D -- 通过 --> E[放行到 app-gateway]
+
+    subgraph Redis
+        R1["app_limit::{user}::{env}::{app}"]
+        R2["app_limit::{user}::{env}::{model}"]
+        R3["app_limit::default::{env}::{app}"]
+    end
+</pre>
+</div>
+
+<p>Redis Key 设计：</p>
+<pre><code>// 两层限流 Key 格式
+appKey   := fmt.Sprintf("app_limit::%s::%s::%s", userID, env, appCode)
+modelKey := fmt.Sprintf("app_limit::%s::%s::%s", userID, env, modelName)
+
+// default 用户兜底：未配置个性化限额的用户走 default 规则
+defaultKey := fmt.Sprintf("app_limit::default::%s::%s", env, appCode)
+
+// 滑动窗口实现
+func CheckRateLimit(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
+    now := time.Now().UnixMilli()
+    pipe := redis.Pipeline()
+    // 移除窗口外的记录
+    pipe.ZRemRangeByScore(ctx, key, "0", strconv.FormatInt(now-window.Milliseconds(), 10))
+    // 统计窗口内请求数
+    pipe.ZCard(ctx, key)
+    // 添加当前请求
+    pipe.ZAdd(ctx, key, &redis.Z{Score: float64(now), Member: now})
+    // 设置 key 过期（兜底清理）
+    pipe.Expire(ctx, key, window+time.Minute)
+    results, err := pipe.Exec(ctx)
+    // ...
+    count := results[1].(*redis.IntCmd).Val()
+    return count < int64(limit), nil
+}</code></pre>
+
+<h3>4.3 技术方案 — API Key 生命周期</h3>
+
+<pre><code>// API Key 状态机
+// active <-> disabled (可逆)
+// active -> rotated (生成新 Key，旧 Key 标记 rotated)
+// any -> deleted (逻辑删除)
+
+type ApiListItem struct {
+    KeyID      string    `json:"key_id"`
+    KeyHash    string    `json:"key_hash"`    // 存储 hash，不存明文
+    AppCodes   []string  `json:"app_codes"`   // 可访问的 App 列表
+    ModelNames []string  `json:"model_names"` // 可访问的 Model 列表
+    Status     string    `json:"status"`      // active|disabled|rotated
+    CreatedBy  string    `json:"created_by"`
+    CreatedAt  time.Time `json:"created_at"`
+}
+
+// PUT /api-keys/:id/status — 切换 Key 状态
+func UpdateKeyStatus(ctx context.Context, keyID string, newStatus string) error {
+    key, err := dao.GetKeyByID(ctx, keyID)
+    if err != nil { return err }
+
+    // 权限校验：用户组管理员 OR Key 创建者
+    if !isGroupAdmin(ctx) && key.CreatedBy != getCurrentUser(ctx) {
+        return errcode.Forbidden
+    }
+
+    // 状态流转校验
+    if !validTransition(key.Status, newStatus) {
+        return errcode.InvalidStatusTransition
+    }
+
+    return dao.UpdateKeyStatus(ctx, keyID, newStatus)
+}
+
+// RotateApiKey — 轮转拒绝 disabled Key
+func RotateApiKey(ctx context.Context, keyID string) (*ApiListItem, error) {
+    key, err := dao.GetKeyByID(ctx, keyID)
+    if err != nil { return nil, err }
+    if key.Status == "disabled" {
+        return nil, errcode.KeyDisabled.WithMsg("cannot rotate a disabled key")
+    }
+    // 生成新 Key，标记旧 Key 为 rotated
+    newKey := generateNewKey(key)
+    // ...
+    return newKey, nil
+}</code></pre>
+
+<h3>4.4 关键代码路径</h3>
+<table>
+  <tr><th>文件路径</th><th>职责</th></tr>
+  <tr><td><code>app/api-server/internal/middleware/rate_limit.go</code></td><td>限流中间件、滑动窗口实现</td></tr>
+  <tr><td><code>app/api-server/internal/handler/api_key.go</code></td><td>API Key CRUD + 状态管理</td></tr>
+  <tr><td><code>app/api-server/internal/auth/key_auth.go</code></td><td>Authorization 层 Key 校验 + disabled 拦截</td></tr>
+  <tr><td><code>app/api-server/internal/dao/rate_limit_dao.go</code></td><td>限流配置读取（user/app/model 三级）</td></tr>
+  <tr><td><code>pkg/errcode/rate_limit.go</code></td><td>429 错误码定义</td></tr>
+</table>
+
+<h3>4.5 设计决策</h3>
+<table>
+  <tr><th>决策点</th><th>选择</th><th>原因</th></tr>
+  <tr><td>限流算法</td><td>滑动窗口（ZSet）</td><td>比固定窗口更平滑；比令牌桶实现简单；Redis ZSet 天然支持</td></tr>
+  <tr><td>Key 存储</td><td>Hash 存储，不存明文</td><td>安全合规；泄露 DB 不暴露 Key</td></tr>
+  <tr><td>Key 上限</td><td>3 &rarr; 10</td><td>用户反馈 3 个不够（不同项目需要隔离的 Key）</td></tr>
+  <tr><td>数据结构升级</td><td><code>[]string</code> &rarr; <code>[]ApiListItem</code></td><td>需要区分每个 Key 的权限范围（app/model）</td></tr>
+  <tr><td>disabled Key 不可 rotate</td><td>显式拒绝</td><td>防止安全事件中误操作：Key 已禁用说明可能泄露，rotate 会生成新的有效 Key</td></tr>
+</table>
+
+<div class="defend">
+<h4>面试防守</h4>
+<ol>
+  <li><strong>Q: 滑动窗口 vs 令牌桶 vs 漏桶，怎么选的？</strong><br>A: 滑动窗口：实现简单（Redis ZSet 一条命令），精度够用（毫秒级），内存可控（窗口外自动清理）。令牌桶适合需要"突发容忍"的场景（如 API Gateway），但我们的供应商有硬性 QPS 限制，不需要 burst。漏桶适合"匀速输出"，但我们的请求本身不需要匀速。</li>
+  <li><strong>Q: default 用户兜底是怎么工作的？</strong><br>A: 如果某用户没有在限流配置中指定个性化限额，系统会 fallback 到 <code>app_limit::default::{env}::{app}</code> 的规则。这样新用户无需配置就有基本保护，管理员只需为有特殊需求的用户添加规则。</li>
+  <li><strong>Q: API Key 泄露了怎么处理？</strong><br>A: 立即 disable（PUT /api-keys/:id/status body={status:"disabled"}），Authorization 层在下一次请求时就会拦截。然后调查泄露范围、通知用户、必要时 rotate 其他 Key。disabled Key 不能 rotate 是刻意的安全设计。</li>
+  <li><strong>Q: 限流的原子性怎么保证？并发请求同时到达怎么办？</strong><br>A: 使用 Redis Pipeline（MULTI/EXEC）保证 ZRemRangeByScore + ZCard + ZAdd 三个操作的原子性。Redis 单线程特性保证同一 Key 的并发请求串行执行。</li>
+</ol>
+</div>
+
+<div class="resume-hook">
+<h4>简历关联</h4>
+<p><strong>推荐写法</strong>：设计并实现 App 级 + Model 级两层滑动窗口限流（Redis ZSet），配合 API Key 全生命周期管理（创建/轮转/禁用/RBAC 鉴权），支撑平台 N 个工作室的细粒度访问控制。</p>
+<p><strong>关键词</strong>：Rate Limiting、Sliding Window、API Key Lifecycle、RBAC、Redis Pipeline Atomicity</p>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q1: 为什么 disabled 的 Key 不允许 rotate？</div>
+  <div class="quiz-answer" id="q8a">disabled 通常意味着 Key 可能已泄露或存在安全问题。如果允许 rotate，会生成一个新的有效 Key，相当于在安全事件未调查清楚时重新开放了访问权限。正确流程是：先调查 -> 确认安全 -> 启用 -> 再 rotate。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q8a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<div class="quiz">
+  <div class="quiz-question">Q2: 滑动窗口限流为什么用 Redis ZSet 而不是简单的计数器？</div>
+  <div class="quiz-answer" id="q9a">简单计数器是固定窗口，有临界点突刺问题（窗口交界处可能放过 2x 的请求）。ZSet 以时间戳为 score，可以精确移除窗口外的记录，实现真正的滑动窗口，限流更平滑。</div>
+  <button class="quiz-toggle" onclick="document.getElementById('q9a').classList.toggle('visible')">显示答案</button>
+</div>
+
+<!-- ================================================================== -->
+<h2>五、模拟面试：完整追问链</h2>
+
+<div class="highlight-box">
+  <strong>说明</strong>：以下模拟一场 15 轮技术面试，面试官会在四个 Bullet 之间跳转追问，考察你对系统的整体理解和细节把握。每个回答控制在 30-60 秒口述长度。
+</div>
+
+<h3>Round 1 — 开场</h3>
+<p><strong>面试官</strong>：你在 DreamMaker 项目中主要负责哪些模块？</p>
+<p><strong>参考回答</strong>：我主要负责 Scheduler 微服务集群中的三块工作：一是独立完成音频和 3D 新模型的全链路接入（Seed-TTS、Meshy），从 App 注册到 Worker 执行到产物处理；二是供应商限流场景下的重试和降级机制；三是参与了统一限流和 API Key 管理的开发。整体架构是五层的分布式任务调度系统，基于 Go + Redis + MongoDB。</p>
+
+<h3>Round 2 — 架构理解</h3>
+<p><strong>面试官</strong>：你说的"五层架构"能画出来讲讲吗？</p>
+<p><strong>参考回答</strong>：从上到下：1) 外部请求层（api-server 对外、api-outer 对内）；2) 业务服务层（app-gateway 做参数校验和入队）；3) 基础调度层（worker-scheduler 做 Leader 选举和任务分配）；4) Worker 执行层（worker-sidecar + 10 类 Worker）；5) 外部供应商层。数据存储用 Redis ZSet 做任务队列、MongoDB 做记录持久化、etcd 做 Worker 注册和服务发现。</p>
+
+<h3>Round 3 — 深入 Bullet 3</h3>
+<p><strong>面试官</strong>：你说独立完成了 Seed-TTS 的接入，具体改了哪些文件？</p>
+<p><strong>参考回答</strong>：主要是：1) MongoDB 配置脚本——定义 App 元数据和参数 Schema；2) executor 文件——实现音频任务的执行逻辑（构造请求、调用供应商、轮询结果）；3) supplier client——封装 Seed-TTS 的 HTTP API；4) 产物处理——音频文件下载和 CDN 上传。总共约 18 个文件改动，核心创造性工作在 executor 和 supplier 层。</p>
+
+<h3>Round 4 — 追问设计</h3>
+<p><strong>面试官</strong>：为什么音频和 3D 不复用图片的 Worker？</p>
+<p><strong>参考回答</strong>：三个原因：1) 资源隔离——3D 模型生成极耗内存和 CPU，放一起会互相影响；2) 超时策略完全不同——图片 5min、音频 10min、3D 90min；3) 依赖不同——3D Worker 需要特定的格式转换工具链（如 glTF 处理库）。独立 Worker 类型让每类任务可以独立扩缩容。</p>
+
+<h3>Round 5 — 踩坑</h3>
+<p><strong>面试官</strong>：接入过程中遇到最难解决的问题是什么？</p>
+<p><strong>参考回答</strong>：Meshy 3D 模型的超时问题。原有系统默认 60min 超时，但 Meshy 的"AI Texture + Smart Topology"组合任务实测需要 80min。简单加大超时不行——真正卡死的任务会长时间占用 Worker 资源。最终方案是：App 级可配超时 + Worker 轮询时持续上报"polling_supplier"心跳状态，scheduler 只有在心跳断了才判定死亡，而不是靠任务总时长。</p>
+
+<h3>Round 6 — 跳到 Bullet 1</h3>
+<p><strong>面试官</strong>：你提到供应商 429 重试，如果供应商连续 12 小时都返回 429 怎么办？</p>
+<p><strong>参考回答</strong>：超过 12h 最大等待后，重试循环退出，返回 retryable error 给上层。上层 executor 查询 fallback 通道配置——比如 pt-art1 的 fallback 是 pt-art3-openai，尝试切换供应商。如果所有通道都不可用，最终返回用户友好的排队提示（"当前服务繁忙，请稍后重试"），不是直接报错。</p>
+
+<h3>Round 7 — 算法细节</h3>
+<p><strong>面试官</strong>：指数退避加 jitter 具体是怎么实现的？为什么需要 jitter？</p>
+<p><strong>参考回答</strong>：backoff = min(initial * 2^attempt, maxInterval)，然后加上 &plusmn;20% 的随机偏移。jitter 的目的是防止惊群效应——如果 100 个 Worker 同时收到 429，不加 jitter 它们会在完全相同的时刻重试，再次打爆供应商。加了 jitter 后请求被分散到一个时间窗内。</p>
+
+<h3>Round 8 — 跳到 Bullet 4</h3>
+<p><strong>面试官</strong>：限流你用的什么算法？为什么不用令牌桶？</p>
+<p><strong>参考回答</strong>：用的 Redis ZSet 实现的滑动窗口。不用令牌桶的原因：我们的供应商有硬性 QPS 上限，不需要"突发容忍"（burst）；滑动窗口实现更简单，Redis ZSet 天然支持按 score 范围删除和计数，一个 Pipeline 搞定；内存也更可控，因为窗口外的记录会被主动清理。</p>
+
+<h3>Round 9 — 安全追问</h3>
+<p><strong>面试官</strong>：API Key 泄露了你们怎么处理？</p>
+<p><strong>参考回答</strong>：第一步 disable（PUT /api-keys/:id/status），Authorization 中间件下一次请求就会拦截这个 Key。第二步调查泄露范围——看日志确认哪些请求用了这个 Key。第三步通知用户，必要时 rotate 其他 Key。注意：disabled Key 不能 rotate，这是刻意的安全设计，防止在安全事件未调查清楚时误操作产生新的有效 Key。</p>
+
+<h3>Round 10 — 跳回 Bullet 2</h3>
+<p><strong>面试官</strong>：图片压缩中间件的性能开销你评估过吗？</p>
+<p><strong>参考回答</strong>：评估过。平均压缩耗时 50-200ms，相比 AI 生成的 30s-5min 可忽略。配置查询走本地缓存（TTL 5min），不增加 MongoDB 压力。压缩只在图片超限时触发（大约 15-20% 的请求），不是所有请求都走。对用户来说感知不到延迟。</p>
+
+<h3>Round 11 — 系统设计延伸</h3>
+<p><strong>面试官</strong>：如果让你重新设计这个调度系统，有什么会改的？</p>
+<p><strong>参考回答</strong>：两个方向：1) 任务优先级——目前 Redis ZSet 按时间排序（FIFO），不支持优先级。可以引入多队列或在 score 中编码优先级权重；2) 自动扩缩容——目前 Worker 数量手动配置，可以结合队列深度做 HPA，3D 队列深了就自动拉起更多 3D Worker。</p>
+
+<h3>Round 12 — 工程实践</h3>
+<p><strong>面试官</strong>：你怎么保证接入新模型不影响现有模型的稳定性？</p>
+<p><strong>参考回答</strong>：三层保证：1) 独立 Worker 类型——新模型的 Worker 和图片 Worker 完全隔离，不竞争资源；2) 灰度发布——新能力先只对内部用户可见，观察 1-2 天再全量开放；3) 配置驱动——新模型的接入不改已有代码，只新增 executor 和 MongoDB 配置，不可能影响已有逻辑。</p>
+
+<h3>Round 13 — 数据一致性</h3>
+<p><strong>面试官</strong>：任务状态在 Redis 和 MongoDB 之间怎么保证一致？</p>
+<p><strong>参考回答</strong>：Redis 是任务队列（热数据），MongoDB 是持久化记录。流程是：任务创建时同时写 Redis 队列和 MongoDB（status=pending）；Worker 完成后更新 MongoDB（status=completed）并从 Redis 移除。如果 Worker 崩溃，Redis 中的任务会被 scheduler 超时重新分配，MongoDB 状态不变（还是 pending）。最终一致性，不追求强一致。</p>
+
+<h3>Round 14 — 幂等性</h3>
+<p><strong>面试官</strong>：你提到任务是幂等的，怎么实现的？</p>
+<p><strong>参考回答</strong>：每个任务有唯一的 taskId（创建时生成）。Worker 执行前先检查 MongoDB 中该 taskId 的状态——如果已经是 completed/failed，直接返回，不重复执行。供应商侧也支持幂等：Seed-TTS 和 Meshy 都是"创建 job → 轮询结果"模式，重复创建同一 job 不会产生副作用（返回已有的 jobId）。</p>
+
+<h3>Round 15 — 收尾</h3>
+<p><strong>面试官</strong>：这个项目中你学到最重要的一件事是什么？</p>
+<p><strong>参考回答</strong>：分布式系统的核心不是"正常路径怎么走"，而是"异常路径怎么处理"。429 重试、超时兜底、Worker 崩溃恢复、Key 泄露应急——这些异常场景的代码量远超正常流程。好的系统设计是让异常处理变成声明式配置（如重试参数、超时配置、fallback 通道列表），而不是散落在业务逻辑里的 if-else。</p>
+
+<!-- ================================================================== -->
+<h2>附：四条 Bullet 的统一表达模板</h2>
+
+<table>
+  <tr><th>#</th><th>简历一行版</th></tr>
+  <tr><td>1</td><td>设计供应商 429 指数退避重试机制（jitter &plusmn;20%，fallback 多通道），高峰期任务失败率显著下降</td></tr>
+  <tr><td>2</td><td>实现配置驱动的图片压缩中间件，MongoDB Schema 支持新模型零代码接入</td></tr>
+  <tr><td>3</td><td>独立完成 Seed-TTS / Meshy 全链路接入（6 步），"配置即界面"设计将接入周期从 2 周缩至 2-3 天</td></tr>
+  <tr><td>4</td><td>设计 App+Model 两层滑动窗口限流 + API Key 全生命周期管理（RBAC、轮转、禁用）</td></tr>
+</table>
+
+<blockquote>
+  面试中讲 Bullet 的节奏：<strong>15 秒背景</strong>（为什么做）&rarr; <strong>30 秒方案</strong>（怎么做的）&rarr; <strong>15 秒结果</strong>（效果如何）。总共 1 分钟内讲完一条，面试官想深入会自己追问。
+</blockquote>
+
+<script>
+// 简单的 quiz toggle 功能已通过 onclick 内联实现
+// 如果需要键盘可访问性，可以添加以下增强
+document.querySelectorAll('.quiz-toggle').forEach(btn => {
+  btn.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      btn.click();
+    }
+  });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Lesson M006 — 简历 Bullet 深度解析：Monet Agent</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+:root { --text: #1a1a1a; --text-muted: #555; --bg: #fffdf6; --accent: #b91c1c; --accent-soft: #fef2f2; --code-bg: #f4f1eb; --border: #d4c9a8; --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif; --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif; --mono: "Fira Code", "SF Mono", Monaco, monospace; }
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { font-family: var(--serif); color: var(--text); background: var(--bg); max-width: 1100px; margin: 3rem auto; padding: 0 1.5rem; line-height: 1.7; }
+h1, h2, h3, h4 { font-family: var(--sans); font-weight: 600; line-height: 1.3; margin-top: 2.5rem; margin-bottom: 0.8rem; }
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+p { margin: 0.8rem 0; }
+a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+code { font-family: var(--mono); background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid var(--accent); font-family: var(--mono); font-size: 0.9em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 3px solid var(--border); margin: 1.2rem 0; padding: 0.5rem 1.2rem; color: var(--text-muted); background: #faf7ed; font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--sans); font-size: 0.95em; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; vertical-align: top; }
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+.lesson-meta { font-family: var(--sans); font-size: 0.85em; color: var(--text-muted); margin-bottom: 1.5rem; padding: 0.8rem 1rem; background: var(--code-bg); border-radius: 6px; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+.highlight-box { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 4px; }
+.highlight-box strong { color: var(--accent); }
+.quiz { background: #fef9e7; border: 1px solid #e6d999; padding: 1.2rem 1.5rem; margin: 1.5rem 0; border-radius: 6px; }
+.quiz-question { font-weight: 600; margin-bottom: 0.8rem; font-family: var(--sans); }
+.quiz-options { list-style: none; padding: 0; }
+.quiz-options li { padding: 0.5rem 0.8rem; background: white; border: 1px solid var(--border); border-radius: 4px; margin: 0.4rem 0; cursor: pointer; font-family: var(--sans); }
+.quiz-options li:hover { background: var(--accent-soft); }
+.quiz-answer { margin-top: 1rem; padding: 0.8rem; background: white; border-radius: 4px; display: none; font-family: var(--sans); font-size: 0.9em; }
+.quiz-answer.visible { display: block; }
+.quiz-toggle { margin-top: 0.5rem; background: var(--accent); color: white; border: none; padding: 0.4rem 0.9rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.85em; }
+.defend { background: #fef2f2; border: 2px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; }
+.defend h4 { margin-top: 0; color: var(--accent); }
+.defend ol { padding-left: 1.4rem; }
+.defend li { margin: 0.5rem 0; }
+.resume-hook { background: #f0fdf4; border: 2px solid #16a34a; padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); }
+.resume-hook h4 { color: #16a34a; margin-top: 0; }
+.diagram { background: white; padding: 1.2rem; border: 1px solid var(--border); border-radius: 6px; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span><strong>Lesson</strong> M006</span>
+  <span><strong>项目</strong> Monet Agent</span>
+  <span><strong>时长</strong> ~60 分钟</span>
+  <span><strong>难度</strong> ★★★★☆</span>
+  <span><strong>前置</strong> <a href="M005-generation-pipeline.html">← M005 生成链路</a></span>
+</div>
+
+<h1>简历 Bullet 深度解析：Monet Agent 四大亮点</h1>
+
+<p>本节课覆盖你简历上 Monet 项目的 4 条 bullet，目标是<strong>每条都能 defend 到 3-5 层追问</strong>。每个 bullet 我们讲清楚：为什么做、怎么做、关键代码在哪、面试官会怎么问。</p>
+
+<div class="highlight-box">
+  <strong>核心原则</strong>：所有技术细节锚定到真实代码路径（<code>src/monet/</code> 下的实际模块）。面试时用"我们项目里是这样实现的"来回答，比空讲概念有说服力 10 倍。
+</div>
+
+<!-- ====== Bullet 1 ====== -->
+<h2>一、HITL 交互通道（Bullet 1）</h2>
+
+<p><strong>一句话</strong>：基于 LangGraph interrupt 机制，让 Agent 在执行本地 shell/文件操作前暂停等用户审批，审批通过后 resume 继续。</p>
+
+<h3>1.1 业务背景</h3>
+
+<p>Monet Agent 运行在用户本机，具备本地 shell 执行和文件读写能力。但不加控制地执行任意命令是危险的（比如 <code>rm -rf /</code>）。需要一个机制让：</p>
+<ul>
+  <li>Agent 想执行写操作时<strong>暂停</strong>，把操作内容推给前端</li>
+  <li>用户看到后决定<strong>允许/拒绝</strong></li>
+  <li>决策回传 Agent，Agent 继续或终止</li>
+</ul>
+<p>类比：Claude Code 的权限弹窗 — 你输入命令后 CLI 弹窗问你"允许执行吗"，就是同样的 HITL 模式。</p>
+
+<h3>1.2 技术方案</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    participant Agent as Agent Loop
+    participant PE as PermissionEngine
+    participant SSE as SSE Adapter
+    participant Frontend as 画布前端
+    participant API as Resume API
+
+    Agent->>PE: check("execute", {cmd: "ls"})
+    PE-->>Agent: ALLOW (读操作，直接放行)
+    Agent->>PE: check("write_file", {path: "/tmp/x"})
+    PE-->>Agent: NEEDS_APPROVAL
+    Agent->>SSE: LangGraph interrupt 触发
+    SSE->>Frontend: interaction.request 事件
+    Frontend->>Frontend: 弹出审批弹窗
+    Frontend->>API: POST /chat/{session_id}/resume {decision: "allow"}
+    API->>Agent: resolve_interrupt → Event.set()
+    Agent->>Agent: 继续执行写操作
+    SSE->>Frontend: interaction.resolved 事件
+</pre>
+</div>
+
+<h3>1.3 关键代码路径</h3>
+
+<table>
+<thead><tr><th>文件</th><th>职责</th><th>核心 API</th></tr></thead>
+<tbody>
+<tr><td><code>interaction/__init__.py</code></td><td>模块导出</td><td>InteractionType, PermissionDecision, PermissionEngine</td></tr>
+<tr><td><code>interaction/permission.py</code></td><td>权限决策引擎</td><td><code>DefaultPermissionEngine.check(action, args) → PermissionDecision</code></td></tr>
+<tr><td><code>interaction/runtime.py</code></td><td>interrupt 信号传递</td><td><code>register_interrupt()</code>, <code>resolve_interrupt()</code>, <code>pop_decision()</code>, <code>cleanup_interrupt()</code></td></tr>
+<tr><td><code>sse/deepagent.py</code></td><td>SSE 事件发射</td><td>检测 interrupt → 发射 <code>interaction.request</code> 事件</td></tr>
+<tr><td><code>api/routes.py</code></td><td>Resume 端点</td><td><code>POST /chat/{session_id}/resume</code></td></tr>
+<tr><td><code>agent/factory.py</code></td><td>Agent 配置</td><td><code>interrupt_on</code> 配置项，注入 LocalShellBackend</td></tr>
+</tbody>
+</table>
+
+<h3>1.4 设计决策</h3>
+
+<table>
+<thead><tr><th>决策点</th><th>选择</th><th>替代方案</th><th>为什么选这个</th></tr></thead>
+<tbody>
+<tr><td>权限模型</td><td>三级（Allow/Needs-Approval/Deny）</td><td>二级（Allow/Deny）</td><td>Needs-Approval 允许未来自动放行安全命令（Phase 2）</td></tr>
+<tr><td>阻塞机制</td><td>asyncio.Event</td><td>轮询 / WebSocket 双工</td><td>SSE 单向即够用，Event 轻量无需新连接</td></tr>
+<tr><td>交互协议</td><td>Confirmation / Choice 两类</td><td>每种场景独立协议</td><td>可扩展 — 新交互类型不改 SSE 层</td></tr>
+</tbody>
+</table>
+
+<div class="defend">
+<h4>🎯 面试防守</h4>
+<ol>
+  <li><strong>Q: interrupt 怎么实现的？</strong><br>A: LangGraph 原生支持 interrupt — Agent Loop 执行到需要审批的 tool call 时，graph 进入 interrupted 状态，runner 检测到后通过 asyncio.Event 挂起。前端 resume 回来后 Event.set() 唤醒，graph 从断点继续。</li>
+  <li><strong>Q: 并发安全问题？同一个 session 多次 resume 怎么办？</strong><br>A: Monet 是单机单用户服务（本地客户端），同一 session 同时只有一个 pending interrupt。runtime.py 用 dict 以 session_id 为 key 管理，resolve 时取出 Event 唤醒并清理，重复 resolve 返回 False。</li>
+  <li><strong>Q: 前端断连了怎么办？interrupt 会永远挂着吗？</strong><br>A: 有超时机制。register_interrupt 后如果 Event 在超时时间内没被 set，cleanup_interrupt 自动清理，Agent 中止当前操作并告知用户。</li>
+  <li><strong>Q: 为什么不用 WebSocket 双工？</strong><br>A: Monet 已经有 SSE 长连接用于流式输出。审批是低频操作（一次对话可能 0-2 次），不值得为此额外建立 WebSocket。用户决策通过普通 HTTP POST 回传就够了。</li>
+</ol>
+</div>
+
+<div class="resume-hook">
+<h4>📝 简历关联</h4>
+<p><strong>关键词</strong>：LangGraph interrupt、Human-in-the-Loop、权限审批、SSE 事件协议<br>
+<strong>面试强调</strong>：这是一个<strong>可扩展的协议设计</strong> — 当前只有 Confirmation/Choice 两种交互类型，但协议层是通用的，未来加"从多方案选一个"等新类型无需改 SSE 层。这个设计思路比"只解决当前问题"高一个层次。</p>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. DefaultPermissionEngine 对 "execute" action 返回什么决策？</p>
+  <ul class="quiz-options">
+    <li>A. ALLOW</li>
+    <li>B. NEEDS_APPROVAL</li>
+    <li>C. DENY</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">B. NEEDS_APPROVAL — execute 属于 WRITE_ACTIONS，Phase 1 全量审批。</div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. resolve_interrupt() 返回 False 意味着什么？</p>
+  <ul class="quiz-options">
+    <li>A. 用户拒绝了操作</li>
+    <li>B. 没有找到对应 session_id 的 pending interrupt</li>
+    <li>C. Event 已经超时</li>
+  </ul>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">B. _pending_interrupts.get(session_id) 返回 None 时，说明没有 pending interrupt（可能已被清理或从未注册）。</div>
+</div>
+
+<!-- ====== Bullet 2 ====== -->
+<h2>二、MCP 协议接入与运行时管理（Bullet 2）</h2>
+
+<p><strong>一句话</strong>：让 Monet Agent 能接入任意 MCP server，把外部工具动态注入 Agent 工具列表，支持不重启热加载。</p>
+
+<h3>2.1 业务背景</h3>
+
+<p>MCP（Model Context Protocol）是 2024-2025 年 AI Agent 领域最热门的标准协议，由 Anthropic 推出。它解决的问题是：<strong>让 Agent 以统一方式使用各种外部工具/数据源</strong>，不用为每个工具写专属适配代码。</p>
+<p>Monet 内置了画布工具（canvas_query、generate 等），但用户可能还想接入自己的 MCP server（比如文件管理、数据库查询、自定义 API）。所以需要：</p>
+<ul>
+  <li>支持多种传输协议（stdio / HTTP / SSE / WebSocket）</li>
+  <li>运行时增删改查（不重启 Agent）</li>
+  <li>MCP 工具与内置工具统一调度</li>
+</ul>
+
+<h3>2.2 技术方案</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph Agent进程
+        MCPManager["MCPManager<br/>生命周期管理"]
+        Container["ServiceContainer<br/>工具注入"]
+        DeepAgent["DeepAgent<br/>统一工具列表"]
+    end
+    subgraph MCP_Servers["外部 MCP Servers"]
+        S1["stdio server<br/>(本地进程)"]
+        S2["HTTP server<br/>(远端 API)"]
+        S3["SSE server"]
+    end
+    subgraph API["REST API"]
+        CRUD["mcp_routes.py<br/>GET/POST/PUT/DELETE"]
+    end
+
+    CRUD -->|增删改查| MCPManager
+    MCPManager -->|MultiServerMCPClient| S1
+    MCPManager -->|MultiServerMCPClient| S2
+    MCPManager -->|MultiServerMCPClient| S3
+    MCPManager -->|raw_tools| Container
+    Container -->|inject| DeepAgent
+</pre>
+</div>
+
+<h3>2.3 关键代码路径</h3>
+
+<table>
+<thead><tr><th>文件</th><th>职责</th><th>核心类/函数</th></tr></thead>
+<tbody>
+<tr><td><code>mcp/manager.py</code></td><td>MCP 生命周期管理</td><td><code>MCPManager</code>, <code>_ServerRuntimeEntry</code>, <code>MCPServerSnapshot</code></td></tr>
+<tr><td><code>mcp/config.py</code></td><td>配置模型</td><td><code>MCPServerConfig</code>, <code>TransportType</code>(stdio/http/sse/websocket)</td></tr>
+<tr><td><code>mcp/schemas.py</code></td><td>API 请求/响应 Schema</td><td>Pydantic models for CRUD</td></tr>
+<tr><td><code>mcp/errors.py</code></td><td>错误类型</td><td>MCPConnectionError 等</td></tr>
+<tr><td><code>api/mcp_routes.py</code></td><td>REST API 路由</td><td>GET/POST/PUT/DELETE /mcp/servers</td></tr>
+<tr><td><code>container.py</code></td><td>服务容器</td><td>注册 MCPManager，启动时连接</td></tr>
+<tr><td><code>lifespan.py</code></td><td>应用生命周期</td><td>startup 时初始化 MCP，shutdown 时清理</td></tr>
+</tbody>
+</table>
+
+<h3>2.4 设计决策</h3>
+
+<table>
+<thead><tr><th>决策点</th><th>选择</th><th>替代方案</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td>MCP 客户端</td><td><code>langchain_mcp_adapters</code></td><td>自己实现 MCP 协议</td><td>LangChain 生态已有成熟适配，直接复用</td></tr>
+<tr><td>热加载方式</td><td>REST API + Manager 内部重连</td><td>配置文件 watch</td><td>API 更精确可控，前端可直接调用</td></tr>
+<tr><td>工具注入时机</td><td>每次 Agent 调用前从 container 获取最新</td><td>启动时固定</td><td>支持运行时动态变更</td></tr>
+<tr><td>状态模型</td><td>connected / error / disabled 三态</td><td>布尔 on/off</td><td>error 态保留错误信息便于诊断</td></tr>
+</tbody>
+</table>
+
+<div class="defend">
+<h4>🎯 面试防守</h4>
+<ol>
+  <li><strong>Q: MCP 和普通 Function Calling 有什么区别？</strong><br>A: Function Calling 是 LLM 层面的（模型输出 tool_call），MCP 是工具<strong>发现和连接</strong>层面的标准协议。FC 解决"模型怎么调工具"，MCP 解决"工具怎么注册、怎么连接、怎么描述 schema"。两者互补，不冲突。</li>
+  <li><strong>Q: 热加载怎么做的？重连时 Agent 在跑怎么办？</strong><br>A: MCPManager 内部为每个 server 维护 _ServerRuntimeEntry。reload 时先关闭旧 client，再建新连接，更新 raw_tools。如果 Agent 正在用某个 tool，该次调用会正常完成（工具引用还在），下次调用时才用新连接。</li>
+  <li><strong>Q: 工具名冲突怎么处理？内置工具和 MCP 工具同名？</strong><br>A: manager.py 里有 <code>_SAFE_TOOL_NAME_RE</code> 正则对工具名做 sanitize，MCP 工具会带 server name 前缀避免冲突。MCPToolSnapshot 同时保留 <code>name</code>（sanitized）和 <code>original_name</code>。</li>
+  <li><strong>Q: 某个 MCP server 挂了会影响 Agent 吗？</strong><br>A: 不会。每个 server 独立管理，状态变成 "error"，其工具从可用列表移除。Agent 继续用其他工具正常工作。</li>
+</ol>
+</div>
+
+<div class="resume-hook">
+<h4>📝 简历关联</h4>
+<p><strong>关键词</strong>：MCP（Model Context Protocol）、工具注入、热加载、多传输协议<br>
+<strong>面试强调</strong>：MCP 是 2025 最热的 Agent 标准，能讲清楚协议本身 + 工程落地细节（连接管理、状态模型、故障隔离），是 Agent 岗的核心加分项。</p>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. MCPServerStatus 有哪三种状态？</p>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">"connected" / "error" / "disabled" — 对应正常运行、连接失败、用户手动禁用三种情况。</div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. MCP 支持的四种传输协议是什么？</p>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">stdio（本地子进程）、HTTP（远端 REST）、SSE（Server-Sent Events）、WebSocket（双工）。TransportType 定义在 mcp/config.py。</div>
+</div>
+
+<!-- ====== Bullet 3 ====== -->
+<h2>三、声明式后处理调用框架（Bullet 3）</h2>
+
+<p><strong>一句话</strong>：把后处理系统重构为"注册表 + 执行器协议"模式，新增后处理操作只需写 config + schema，不写执行器代码。</p>
+
+<h3>3.1 业务背景</h3>
+
+<p>Monet 支持多种后处理操作（AI 扩图、打光、全景图、多角度渲染、裁切等）。每种操作调用不同的后端（DM API 小程序、AIGW 模型、外部 API），但流程高度相似：</p>
+<ol>
+  <li>接收参数 → 校验</li>
+  <li>提交后端 → 轮询状态</li>
+  <li>拿到产物 → 写入画布节点</li>
+</ol>
+<p>如果每种操作都手写一个 executor，代码会大量重复。所以设计了<strong>声明式框架</strong>：通用操作（如 DM 小程序调用）用配置描述参数，框架统一执行。</p>
+
+<h3>3.2 技术方案</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph API_Layer["接口层 (api/)"]
+        Route["POST /operations/{op_id}/run"]
+    end
+    subgraph Definition_Layer["定义层 (registry)"]
+        Registry["OperationRegistry"]
+        Def1["OperationDefinition<br/>operation_id: relight<br/>params_schema: RelightParams<br/>executor: GptImage2Executor"]
+        Def2["OperationDefinition<br/>operation_id: vr_panorama<br/>params_schema: VRParams<br/>executor: DmAppletExecutor"]
+    end
+    subgraph Execution_Layer["执行层 (executors/)"]
+        Orchestrator["Orchestrator<br/>validate → execute → collect"]
+        Exec1["GptImage2Executor"]
+        Exec2["DmAppletExecutor"]
+        Exec3["CropResizeExecutor"]
+    end
+
+    Route --> Registry
+    Registry --> Def1
+    Registry --> Def2
+    Def1 --> Orchestrator
+    Def2 --> Orchestrator
+    Orchestrator --> Exec1
+    Orchestrator --> Exec2
+    Orchestrator --> Exec3
+</pre>
+</div>
+
+<p>核心抽象：</p>
+<pre><code># protocol.py — 执行器协议
+class OperationExecutor(Protocol):
+    async def execute(self, params: BaseModel, ctx: OperationRunContext) -> None: ...
+
+# registry.py — 操作定义
+@dataclass(frozen=True)
+class OperationDefinition:
+    operation_id: str
+    display_name: str
+    params_schema: type[BaseModel]  # Pydantic model，自动生成 JSON Schema
+    executor: OperationExecutor
+    input_type: MediaFileType = "image"
+    output_media_type: MediaFileType = "image"</code></pre>
+
+<h3>3.3 关键代码路径</h3>
+
+<table>
+<thead><tr><th>文件</th><th>职责</th></tr></thead>
+<tbody>
+<tr><td><code>postprocess/protocol.py</code></td><td>OperationExecutor Protocol + OutputArtifact + ExecutionResult</td></tr>
+<tr><td><code>postprocess/registry.py</code></td><td>OperationRegistry + OperationDefinition（validate_params / info）</td></tr>
+<tr><td><code>postprocess/orchestrator.py</code></td><td>编排逻辑：校验 → 执行 → 产物收集 → 节点创建</td></tr>
+<tr><td><code>postprocess/schemas.py</code></td><td>OperationInfo（给前端的元信息）、OperationMediaType</td></tr>
+<tr><td><code>postprocess/executors/dm_applet.py</code></td><td>DM 小程序通用执行器（config 驱动）</td></tr>
+<tr><td><code>postprocess/executors/applet_config.py</code></td><td>小程序配置定义</td></tr>
+<tr><td><code>postprocess/executors/gpt_image2.py</code></td><td>GPT-Image-2 打光执行器</td></tr>
+<tr><td><code>postprocess/dm_applet_backend.py</code></td><td>DM 小程序后端调用逻辑</td></tr>
+</tbody>
+</table>
+
+<h3>3.4 设计决策</h3>
+
+<table>
+<thead><tr><th>决策</th><th>选择</th><th>为什么</th></tr></thead>
+<tbody>
+<tr><td>参数校验</td><td>Pydantic BaseModel + model_validate</td><td>自动类型转换 + JSON Schema 生成，前端可直接用</td></tr>
+<tr><td>新操作接入方式</td><td>注册 OperationDefinition 即可</td><td>config-driven，无需写 executor 代码（通用 DmAppletExecutor 够用）</td></tr>
+<tr><td>产物类型</td><td>MediaFileType Literal 枚举</td><td>类型安全，image/video/audio/model_3d/text/motion 覆盖所有场景</td></tr>
+<tr><td>执行器协议</td><td>Python Protocol（结构化子类型）</td><td>不强制继承，实现 execute 方法即满足，松耦合</td></tr>
+</tbody>
+</table>
+
+<div class="defend">
+<h4>🎯 面试防守</h4>
+<ol>
+  <li><strong>Q: 为什么不用策略模式 / 工厂模式？</strong><br>A: 策略模式需要为每种操作写一个类。我们的设计更进一步 — 大部分操作用同一个 DmAppletExecutor 就能覆盖，只需配置不同参数。只有确实逻辑不同的（如 GPT-Image-2 打光）才写专属 executor。这是"配置优于代码"的思路。</li>
+  <li><strong>Q: JSON Schema 怎么给前端用的？</strong><br>A: OperationDefinition.info() 调用 params_schema.model_json_schema() 生成标准 JSON Schema，前端据此动态渲染参数表单。新增操作不需要前端改代码。</li>
+  <li><strong>Q: 执行器之间有共享状态吗？</strong><br>A: 没有。每次执行创建独立的 OperationRunContext（包含 session、画布客户端、认证信息），executor 通过 ctx 完成所有副作用，无全局状态。</li>
+  <li><strong>Q: 如果执行器执行到一半失败了怎么办？</strong><br>A: Orchestrator 捕获异常，标记操作失败，已创建的中间产物不写入画布。ExecutionResult 只在完全成功时才返回 outputs。</li>
+</ol>
+</div>
+
+<div class="resume-hook">
+<h4>📝 简历关联</h4>
+<p><strong>关键词</strong>：声明式框架、注册表模式、Protocol（接口抽象）、配置驱动<br>
+<strong>面试强调</strong>：这条 bullet 证明你有<strong>框架设计能力</strong> — 不只是实现单个功能，而是设计一套让"新增能力只需配置"的扩展机制。这是从"实现者"到"架构者"的跨越。</p>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. OperationDefinition 的 params_schema 字段类型是什么？</p>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer"><code>type[BaseModel]</code> — 是一个 Pydantic model 的类（不是实例），用于 validate_params() 和 model_json_schema()。</div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. MediaFileType 包含哪 6 种类型？</p>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">image, video, audio, model_3d, text, motion — 定义在 postprocess/protocol.py。</div>
+</div>
+
+<!-- ====== Bullet 4 ====== -->
+<h2>四、批量生成并发轮询与瞬时容错（Bullet 4）</h2>
+
+<p><strong>一句话</strong>：引入 TaskOutcome 统一终态表达，串行轮询改并发，网络抖动不再误杀任务，批量生成增量回显。</p>
+
+<h3>4.1 业务背景</h3>
+
+<p>改造前的问题：</p>
+<ul>
+  <li><strong>串行轮询</strong>：批量生成 4 张图，每张轮询到完成才开始下一张，总耗时 = 4 × 单张时间</li>
+  <li><strong>网络抖动误杀</strong>：轮询时一次网络超时就判定任务失败（实际任务可能在后端正常执行）</li>
+  <li><strong>全量等待</strong>：用户必须等所有子任务都完成才能看到结果</li>
+</ul>
+
+<h3>4.2 技术方案</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    subgraph Before["改造前"]
+        S1["task1 轮询"] --> S2["task2 轮询"] --> S3["task3 轮询"] --> S4["task4 轮询"] --> Done1["全部完成<br/>一次性写画布"]
+    end
+    subgraph After["改造后"]
+        P1["task1 轮询"]
+        P2["task2 轮询"]
+        P3["task3 轮询"]
+        P4["task4 轮询"]
+        P1 --> W1["写画布 ✓"]
+        P2 --> W2["写画布 ✓"]
+        P3 --> W3["写画布 ✓"]
+        P4 --> W4["写画布 ✓"]
+    end
+</pre>
+</div>
+
+<p>核心改动：</p>
+<pre><code># TaskOutcome sum type — 统一终态表达
+@dataclass
+class Succeeded:
+    outputs: list[OutputArtifact]
+
+@dataclass
+class Failed:
+    error: str
+    retryable: bool = False
+
+@dataclass
+class Aborted:
+    reason: str
+
+TaskOutcome = Succeeded | Failed | Aborted  # Python 3.10+ Union</code></pre>
+
+<p><strong>瞬时容错</strong>：轮询时单次网络超时不直接返回 Failed，而是递增 transient_error_count。连续 N 次失败才判定真正失败。</p>
+
+<h3>4.3 关键代码路径</h3>
+
+<table>
+<thead><tr><th>文件</th><th>改动</th></tr></thead>
+<tbody>
+<tr><td><code>generation/service.py</code></td><td>串行 for 循环 → asyncio.gather 并发轮询</td></tr>
+<tr><td><code>generation/polling.py</code></td><td>TaskOutcome 定义 + 瞬时容错逻辑</td></tr>
+<tr><td><code>generation/dm_api_backend.py</code></td><td>轮询结果映射为 TaskOutcome</td></tr>
+<tr><td><code>services/task.py</code></td><td>增量回显：子任务完成即写画布</td></tr>
+</tbody>
+</table>
+
+<div class="defend">
+<h4>🎯 面试防守</h4>
+<ol>
+  <li><strong>Q: 什么是"瞬时容错"？怎么判断临时故障 vs 真正失败？</strong><br>A: 瞬时容错 = 单次轮询失败不算数，连续 N 次（如 3 次）才判定失败。判断依据：HTTP 状态码 5xx 或网络超时是瞬时的，而后端明确返回 failed 状态是确定性的。前者重试，后者直接标 Failed。</li>
+  <li><strong>Q: asyncio.gather 有任务失败了怎么办？</strong><br>A: 用 return_exceptions=True，让每个任务独立完成。失败的标记为 Failed，成功的正常写画布。不会因为一个失败导致全部取消。</li>
+  <li><strong>Q: 增量回显会不会导致画布状态不一致？</strong><br>A: 不会。每个子任务写入独立的画布节点位置（提前占位）。写入是原子操作，失败的位置保留 placeholder 或显示错误状态。</li>
+  <li><strong>Q: 为什么用 sum type 而不是状态码枚举？</strong><br>A: sum type 让每种终态携带不同的数据（Succeeded 有 outputs，Failed 有 error+retryable，Aborted 有 reason）。枚举只能表达"是什么状态"，不能携带上下文信息。这是函数式编程中 Result/Either 的经典模式。</li>
+</ol>
+</div>
+
+<div class="resume-hook">
+<h4>📝 简历关联</h4>
+<p><strong>关键词</strong>：asyncio 并发、sum type、瞬时容错、增量回显<br>
+<strong>面试强调</strong>：这条 bullet 有清晰的"问题→方案→效果"链 — 串行轮询慢（问题）→ 并发+容错+增量（方案）→ 响应速度提升+误判率降低（效果）。效果可以用"批量生成用户等待时间从 N×T 降为 max(T₁...Tₙ)"来量化。</p>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q1. TaskOutcome 的三个变体分别是？</p>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">Succeeded（携带 outputs）、Failed（携带 error + retryable 标记）、Aborted（携带 reason）。</div>
+</div>
+
+<div class="quiz">
+  <p class="quiz-question">Q2. 改造前批量生成 4 张图的耗时公式是？改造后呢？</p>
+  <button class="quiz-toggle" onclick="this.nextElementSibling.classList.toggle('visible')">显示答案</button>
+  <div class="quiz-answer">改造前：T₁ + T₂ + T₃ + T₄（串行累加）。改造后：max(T₁, T₂, T₃, T₄)（并发取最长）。</div>
+</div>
+
+<!-- ====== 模拟面试 ====== -->
+<h2>五、模拟面试：完整追问链</h2>
+
+<div class="highlight-box">
+<strong>场景</strong>：面试官看完简历后开始追问 Monet 项目。以下模拟真实追问链（从浅到深）。
+</div>
+
+<p><strong>面试官</strong>：介绍一下你在 Monet 项目做了什么？</p>
+<p><strong>你</strong>：Monet 是网易互娱的 AI 美术智能体平台，运行在用户本地桌面客户端上，通过 SSE 与画布交互。我主要做了四块：Agent 本地执行的权限审批系统、MCP 协议接入、后处理声明式框架、以及批量生成的并发轮询优化。</p>
+
+<p><strong>面试官</strong>：你说的 HITL 审批，能具体讲讲怎么实现的吗？</p>
+<p><strong>你</strong>：Agent 要执行本地命令时，先经过 PermissionEngine 判断 — 读操作直接放行，写操作和执行命令需要审批。需要审批时利用 LangGraph 的 interrupt 机制暂停 Agent，SSE 推一个 interaction.request 事件给前端弹窗，用户点击允许后前端 POST 到 /resume 端点，后端通过 asyncio.Event 唤醒 Agent 继续执行。</p>
+
+<p><strong>面试官</strong>：如果用户一直不点审批按钮怎么办？</p>
+<p><strong>你</strong>：有超时机制。register_interrupt 时设置超时，Event 在限时内没被 set 的话触发 cleanup_interrupt 清理状态，Agent 终止当前操作并给用户返回"审批超时"的提示。</p>
+
+<p><strong>面试官</strong>：MCP 那个，热加载是怎么做到的？</p>
+<p><strong>你</strong>：MCPManager 内部为每个 server 维护一个 _ServerRuntimeEntry，包含 client 连接、状态、工具列表。通过 REST API 增删改时，Manager 关闭旧连接、建立新连接、更新 raw_tools。Agent 每次调用前从 container 获取最新工具列表，所以下一次 tool call 就能用到新加的 MCP 工具。</p>
+
+<p><strong>面试官</strong>：四种传输协议为什么都要支持？实际用哪种多？</p>
+<p><strong>你</strong>：stdio 最常用 — 本地 MCP server 以子进程启动，通过 stdin/stdout 通信，零网络开销。HTTP/SSE 用于远端 server。WebSocket 用于需要双工的场景。协议选择在 MCPServerConfig 里由用户配置，Manager 根据 TransportType 走不同的 connection 路径。</p>
+
+<p><strong>面试官</strong>：声明式框架那个，"新增操作只需配置"具体是怎么做到的？</p>
+<p><strong>你</strong>：核心是 OperationRegistry。每种操作注册一个 OperationDefinition，里面指定 params_schema（Pydantic model）和 executor。大部分操作用同一个 DmAppletExecutor — 它根据 applet_config 里的 app_name 和参数映射调用 DM API 小程序。新增操作只需写一个 Pydantic 参数模型 + 一份 applet_config，在注册表里注册一行就完了。</p>
+
+<p><strong>面试官</strong>：那如果新操作的执行逻辑跟 DM 小程序完全不同呢？</p>
+<p><strong>你</strong>：那就写一个新的 executor 实现 OperationExecutor Protocol（只需实现 execute 方法）。比如打光操作用的是 GptImage2Executor，它直接调 AIGW 模型而不是 DM 小程序。但这种情况少数 — 我们大部分后处理操作都走 DM 平台的小程序通道。</p>
+
+<p><strong>面试官</strong>：最后那个并发轮询，asyncio.gather 和 asyncio.TaskGroup 你为什么选前者？</p>
+<p><strong>你</strong>：gather 更适合我们的场景 — 一个失败不影响其他的。TaskGroup 是 Python 3.11+ 的，遵循"一个失败全部取消"的语义，不符合我们的需求（4 张图里 1 张失败不应该取消其他 3 张）。gather 配合 return_exceptions=True 正好。</p>
+
+<p><strong>面试官</strong>：好的，你这个项目印象不错。</p>
+
+</body>
+</html>

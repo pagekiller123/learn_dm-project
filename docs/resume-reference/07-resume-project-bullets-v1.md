@@ -48,17 +48,17 @@
 **技术栈**：Go, Hertz/Fiber, Redis, MongoDB, etcd, Kubernetes, dmfr 微服务框架
 **项目背景**：网易互娱 AI 美术平台主站后端，五层微服务架构（网关→业务→调度→Worker→供应商），承载图像/视频/3D/音频等 10 类 AI 任务的调度与执行，日均处理 XX 万任务。
 
-### Bullet 1 · 供应商 429 限流排队重试机制
+### Bullet 1 · Redis 任务队列与优先级调度
+
+参与任务调度核心链路开发：基于 Redis ZSet 实现优先级任务队列，以时间戳为 score 保证同优先级 FIFO，通过 ZRangeByScore + ZRem 实现乐观抢占式消费（类 CAS），避免分布式锁开销；实现 WeightedScheduler 加权轮询算法，按配额比例分配不同优先级任务的消费额度，配额耗尽后降序兜底保证低优先级不被饿死；基于 etcd Watch + 内存计数器实现用户级并发控制（ConcurrentManager），同一用户同时运行的任务数超过阈值时跳过该用户任务，避免单用户独占集群资源。
+
+### Bullet 2 · 调度系统高可用设计
+
+参与调度系统的高可用能力建设：Worker 通过 etcd Lease 注册并以 30s 间隔上报心跳，worker-scheduler 通过 etcd Watch 实时感知 Worker 上下线；Worker 崩溃后 Lease 过期触发 Delete 事件，scheduler 自动回收该 Worker 上的任务并重新入队，保证任务不丢失；实现应用层 Autoscaler，30s 轮询 Redis 队列深度与在线 Worker 数量，积压任务超过处理能力时通过 K8s API 自动扩容 StatefulSet 副本，空闲超时后缩容释放资源。
+
+### Bullet 3 · 供应商 429 限流排队重试机制
 
 针对外部 AI 供应商（GPT-Image / Gemini）并发槽满返回 429 时直接报错的问题，实现排队重试机制：收到 429 后进入指数退避重试循环（initial 3s, max 60s, multiplier 2.0, jitter ±20%），最大等待 12h；超时后返回 retryable error 触发 fallback 切换备用供应商通道。零配置默认启用，通过白名单控制生效范围，避免对时效敏感任务造成阻塞。
-
-### Bullet 2 · 图片超限自动压缩兜底
-
-解决 GPT-Image-2 等模型对上传图片有 4MB 字节限制，用户需自行压缩才能重试的体验问题。在 app-gateway 的 validate 阶段插入图片压缩中间件：字节超限时自动尝试压缩，压缩后仍超限再返回错误；支持分辨率区间归一化（长边缩小 + 短边放大）、数组字段逐元素处理和 Alpha 通道保留策略。该能力通过 MongoDB 中的 App 配置驱动，新模型接入只需在 DB 添加压缩规则，无需修改代码。
-
-### Bullet 3 · 新 AI 能力全链路接入（音频 / 3D）
-
-独立完成 Seed-Audio 语音生成和 Meshy 3D 模型生成的全链路接入：从 App 注册（MongoDB 配置 + 小程序商城参数定义）→ app-gateway 参数校验与路由 → Worker 任务执行与轮询 → 产物下载代理与格式转换 → 前端记录查询。处理了 Meshy 外部 URL 下载超时（添加代理 + 超时兜底从 60min 调整为 90min）、3D 模型拓扑重建参数映射等供应商适配问题。
 
 ### Bullet 4 · 统一限流与 API Key 管理
 
@@ -91,6 +91,6 @@
 | Monet-3 声明式框架 | 为什么不用策略模式/工厂？配置怎么校验？ | config 足够表达语义 + JSON Schema 校验 |
 | Monet-4 容错 | 什么是"瞬时容错"？怎么判断临时故障？ | 重试次数 + 指数退避 + 终态判定 |
 | Scheduler-1 重试 | 为什么 max 12h？会不会堆积？ | PT 专用通道无超时压力 + 队列深度监控 |
-| Scheduler-2 压缩 | 压缩算法？会不会影响画质？ | WebP/JPEG 质量递减 + 像素限制不动 |
-| Scheduler-3 接入 | 全链路多长？踩了什么坑？ | 6 步 + Meshy URL 超时 + 3D 拓扑参数 |
+| Scheduler-2 队列调度 | ZSet vs List 怎么选？乐观抢占怎么保证不重复消费？ | ZSet 支持优先级 + ZRem 原子性 + 两轮扫描 |
+| Scheduler-3 高可用 | Leader 挂了怎么办？脑裂怎么防？ | LeaseLock 机制 + OnStoppedLeading 退出 + etcd Watch |
 | Scheduler-4 限流 | 滑动窗口 vs 令牌桶？为什么选这个？ | 实现简单 + 精度够用 + Redis 原子操作 |

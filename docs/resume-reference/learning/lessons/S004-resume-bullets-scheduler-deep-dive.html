@@ -83,6 +83,21 @@ li { margin: 0.35rem 0; }
 <p>DreamMaker 对接数十个外部 AI 供应商（OpenAI、Google Gemini、火山引擎等）。这些供应商有严格的 QPS 限制，高峰期频繁返回 HTTP 429。如果 Worker 直接报错给用户，用户体验极差——排了几分钟队，任务到达供应商才被拒，用户不得不手动重试。</p>
 <p>业务需求：<strong>对用户透明地排队等待</strong>，直到供应商恢复容量，同时避免因死等单个供应商导致整体吞吐下降。</p>
 
+<div class="highlight-box">
+  <strong>什么是指数退避重试？</strong><br/><br/>
+  指数退避 = <strong>每次失败后，等待时间翻倍</strong>，而不是固定间隔重试：<br/>
+<pre><code>第 1 次失败 → 等 3s  → 重试
+第 2 次失败 → 等 6s  → 重试
+第 3 次失败 → 等 12s → 重试
+第 4 次失败 → 等 24s → 重试
+第 5 次失败 → 等 48s → 重试
+第 6 次失败 → 等 60s → 重试（到上限了，之后都等 60s）</code></pre>
+  <strong>为什么不用固定间隔？</strong><br/>
+  假设供应商限流了，100 个 Worker 同时被 429。如果都固定 3s 后重试 → 3s 后 100 个请求又同时打过去 → 供应商刚喘一口气又被打死 → 无限循环。指数退避让请求越来越稀疏，给供应商恢复的时间。<br/><br/>
+  <strong>为什么还要加 jitter（随机抖动）？</strong><br/>
+  即使用了指数退避，100 个 Worker 如果在同一时刻收到 429，它们计算出来的等待时间是一样的（都是 3s → 6s → 12s...），还是会在同一时刻重试。加上 &plusmn;20% 随机偏移后，每个 Worker 的重试时间被打散到一个范围内（比如 2.4s~3.6s），不会集中在同一秒涌入。
+</div>
+
 <h3>1.2 技术方案</h3>
 
 <div class="diagram">
@@ -159,6 +174,19 @@ sequenceDiagram
 
 <p><strong>为什么用 *bool nil=enabled？</strong> 新增模型时如果忘记配置重试开关，默认启用比默认禁用更安全。Go 的 <code>*bool</code> 区分了"未设置(nil)"和"明确关闭(false)"。</p>
 
+<h3>1.5 Fallback 备用通道切换</h3>
+
+<p>指数退避不是无限等的——有一个 <strong>maxWait=12h</strong> 的总上限。如果 12 小时内供应商一直返回 429，重试循环退出，进入 fallback 流程：</p>
+
+<ol>
+  <li>重试循环退出，返回 retryable error 给上层 executor</li>
+  <li>executor 查询当前模型的 <strong>fallback 通道配置</strong>（存在模型配置里），比如 <code>pt-art1</code> 的 fallback 是 <code>pt-art3-openai</code></li>
+  <li>切换到备用供应商，重新发起调用</li>
+  <li>如果所有通道都不可用 → 返回用户友好的排队提示（"当前服务繁忙，请稍后重试"），不是直接报 500 错误</li>
+</ol>
+
+<p><strong>设计思路</strong>：指数退避解决"短暂限流"（几秒到几分钟），fallback 解决"长时间不可用"（供应商大面积故障）。两层兜底，对用户透明。</p>
+
 <div class="defend">
 <h4>面试防守</h4>
 <ol>
@@ -217,40 +245,31 @@ flowchart LR
 </pre>
 </div>
 
-<p>插入时机：DB Rules 校验之后、RegisterValidator 之前。</p>
+<p><strong>插入时机</strong>：在 app-gateway 的校验阶段，DB Rules 校验之后、RegisterValidator 之前。</p>
 
-<pre><code>// AppImageCompressConf — MongoDB 配置结构
-type AppImageCompressConf struct {
-    AppCode    string   `bson:"app_code"`
-    FieldNames []string `bson:"field_names"`  // 需要压缩的参数字段
-    IsSlice    bool     `bson:"is_slice"`     // 数组字段逐元素处理
-    Options    struct {
-        MaxLongSide  int    `bson:"max_long_side"`   // 最大长边 px
-        MinShortSide int    `bson:"min_short_side"`  // 最小短边 px
-        MaxFileSize  int64  `bson:"max_file_size"`   // 字节上限
-        AlphaMode    string `bson:"alpha_mode"`      // inherit|preserve
-    } `bson:"options"`
-}
+<p><strong>压缩规则从 MongoDB 读取</strong>，每条记录对应一个模型的压缩配置：</p>
 
-func runImageCompress(ctx context.Context, params map[string]interface{},
-    conf *AppImageCompressConf) error {
-    for _, field := range conf.FieldNames {
-        val := params[field]
-        if conf.IsSlice {
-            // 逐元素处理
-            for i, img := range val.([]interface{}) {
-                compressed, err := compressImage(img, conf.Options)
-                if err != nil { return err }
-                val.([]interface{})[i] = compressed
-            }
-        } else {
-            compressed, err := compressImage(val, conf.Options)
-            if err != nil { return err }
-            params[field] = compressed
-        }
-    }
-    return nil
-}</code></pre>
+<table>
+  <tr><th>配置字段</th><th>含义</th><th>示例</th></tr>
+  <tr><td><code>app_code</code></td><td>哪个模型需要压缩</td><td><code>"gpt-image-2"</code></td></tr>
+  <tr><td><code>field_names</code></td><td>需要检查压缩的请求参数字段</td><td><code>["image", "style_images"]</code></td></tr>
+  <tr><td><code>is_slice</code></td><td>字段是否为数组（多张图逐个压缩）</td><td><code>true</code>（style_images 是数组）</td></tr>
+  <tr><td><code>max_long_side</code></td><td>最大长边像素</td><td><code>4096</code></td></tr>
+  <tr><td><code>min_short_side</code></td><td>最小短边像素</td><td><code>256</code></td></tr>
+  <tr><td><code>max_file_size</code></td><td>文件大小上限（字节）</td><td><code>4194304</code>（4MB）</td></tr>
+  <tr><td><code>alpha_mode</code></td><td>透明通道处理方式</td><td><code>"inherit"</code></td></tr>
+</table>
+
+<p><strong>压缩流程</strong>（<code>runImageCompress</code>）：</p>
+<ol>
+  <li>根据 <code>app_code</code> 从 MongoDB 读取该模型的压缩配置</li>
+  <li>遍历 <code>field_names</code> 里的每个字段，取出用户上传的图片</li>
+  <li>如果 <code>is_slice=true</code>（字段是数组，如多张参考图），逐张检查和压缩；否则当作单张处理</li>
+  <li>对每张图片：先检查文件大小是否超过 <code>max_file_size</code>，超了就按 <code>max_long_side</code> / <code>min_short_side</code> 缩放分辨率，再降低压缩质量（如 quality=85）直到达标</li>
+  <li>压缩后仍然超限（比如原图是 200MB 的 RAW 文件）→ 返回错误"图片过大"</li>
+</ol>
+
+<p><strong>零代码扩展</strong>：新接一个模型需要图片压缩？在 MongoDB 里加一条配置记录就行，不用改代码、不用发版。</p>
 
 <h3>2.3 关键代码路径</h3>
 <table>
@@ -567,79 +586,60 @@ flowchart TD
 </pre>
 </div>
 
-<p>Redis Key 设计：</p>
-<pre><code>// 两层限流 Key 格式
-appKey   := fmt.Sprintf("app_limit::%s::%s::%s", userID, env, appCode)
-modelKey := fmt.Sprintf("app_limit::%s::%s::%s", userID, env, modelName)
+<p><strong>两层限流 Key 设计</strong>：</p>
+<table>
+  <tr><th>层级</th><th>Redis Key 格式</th><th>含义</th><th>示例</th></tr>
+  <tr><td>App 级</td><td><code>app_limit::{user}::{env}::{app}</code></td><td>某用户在某个 App 上的请求数</td><td><code>app_limit::zhangsan::prod::gpt-image-2</code></td></tr>
+  <tr><td>Model 级</td><td><code>app_limit::{user}::{env}::{model}</code></td><td>某用户在某个模型上的请求数</td><td><code>app_limit::zhangsan::prod::gemini-3-pro</code></td></tr>
+  <tr><td>Default 兜底</td><td><code>app_limit::default::{env}::{app}</code></td><td>未配置个性化限额的用户走这条规则</td><td><code>app_limit::default::prod::gpt-image-2</code></td></tr>
+</table>
 
-// default 用户兜底：未配置个性化限额的用户走 default 规则
-defaultKey := fmt.Sprintf("app_limit::default::%s::%s", env, appCode)
-
-// 滑动窗口实现
-func CheckRateLimit(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
-    now := time.Now().UnixMilli()
-    pipe := redis.Pipeline()
-    // 移除窗口外的记录
-    pipe.ZRemRangeByScore(ctx, key, "0", strconv.FormatInt(now-window.Milliseconds(), 10))
-    // 统计窗口内请求数
-    pipe.ZCard(ctx, key)
-    // 添加当前请求
-    pipe.ZAdd(ctx, key, &redis.Z{Score: float64(now), Member: now})
-    // 设置 key 过期（兜底清理）
-    pipe.Expire(ctx, key, window+time.Minute)
-    results, err := pipe.Exec(ctx)
-    // ...
-    count := results[1].(*redis.IntCmd).Val()
-    return count < int64(limit), nil
-}</code></pre>
+<p><strong>滑动窗口限流流程</strong>（每次请求到达时，通过 Redis Pipeline 原子执行）：</p>
+<ol>
+  <li><strong>清理过期记录</strong>：<code>ZRemRangeByScore</code> 删除窗口外的旧请求记录（比如窗口=60s，删掉 60s 之前的）</li>
+  <li><strong>统计当前数量</strong>：<code>ZCard</code> 数窗口内还有多少条记录</li>
+  <li><strong>判断是否超限</strong>：如果 count &ge; limit → 返回 429；否则继续</li>
+  <li><strong>记录本次请求</strong>：<code>ZAdd</code> 把当前时间戳写入 ZSet（score=时间戳, member=时间戳）</li>
+  <li><strong>设 Key 过期</strong>：<code>Expire</code> 设为窗口时间+1分钟，兜底清理不再活跃的 Key</li>
+</ol>
 
 <h3>4.3 技术方案 — API Key 生命周期</h3>
 
-<pre><code>// API Key 状态机
-// active <-> disabled (可逆)
-// active -> rotated (生成新 Key，旧 Key 标记 rotated)
-// any -> deleted (逻辑删除)
+<p><strong>API Key 的状态机</strong>：</p>
+<table>
+  <tr><th>状态</th><th>含义</th><th>可转为</th></tr>
+  <tr><td><code>active</code></td><td>正常使用中</td><td>disabled / rotated</td></tr>
+  <tr><td><code>disabled</code></td><td>已禁用（泄露/安全事件）</td><td>active（确认安全后可重新启用）</td></tr>
+  <tr><td><code>rotated</code></td><td>已被轮转替代（旧 Key）</td><td>不可再变更</td></tr>
+</table>
 
-type ApiListItem struct {
-    KeyID      string    `json:"key_id"`
-    KeyHash    string    `json:"key_hash"`    // 存储 hash，不存明文
-    AppCodes   []string  `json:"app_codes"`   // 可访问的 App 列表
-    ModelNames []string  `json:"model_names"` // 可访问的 Model 列表
-    Status     string    `json:"status"`      // active|disabled|rotated
-    CreatedBy  string    `json:"created_by"`
-    CreatedAt  time.Time `json:"created_at"`
-}
+<p><strong>API Key 的数据结构</strong>：</p>
+<table>
+  <tr><th>字段</th><th>含义</th><th>说明</th></tr>
+  <tr><td><code>key_id</code></td><td>Key 的唯一标识</td><td>用于管理操作（禁用/轮转）</td></tr>
+  <tr><td><code>key_hash</code></td><td>Key 的 Hash 值</td><td><strong>不存明文</strong>，只存 hash，泄露 DB 也不暴露 Key</td></tr>
+  <tr><td><code>app_codes</code></td><td>可访问的 App 列表</td><td>RBAC：不同 Key 能调的 App 不同</td></tr>
+  <tr><td><code>model_names</code></td><td>可访问的 Model 列表</td><td>更细粒度的权限控制</td></tr>
+  <tr><td><code>status</code></td><td>当前状态</td><td>active / disabled / rotated</td></tr>
+  <tr><td><code>created_by</code></td><td>创建者</td><td>权限校验：只有创建者或管理员能操作这个 Key</td></tr>
+</table>
 
-// PUT /api-keys/:id/status — 切换 Key 状态
-func UpdateKeyStatus(ctx context.Context, keyID string, newStatus string) error {
-    key, err := dao.GetKeyByID(ctx, keyID)
-    if err != nil { return err }
-
-    // 权限校验：用户组管理员 OR Key 创建者
-    if !isGroupAdmin(ctx) && key.CreatedBy != getCurrentUser(ctx) {
-        return errcode.Forbidden
-    }
-
-    // 状态流转校验
-    if !validTransition(key.Status, newStatus) {
-        return errcode.InvalidStatusTransition
-    }
-
-    return dao.UpdateKeyStatus(ctx, keyID, newStatus)
-}
-
-// RotateApiKey — 轮转拒绝 disabled Key
-func RotateApiKey(ctx context.Context, keyID string) (*ApiListItem, error) {
-    key, err := dao.GetKeyByID(ctx, keyID)
-    if err != nil { return nil, err }
-    if key.Status == "disabled" {
-        return nil, errcode.KeyDisabled.WithMsg("cannot rotate a disabled key")
-    }
-    // 生成新 Key，标记旧 Key 为 rotated
-    newKey := generateNewKey(key)
-    // ...
-    return newKey, nil
-}</code></pre>
+<p><strong>关键操作</strong>：</p>
+<ol>
+  <li><strong>禁用 Key</strong>（PUT /api-keys/:id/status）：
+    <ul>
+      <li>权限校验：必须是用户组管理员 OR Key 创建者</li>
+      <li>状态流转校验：只有合法的转换才允许（如 active → disabled）</li>
+      <li>生效方式：Authorization 中间件每次请求都查 Key 状态，disabled 的 Key 下一个请求就会被拦截</li>
+    </ul>
+  </li>
+  <li><strong>轮转 Key</strong>（Rotate）：
+    <ul>
+      <li>生成一个新 Key，旧 Key 标记为 <code>rotated</code></li>
+      <li><strong>disabled Key 不能 rotate</strong>——防止安全事件中误操作产生新的有效 Key</li>
+    </ul>
+  </li>
+</ol>
 
 <h3>4.4 关键代码路径</h3>
 <table>

@@ -2295,7 +2295,7 @@ Expecting `+Ze.join(", ")+", got '"+(this.terminals_[Ne]||Ne)+"'":Dt="Parse erro
 <p>如果 Monet 是"客户端 Agent"负责理解用户意图，那 DreamMaker Scheduler 就是"云端引擎"负责真正跑 GPU 任务。这一节目标是：<strong>能在白板上画出 Scheduler 的核心链路、讲清 app-gateway / worker-scheduler / worker-sidecar 三大组件的边界、并说出为什么这样分层</strong>。</p>
 
 <div class="highlight-box">
-  <strong>跟 Monet 的关键区别</strong>：Scheduler 是<strong>多服务 + 多用户 + 云端部署</strong>的分布式系统，跟 Monet"单机单用户本地服务"完全不同。所以 Scheduler 里的所有讨论——GPU 资源池、Leader 选举、限流、多租户鉴权——都跟 Monet 无关。搞混两边的场景是简历讲解最容易翻车的地方。
+  <strong>跟 Monet 的关键区别</strong>：Scheduler 是<strong>多服务 + 多用户 + 云端部署</strong>的分布式系统，跟 Monet"单机单用户本地服务"完全不同。所以 Scheduler 里的所有讨论——GPU 资源池、分布式锁、限流、多租户鉴权——都跟 Monet 无关。搞混两边的场景是简历讲解最容易翻车的地方。
 </div>
 
 <h2>一、一句话架构</h2>
@@ -2364,7 +2364,7 @@ flowchart TB
     %% === 第五层：调度 ===
     subgraph Scheduling["④ 调度层"]
         direction LR
-        WorkerScheduler["worker-scheduler<br/>（Leader 选举 + 任务分配）"]
+        WorkerScheduler["worker-scheduler<br/>（多副本并行 + 任务分配）"]
         TransformerV2["transformer_v2<br/>（tmax 推理调度）"]
     end
 
@@ -2409,7 +2409,7 @@ flowchart TB
     %% --- 连线：worker-scheduler → 基础设施（向上）---
     WorkerScheduler -->|拉任务| Redis
     WorkerScheduler -->|读消息| Mongo
-    WorkerScheduler -->|Leader 选举 + 注册| Etcd
+    WorkerScheduler -->|注册 Worker/Task| Etcd
 
     %% --- 连线：调度 → 执行 ---
     WorkerScheduler -->|分派任务| WorkerSidecar
@@ -2463,7 +2463,7 @@ flowchart TB
 <tr>
   <td>③ 基础服务层</td>
   <td><code>worker-scheduler</code></td>
-  <td>Leader 选举、拉队列、分配任务、结果回写</td>
+  <td>拉队列、分配任务、结果回写、Autoscaler</td>
   <td>不该关心具体推理逻辑</td>
 </tr>
 <tr>
@@ -2510,7 +2510,7 @@ flowchart TB
 <p><strong>职责</strong>：管 Worker 状态 + 分派任务 + 回写结果。整个 Scheduler 里最"分布式"的组件，因为要保证 Worker 池的一致性：</p>
 
 <ul>
-  <li><strong>Leader 选举</strong>：通过 etcd 选出一个 leader，避免多副本抢同一个任务（split-brain）</li>
+  <li><strong>多副本并行</strong>：部署多个 Pod，所有 Pod 独立工作（无 Leader 选举），通过 Redis 分布式锁协调 Autoscaler 等关键操作</li>
   <li><strong>拉队列</strong>：从 Redis 拉 pending task</li>
   <li><strong>加载消息</strong>：从 Mongo 加载 <code>AppTaskMsg</code>（因为 Redis 里只放 task_id，完整参数在 Mongo）</li>
   <li><strong>注册运行</strong>：把 task 写到 etcd 的运行注册表，作为"正在跑的任务"的 source of truth</li>
@@ -2521,7 +2521,7 @@ flowchart TB
 <div class="defend">
   <h4>🛡️ 面试防守：为什么 task 状态要同时用 Redis + Mongo + etcd？</h4>
   <ol>
-    <li><strong>Redis</strong>：短生命周期"待消费"队列。选它是因为 <code>LPUSH/BRPOP</code> 高吞吐低延迟，适合队列语义。不做长期存储</li>
+    <li><strong>Redis</strong>：短生命周期"待消费"队列（<strong>ZSet</strong> 数据结构，member = <code>user::taskID</code>，score = 入队时间戳实现 FIFO；不同优先级的任务放在不同的 Redis key 里）。选 ZSet 而不是 List 是因为：List 只能弹队头，某用户并发满了后面的人也得等；ZSet 可以遍历并跳过并发已满的用户，把任务分给后面空闲的人（详见 S002）。此外，Redis 还存任务状态缓存（<code>SetCache</code>），供前端 <code>/status</code> 轮询秒级返回，避免打穿 Mongo</li>
     <li><strong>Mongo</strong>：长生命周期"任务记录中心"。所有任务的完整参数、状态、结果都写这里，用于查询、审计、计费</li>
     <li><strong>etcd</strong>：<strong>"运行中"</strong>状态的强一致 registry。为什么不用 Mongo？因为 etcd 支持 lease + watch，Worker 挂掉时 lease 过期能自动清理；Mongo 做不到这种"心跳自清"</li>
   </ol>
@@ -2634,7 +2634,7 @@ sequenceDiagram
     <li>任务完成率：<strong>99.X%</strong>（问导师 / 看监控）</li>
     <li>接入 AI 供应商数量：<strong>XX</strong>（gateway 仓库能数）</li>
     <li>GPU 资源池规模：<strong>XX 张卡</strong>（问导师）</li>
-    <li>Worker Leader 选举切换时长：<strong>XXs</strong>（问导师）</li>
+    <li>Worker 类型数量：<strong>80+</strong>（可从代码数 WorkerType 常量）</li>
   </ul>
   <p><strong>去哪拿数据？</strong> 问导师、看监控平台、翻 KM 团队空间（<code>332e46c02522490f9856818cc0668462</code>）。</p>
 </div>
@@ -2645,7 +2645,7 @@ sequenceDiagram
 <thead><tr><th>术语</th><th>指代</th></tr></thead>
 <tbody>
 <tr><td>app-gateway</td><td>业务服务层，APP 任务的编排入口</td></tr>
-<tr><td>worker-scheduler</td><td>基础服务层，Leader 选举 + 任务分配</td></tr>
+<tr><td>worker-scheduler</td><td>基础服务层，多副本并行 + 任务分配</td></tr>
 <tr><td>worker-sidecar</td><td>Worker 执行层，异构后端适配</td></tr>
 <tr><td>api-outer</td><td>外部工具 / 游戏的 API 入口</td></tr>
 <tr><td>AppRecord</td><td>Mongo 里的任务记录，长期存储</td></tr>
@@ -2709,7 +2709,7 @@ sequenceDiagram
 <div class="followup">
   <h4>💬 followup 问题（跟我继续聊）</h4>
   <ul>
-    <li>"帮我深入讲一下 worker-scheduler 的 Leader 选举怎么做的" → 后续 Lesson</li>
+    <li>"帮我深入讲一下 worker-scheduler 的多副本协调和 Autoscaler 怎么做的" → 后续 Lesson</li>
     <li>"apps 商城的参数映射机制到底怎么工作" → 涉及 <code>app-market-tech-doc.md</code></li>
     <li>"给我列一下 Scheduler 侧有含金量的 GitLab MR" → 进入阶段三</li>
     <li>"Hertz 和 Fiber 两个框架并存，面试问起怎么答"</li>

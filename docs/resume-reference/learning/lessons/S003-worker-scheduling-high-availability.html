@@ -2561,6 +2561,12 @@ sequenceDiagram
   <strong>etcd 是什么？</strong><br/>
   etcd 是一个<strong>分布式键值存储</strong>（key-value store），专门为分布式系统的协调场景设计。你可以把它想象成一个"所有节点都信任的共享笔记本"——多个服务往里面写数据，大家都能看到一致的结果。<br/><br/>
 
+  etcd 本身就是一个分布式系统——它自己需要部署多个节点（通常 3 或 5 台）来保证高可用：<br/>
+<pre><code>etcd 节点-1 (Leader)  ←→  etcd 节点-2 (Follower)  ←→  etcd 节点-3 (Follower)
+         ↕                        ↕                         ↕
+      Raft 协议同步（写入必须多数派确认才算成功）</code></pre>
+  某一台挂了，剩下的自动选出新 Leader 继续工作。单机 etcd 在生产中几乎没有意义（单点故障会让整个 K8s 集群瘫痪），所以"etcd 集群"是它的正常运行方式。<br/><br/>
+
   <strong>etcd vs Redis——不是一回事</strong><br/>
   虽然都是 key-value 存储，但定位完全不同：<br/><br/>
 
@@ -2658,11 +2664,11 @@ Watch("/task/prod/", WithPrefix)     → 监听所有 prod 环境 Task 的增删
   <strong>别搞混：S003 里出现了两种 Lease</strong><br/><br/>
 
   <table>
-  <thead><tr><th></th><th>K8s Lease（第二节用的）</th><th>etcd Lease（本节用的）</th></tr></thead>
+  <thead><tr><th></th><th>K8s Lease（第二节讲的，已弃用）</th><th>etcd Lease（本节，当前在用）</th></tr></thead>
   <tbody>
   <tr><td><strong>是什么</strong></td><td>K8s 的一种资源对象（<code>coordination.k8s.io/v1</code>）</td><td>etcd 原生的 TTL 过期机制</td></tr>
   <tr><td><strong>用来干嘛</strong></td><td>Leader 选举——谁能持续刷新这条记录，谁就是 Leader</td><td>Worker/Task 注册自动清理——进程崩溃后 key 自动过期删除</td></tr>
-  <tr><td><strong>谁在用</strong></td><td>旧版 <code>app/scheduler</code> Pod 之间竞选</td><td>worker-scheduler 给 Worker/Task key 绑定过期时间</td></tr>
+  <tr><td><strong>谁在用</strong></td><td>旧版 <code>app/scheduler</code>（已弃用，仅作面试知识点保留）</td><td>当前在用的 <code>app/worker-scheduler</code></td></tr>
   <tr><td><strong>过期后果</strong></td><td>旧 Leader 下台，Follower 可以竞选</td><td>key 被删除 → Watch 到 Delete 事件 → Scheduler 清理该 Worker</td></tr>
   </tbody>
   </table>
@@ -2699,47 +2705,27 @@ func (d *Dao) grantLeaseLoop(ctx context.Context) {
 <div class="highlight-box">
   <strong>注意：这里是 Grant（重新申请）不是 KeepAlive（续约）</strong><br/>
   标准 etcd 用法是 KeepAlive 定期续约一个长期 Lease。但 DM 的做法是每 300s 重新 <code>Grant</code> 一个新 Lease，然后后续写入的 key 自动绑到新 Lease。<br/><br/>
-  <strong>⚠️ 待确认</strong>：为什么不用 KeepAlive？需要问 mentor。目前已知的事实是：KeepAlive 续的是同一个 Lease，key 的存活时间可以无限延长；Grant 每 5 分钟换一个新 Lease，之前写入的 key 绑在旧 Lease 上，最多存活 7200s 后自动过期。两种方式下，如果出问题（stream 断裂 / 服务宕机），key 都会在 TTL 后过期，所以 Grant 方案在 lease 层面并没有明显的容灾优势。
+  <strong>⚠️ 待确认</strong>：为什么不用 KeepAlive？需要问 mentor。目前已知的事实是：KeepAlive 续的是同一个 Lease，key 的存活时间可以无限延长；Grant 每 5 分钟换一个新 Lease，<strong>没有被重写的 key</strong>（如 Task key）绑在旧 Lease 上，最多存活 7200s 后自动过期；而<strong>被反复重写的 key</strong>（如 Worker key，每 30s 心跳重写一次）每次重写都绑到最新 Lease，实际上不会过期。两种方式下，如果出问题（stream 断裂 / 服务宕机），key 都会在 TTL 后过期，所以 Grant 方案在 lease 层面并没有明显的容灾优势。
 </div>
 
 <h3>3.3 写入操作：AddTask 与 UpdateWorker</h3>
 
-<p><strong>AddTask</strong>——简单 Put + 绑 Lease：</p>
+<p><strong>AddTask</strong>——当 Scheduler 给 Worker 分配了一个任务时调用：</p>
 
-<pre><code>func (d *Dao) AddTask(ctx context.Context, msg *model.AppTaskMsg) error {
-    key := fmt.Sprintf(etcdTaskKey, dmfr.ENV(), msg.TaskID)
-    value, _ := json.Marshal(msg)
-    _, err := d.etcd.Put(ctx, key, string(value),
-        clientv3.WithLease(d.lease.ID))  // 绑定当前 Lease
-    return err
-}</code></pre>
+<ol>
+  <li>把 taskID 拼成 etcd key：<code>/task/{env}/{taskID}</code></li>
+  <li>把整个 AppTaskMsg 序列化为 JSON 作为 value</li>
+  <li>调 etcd <code>Put(key, value, WithLease(当前 Lease))</code> 写入，绑定当前 Lease</li>
+</ol>
+<p>写入后，这个 task key 就代表"这个任务正在运行"。所有 Pod 的 watchTask 都会收到 Put 事件 → ConcurrentManager +1。</p>
 
-<p><strong>UpdateWorker</strong>——Txn 乐观锁更新（<strong>面试高频</strong>）：</p>
+<p><strong>UpdateWorker</strong>——心跳、任务完成、shutdown 等场景都会调用，用 <strong>Txn 乐观锁</strong>更新（面试高频）：</p>
 
-<pre><code>func (d *Dao) UpdateWorker(ctx context.Context, podName string,
-        kvs ...structure.KV[string, any]) (*model.WorkerPodAttributes, error) {
-
-    key := fmt.Sprintf(etcdWorkerKey, dmfr.ENV(), podName)
-    response, _ := d.etcd.Get(ctx, key)           // ① 读当前值
-    value := string(response.Kvs[0].Value)
-
-    for _, kv := range kvs {                       // ② 修改字段
-        value, _ = sjson.Set(value, kv.Key, kv.Value)
-    }
-
-    etcdResp, _ := d.etcd.Txn(ctx).
-        If(clientv3.Compare(                       // ③ 比较 ModRevision
-            clientv3.ModRevision(key), "=",
-            response.Kvs[0].ModRevision)).
-        Then(clientv3.OpPut(key, value,            // ④ 一致则写入
-            clientv3.WithLease(d.lease.ID))).
-        Commit()
-
-    if !etcdResp.Succeeded {
-        // ModRevision 不匹配 → 有人抢先写了 → 日志告警
-    }
-    ...
-}</code></pre>
+<ol>
+  <li><strong>读当前值</strong>：从 etcd Get <code>/worker/{env}/{podName}</code>，拿到当前 JSON 值 + ModRevision（版本号）</li>
+  <li><strong>内存中修改字段</strong>：如果调用方传了 KV 参数（如 <code>status=terminating</code>），就在 JSON 里改对应字段；心跳不传参数，所以不改任何字段</li>
+  <li><strong>Txn 写回</strong>：提交一个事务——"如果 ModRevision 还等于我读的时候那个值，就 Put 写入新值并绑定最新 Lease；否则放弃（说明别人抢先写了）"</li>
+</ol>
 
 <div class="highlight-box">
   <strong>为什么用 Txn 乐观锁？</strong><br/>
@@ -2747,7 +2733,7 @@ func (d *Dao) grantLeaseLoop(ctx context.Context) {
   Txn 的 <code>Compare(ModRevision)</code> 保证"我读到的版本 = 当前版本"时才写入，否则放弃。这跟数据库的乐观锁 <code>UPDATE ... WHERE version = ?</code> 是同一个思路。<br/><br/>
   <strong>为什么不用悲观锁？</strong><br/>
   ① etcd 是 KV 存储，没有行锁——做悲观锁需要自己实现分布式 Mutex（抢锁 → 读 → 改 → 写 → 释放锁），复杂且慢；乐观锁只需一次 Txn 调用，etcd 服务端原子完成比较+写入<br/>
-  ② Worker 更新竞争概率极低——每个 Pod 只更新自己的 key，不会跨 Pod 冲突；同一 Pod 的心跳 30s 一次 + 任务完成是偶发事件，撞车概率很小<br/>
+  ② Worker 更新竞争概率极低——每个 Pod 只更新自己的 key，不会跨 Pod 冲突；但同一个 Pod 的 key 可能被多个 goroutine 同时更新（心跳、任务完成上报、shutdown 通知走的是不同的 HTTP 请求），只是心跳 30s 一次 + 任务完成是偶发事件，两者恰好同时到达同一毫秒的概率很小<br/>
   ③ 冲突了也没大碍——心跳丢了 30s 后下一次会覆盖，任务状态丢了下次上报也会覆盖，最终一致就够了
 </div>
 
@@ -2815,6 +2801,24 @@ func (d *Dao) WatchWorker(ctx context.Context) clientv3.WatchChan {
 }</code></pre>
 
 <p><strong>动态调并发池</strong>：管理员可以在运维平台改某个 Worker 类型的并发数。下一次心跳时 Scheduler 把新配置返回来，Sidecar 发现 <code>workerPool.Cap() != 新并发数</code>，就调 <code>Tune()</code> 热更新协程池大小——不用重启 Pod。</p>
+
+<div class="highlight-box">
+  <strong>为什么 Sidecar 也需要知道并发数？Scheduler 知道不就行了吗？</strong><br/><br/>
+  这里的"并发数"是两个不同的东西：<br/><br/>
+  <table>
+    <tr><th></th><th>Scheduler 侧的并发控制</th><th>Sidecar 侧的并发池</th></tr>
+    <tr><td><strong>控制什么</strong></td><td>一个<b>用户</b>最多同时跑几个任务</td><td>一个 <b>Pod</b> 最多同时跑几个任务</td></tr>
+    <tr><td><strong>存在哪</strong></td><td>ConcurrentManager（内存计数器）</td><td>ants workerPool（协程池 capacity）</td></tr>
+    <tr><td><strong>例子</strong></td><td>用户 zhangsan 最多同时跑 1 个 Kling 任务</td><td>这个 Kling Worker Pod 最多同时跑 3 个任务</td></tr>
+  </table><br/>
+  Sidecar 的协程池满了 → 不会上报 "我空闲"（<code>report consume</code>）→ Scheduler 不会给它分配新任务。管理员改了并发数后，心跳把新值带回来 → <code>Tune()</code> 调大池子 → Pod 能同时跑更多任务了，不用重启。
+</div>
+
+<div class="highlight-box">
+  <strong>心跳发给哪个 Scheduler Pod？</strong><br/>
+  Sidecar 不需要知道具体是哪个 Pod。它发给的是一个 <strong>K8s Service（虚拟地址）</strong>，K8s Service 是一个稳定的内部域名（类似 <code>worker-scheduler.namespace.svc.cluster.local</code>），背后是多个 Pod。Sidecar 只知道这个域名，K8s 的 kube-proxy 负责把请求转发到某一个 Pod。<br/><br/>
+  所以每次心跳可能落到不同的 Pod 上——但没关系，因为心跳做的是 <code>UpdateWorker</code>（重写 etcd key），写的是 etcd，哪个 Pod 写都一样。所有 Pod 通过 etcd Watch 都能看到更新后的结果。
+</div>
 
 <h3>4.2 Scheduler 处理心跳</h3>
 
@@ -3190,16 +3194,6 @@ func (d *Dao) GetAutoscaleRecord(ctx context.Context, config) {
   <strong>为什么这个检查能防止"雪崩式超扩"？</strong><br/><br/>
   关键：<code>runningWorkers</code> <strong>只算 running 状态的</strong>，pending 的不算。如果 5 个 Pod 正在启动（pending），Autoscaler 看到的 running 数还是 3 → 30 秒后又触发扩容 → 再扩 5 个 → 无限循环。<br/><br/>
   有了 pending 检查后，检测到 <code>pendingWorkers &gt; 0</code> → 直接跳过本轮，等启动完再评估。
-</div>
-
-<div class="defend">
-  <h4>🛡️ 面试防守：为什么不用 K8s HPA？</h4>
-  <ol>
-    <li><strong>HPA 基于 CPU/Memory 指标</strong>，但 GPU Worker 的负载指标不是 CPU——是任务队列长度。GPU 任务可能 CPU 很闲但 GPU 满载，也可能 GPU 在等网络传输 CPU 也不高。HPA 的指标维度不匹配</li>
-    <li><strong>HPA 无法感知业务语义</strong>：它不知道"这个 Worker 空闲了多久"、"队列里有多少任务排着"、"这种 Worker 类型的最大/最小副本数是多少"。这些都是业务逻辑，不适合塞进 HPA 的 Custom Metrics</li>
-    <li><strong>扩容对象不同</strong>：DM 的扩容是"唤醒 terminated Pod"（<code>apiKube.UpdateWorker</code>），缩容是"删除空闲 Pod"（<code>apiKube.DeleteWorker</code>）。HPA 只能控制 Deployment 的 replicas 数——Worker Pod 不一定由 Deployment 管理（可能是 StatefulSet 或自定义 operator）</li>
-    <li><strong>多维配置</strong>：不同 WorkerType / TaskMode / Cluster 组合有不同的扩缩容策略（MinWorker、MaxWorker、ScaleDownIdleTime、ScaleCooldown），存在 Mongo 配置表里。HPA 没法做到这种粒度</li>
-  </ol>
 </div>
 
 <!-- ==================== 八、初始化与数据恢复 ==================== -->

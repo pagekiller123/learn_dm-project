@@ -2380,33 +2380,31 @@ TaskStatusStopped = "stopped"</code></pre>
 
 <h4>类型断言怎么工作的？</h4>
 
-<p>关键点：<strong>编排函数的参数类型统一是 <code>Action</code>（核心接口），但通过 <code>action.(XxxInterface)</code> 在运行时探测具体实现是否"额外"实现了某个可选接口</strong>。<code>ok == true</code> 就调用该能力，<code>ok == false</code> 就跳过或报错。</p>
+<p>Go 的接口是<strong>隐式实现</strong>——不需要写 <code>implements</code>，只要一个 struct 有接口要求的所有方法（方法名、参数类型、返回值完全一致），它就自动满足这个接口。</p>
 
-<p>以 <code>Produce</code> 编排函数为例（<code>interface.go</code> 第 140 行）：</p>
+<div class="highlight-box">
+  <strong>一个 struct 可以同时满足多个接口的断言</strong>——只要它实现了对应的方法：
 
-<pre><code>func Produce(ctx context.Context, appComponent *model.AppComponent,
-        action Action, msg *model.AppTaskMsg) error {
-    //         ^^^^^^ 参数类型是 Action 核心接口
-    //         但运行时的具体值可能是 commonAction、comfyuiAction 等
+<pre><code>type commonAction struct { ... }
 
-    // 类型断言 ① —— 问："你实现了 MsgProducer 吗？"
-    msgProducer, ok := action.(MsgProducer)
-    if !ok {
-        // 没实现 → 报错（入队是必须能力）
-        return
-    }
-    action.Add(ctx, msg)                              // 入库
-    msgProducer.Produce(ctx, appComponent, msg)        // 入队
+func (c *commonAction) Add(ctx, msg) error { ... }           // → 满足 Action
+func (c *commonAction) Produce(ctx, comp, msg) error { ... } // → 满足 MsgProducer
+func (c *commonAction) MapRequest(ctx, msg) error { ... }    // → 满足 RequestMapper
+func (c *commonAction) GenerateTask(ctx, msg) error { ... }  // → 满足 Generator
+// 没有 Call 方法                                             // → 不满足 Caller</code></pre>
 
-    // 类型断言 ② —— 问："你还实现了 PreprocessProducer 吗？"
-    preprocessProducer, doPreprocess := action.(PreprocessProducer)
-    if appComponent.Preprocess && doPreprocess {
-        // 有预处理能力 + 配置启用了预处理 → 走预处理分支
-        return preprocessProducer.PreprocessProduce(ctx, msg)
-    }
-    // 没有预处理 → 走正常入队
-    return msgProducer.Produce(ctx, appComponent, msg)
-}</code></pre>
+  编排链路里连续断言：
+<pre><code>action := getAction(...)  // 拿到的是 commonAction，但类型声明为 Action 接口
+
+mapper, ok := action.(RequestMapper)   // ✅ ok=true（有 MapRequest 方法）
+producer, ok := action.(MsgProducer)   // ✅ ok=true（有 Produce 方法）
+generator, ok := action.(Generator)    // ✅ ok=true（有 GenerateTask 方法）
+caller, ok := action.(Caller)          // ❌ ok=false（没有 Call 方法）</code></pre>
+
+  每个接口<strong>独立检查</strong>，互不影响。<br/><br/>
+
+  <strong>匹配规则</strong>：方法签名必须<strong>完全一致</strong>（方法名、参数类型、返回值类型），差一个都不算实现。比如接口要求 <code>Produce(ctx, *AppComponent, *AppTaskMsg) error</code>，你写成 <code>Produce(ctx, *AppTaskMsg) error</code>（少了一个参数）→ 不满足，断言 <code>ok=false</code>。
+</div>
 
 <p>同理，<code>AfterCall</code> 里断言 <code>action.(CallResponseMapper)</code>，<code>GenerateTask</code> 里断言 <code>action.(Generator)</code>——整条编排链都是同一个套路。</p>
 
@@ -2918,6 +2916,16 @@ for _, p := range priority.AllPriorities(cfg) {
 <p>ConcurrentManager 的计数由 <code>worker-scheduler</code> 维护。当一个新任务被注册到 etcd（<code>/task/{env}/{taskID}</code>），Watch 事件会触发 <code>ConcurrentManager.Add(..., +1)</code>；当任务完成或 Worker 挂掉导致 etcd key 过期删除，Watch 事件触发 <code>Add(..., -1)</code>。</p>
 
 <p>这意味着 ConcurrentManager 的计数是<strong>最终一致</strong>的——etcd 保证 Watch 事件的有序投递，内存计数跟随 etcd 的真实状态。</p>
+
+<div class="highlight-box">
+  <strong>注意：CAS 不是分布式锁，ConcurrentManager 是单进程内的并发控制</strong><br/><br/>
+  每个 worker-scheduler Pod 有自己独立的一份 ConcurrentManager，存在内存里，Pod 之间互不可见。那为什么多个 Pod 的计数不会各管各的？<br/><br/>
+  <strong>靠 etcd Watch 同步</strong>：每个 Pod 启动时都会开 Watch 协程：
+<pre><code>go s.watchWorker(ctx)   // 每个 Pod 都开这个 goroutine
+go s.watchTask(ctx)     // 每个 Pod 都开这个 goroutine</code></pre>
+  所有 Pod 都在 Watch 同一个 <code>/task/{env}/</code> 前缀。任何一个 Pod 分配了任务（写 etcd），其他 Pod 都会收到 Put 事件 → 各自 +1；任务完成（删 etcd），所有 Pod 收到 Delete 事件 → 各自 -1。最终每个 Pod 的计数器<strong>基本一致</strong>。<br/><br/>
+  <strong>不是严格精确</strong>：etcd Watch 有毫秒级延迟，极端情况下同一用户的请求分别打到不同 Pod，可能短暂超过并发限制。但对"限制并发"场景来说够用——偶尔多一个任务不会造成问题。
+</div>
 
 <!-- ====== 六、Kafka 事件广播 ====== -->
 <h2>六、Kafka 事件广播</h2>

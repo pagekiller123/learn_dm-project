@@ -1,0 +1,319 @@
+<title>数据库索引与慢查询</title>
+
+<h1>一、MySQL 索引原理（B+ 树）</h1>
+
+<callout emoji="📖" background-color="light-blue" border-color="blue">
+<p><b>一句话理解索引：</b>索引就像书的目录。没有索引 = 从第一页逐行翻找；有了索引 = 先看目录，直接跳到目标页。索引不存数据本身，而是存"字段值 → 磁盘位置"的映射。</p>
+</callout>
+
+<p>MySQL InnoDB 引擎默认使用 <b>B+ 树</b>作为索引的数据结构。为什么是 B+ 树而不是二叉树、哈希表？核心原因有三个。</p>
+
+<h2>1.1 树很矮，磁盘 IO 少</h2>
+
+<p>B+ 树的每个节点能存几百上千个 key（一个节点 = 一个磁盘页 = 16KB），而非叶子节点只存 key 不存数据，进一步压低树高。<b>三层 B+ 树就能索引约 2000 万行数据，从根到叶只需 2~3 次磁盘 IO</b>，每次 IO 约 0.01ms。</p>
+
+<p>作为对比：二叉树每个节点只能存 1 个 key，同样索引 2000 万行数据需要约 <b>24 层</b>（log₂ 2000万 ≈ 24），每层一次磁盘 IO，24 次就是 0.24ms。看起来不多，但每秒几万次查询、并发上来后，开销被显著放大。<b>B+ 树的 IO 开销只有二叉树的十分之一。</b></p>
+
+<h2>1.2 天然有序，范围查询高效</h2>
+
+<p>B+ 树的叶子节点按顺序用<b>双向链表</b>串联，范围查询（如 <code>WHERE create_time &gt; 2024-01-01</code>）找到起点后沿链表往后扫即可，IO 是连续的、可预测的。</p>
+
+<p>二叉树做范围查询则痛苦得多：先找到 100，然后不断"找后继节点"，每次都跳到不同分支、触发<b>随机磁盘 IO</b>。哈希表只能等值查找，完全无法处理范围查询。</p>
+
+<h2>1.3 数据全部集中在叶子层</h2>
+
+<p>非叶子节点纯粹用于导航，所有数据查找都发生在叶子层，缓存和预读策略可以统一优化。</p>
+
+<h2>1.4 B+ 树内部结构详解</h2>
+
+<pre lang="text" caption="B+ 树结构示意（3 层，主键为自增 ID）"><code>          [根节点: 只存 key]
+         /         |         \
+   [中间节点]   [中间节点]   [中间节点]   ← 非叶子：只存 key，用于导航
+    /    \        /    \        /    \
+ [叶子]-[叶子]-[叶子]-[叶子]-[叶子]-[叶子]  ← 叶子层：存 key + 数据行指针
+  ↑                                        叶子之间用双向链表串联</code></pre>
+
+<callout emoji="🔬" background-color="light-yellow" border-color="yellow">
+<p><b>深入理解：一个非叶子节点里到底存了什么？</b></p>
+<p>前面说一个非叶子节点能存"几百上千个 key"，怎么做到的？关键在于非叶子节点里存的东西<b>非常简单</b>——就是一排"指针 + 钥匙"的交替排列：</p>
+<p><code>[P0] [K1] [P1] [K2] [P2] [K3] [P3] ... [Pn]</code></p>
+<ul>
+<li><b>key（K）</b>：一个主键值。假设主键是自增 BIGINT，占 <b>8 字节</b></li>
+<li><b>指针（P）</b>：指向子节点的磁盘地址，InnoDB 里占 <b>6 字节</b></li>
+</ul>
+<p>每对"指针 + key"加起来才 <b>14 字节</b>。一个节点 = 一个磁盘页 = <b>16KB = 16384 字节</b>，所以：</p>
+<p><b>16384 ÷ 14 ≈ 1170 对 → 一个节点能放约 1170 个 key 和 1171 个指针</b></p>
+</callout>
+
+<p><b>key 和指针的指向规则：</b></p>
+
+<pre lang="text" caption="磁盘页内的连续存储"><code>磁盘页（16KB 连续空间）：
+┌──────────────────────────────────────────────────────────┐
+│  P0  │ K1=100 │  P1  │ K2=500 │  P2  │ K3=1000 │  P3   │
+└──────────────────────────────────────────────────────────┘
+
+P0 指向：所有 key &lt; 100 的子节点
+P1 指向：100 ≤ key &lt; 500 的子节点
+P2 指向：500 ≤ key &lt; 1000 的子节点
+P3 指向：所有 key ≥ 1000 的子节点</code></pre>
+
+<callout emoji="💡" background-color="light-blue" border-color="blue">
+<p><b>节点内部怎么定位？——二分查找</b></p>
+<p>比如要找 id=750，到达节点后：</p>
+<ol>
+<li>看到节点里的 key 排列：<code>[100, 500, 1000, 1500, ...]</code></li>
+<li>750 在哪两个 key 之间？→ 在 <b>500 和 1000</b> 之间</li>
+<li>所以走 <b>P2 指针</b>（500 和 1000 之间的那个指针）→ 进入下一层</li>
+</ol>
+<p>这是有序数组的二分查找，1170 个 key 只需 log₂1170 ≈ <b>10 次比较</b>，CPU 几纳秒就搞定了。</p>
+<p>这就是 B+ 树设计精妙的地方——<b>把一次磁盘 IO 的价值榨到最大</b>：花一次 IO 读进来一整页，里面塞了一千多个 key，用 CPU 极快地从中定位到目标区间，再走下一层。</p>
+</callout>
+
+<h2>1.5 聚簇索引 vs 二级索引</h2>
+
+<callout emoji="🌳" background-color="light-green" border-color="green">
+<p><b>核心关系：两者都是 B+ 树</b>，共享同一种数据结构，只是叶子节点存的东西不同。比如一张表有 1 个主键 + 在 name、age 上各建了一个索引，磁盘上实际存了 <b>3 棵独立的 B+ 树</b>：1 棵聚簇索引 + 2 棵二级索引。</p>
+<p>一次二级索引查询 = <b>走 2 棵 B+ 树</b>（先走二级索引拿到主键，再回表走聚簇索引拿到整行），一次聚簇索引查询 = <b>只走 1 棵 B+ 树</b>。这就是聚簇索引更快、覆盖索引更受欢迎的原因。</p>
+</callout>
+
+<p>假设有一张用户表：id（主键）、name、age、city。</p>
+
+<table>
+<colgroup><col width="120"/><col width="200"/><col/></colgroup>
+<thead><tr><th background-color="light-gray"></th><th background-color="light-gray">聚簇索引（主键索引）</th><th background-color="light-gray">二级索引（普通索引）</th></tr></thead>
+<tbody>
+<tr><td><b>叶子节点存什么</b></td><td>整行数据</td><td>索引列的值 + 主键值</td></tr>
+<tr><td><b>每张表几个</b></td><td>有且仅有 1 个</td><td>可以有多个</td></tr>
+<tr><td><b>查询过程</b></td><td>一次到位，直接拿到数据</td><td>找到主键 → 回表 → 再查完整行</td></tr>
+</tbody>
+</table>
+
+<p><b>回表示例：</b>在 name 字段上建索引，执行 <code>SELECT * FROM users WHERE name = '张三'</code>：</p>
+<ol>
+<li>在 name 索引的 B+ 树里找到"张三"→ 拿到 id = 1</li>
+<li>拿着 id = 1，<b>回到聚簇索引再查一次</b>，找到 id=1 对应的整行数据——这一步叫<b>回表</b></li>
+</ol>
+
+<callout emoji="⚡" background-color="light-yellow" border-color="yellow">
+<p><b>覆盖索引——省掉回表的技巧</b></p>
+<p>核心：<b>你 SELECT 要返回的字段刚好都在索引里，不需要再回表</b>。</p>
+<p><b>场景 1：联合索引。</b>在 (city, name) 上建联合索引：<code>SELECT name, city FROM users WHERE city = '北京'</code>——WHERE 用 city 过滤，SELECT 要 name 和 city，两个字段都在索引里，<b>不用回表</b>。</p>
+<p><b>场景 2：查列表只取部分字段。</b>name 上有索引：<code>SELECT id, name FROM users WHERE name LIKE '张%'</code>——二级索引叶子已经存了 name + id，刚好够用。</p>
+<p><b>场景 3：聚合查询。</b>name 上有索引：<code>SELECT COUNT(*) FROM users WHERE name = '张三'</code>——只需要知道有几行匹配，name 索引里就能算出来。</p>
+<p>如果你写 <code>SELECT name, age, city</code> 但索引只有 name，city 不在索引里，就得回表了。<b>设计联合索引时，把常用查询的字段一起放进去，就是为了尽量触发覆盖索引、省掉回表。</b></p>
+</callout>
+
+<h2>1.6 EXPLAIN 怎么看</h2>
+
+<callout emoji="🔍" background-color="light-blue" border-color="blue">
+<p>用 <code>EXPLAIN</code> 分析一条 SQL 时重点看：</p>
+<ul>
+<li><code>type</code>：是 <b>ref</b>（索引查找）还是 <b>ALL</b>（全表扫描）</li>
+<li><code>key</code>：实际用了哪个索引，<b>NULL</b> 就是没用任何索引</li>
+<li><code>rows</code>：预估扫描多少行</li>
+</ul>
+<p>如果 type 是 ALL 且 rows 很大，基本就是缺索引。如果 type 是 ref 但 rows 仍然很大，可能是索引区分度不够（比如给性别字段建索引，只能区分男/女）。</p>
+</callout>
+
+<h1>二、MySQL 慢查询日志分析</h1>
+
+<callout emoji="📖" background-color="light-blue" border-color="blue">
+<p><b>一句话理解慢查询日志：</b>MySQL 会把执行时间超过阈值的 SQL 自动记录到日志文件里，就像给数据库装了个"行车记录仪"。定期分析这个日志，就能找到哪些 SQL 拖慢了系统。</p>
+</callout>
+
+<h2>2.1 核心配置参数</h2>
+
+<table>
+<colgroup><col width="200"/><col width="200"/><col/></colgroup>
+<thead><tr><th background-color="light-gray">参数</th><th background-color="light-gray">作用</th><th background-color="light-gray">常用值</th></tr></thead>
+<tbody>
+<tr><td><code>slow_query_log</code></td><td>是否开启慢查询日志</td><td><code>ON</code> / <code>OFF</code></td></tr>
+<tr><td><code>slow_query_log_file</code></td><td>日志文件路径</td><td>如 <code>/var/log/mysql/slow.log</code></td></tr>
+<tr><td><code>long_query_time</code></td><td>超过多少秒算"慢查询"</td><td>通常设 <code>1</code>（1秒），调优可设 <code>0.1</code></td></tr>
+<tr><td><code>log_queries_not_using_indexes</code></td><td>没走索引的查询也记录</td><td><code>ON</code>（建议开启）</td></tr>
+</tbody>
+</table>
+
+<h2>2.2 开启方式</h2>
+
+<p><b>运行时动态开启</b>（不需要重启，立即生效，重启后失效）：</p>
+<pre lang="sql" caption=""><code>SET GLOBAL slow_query_log = ON;
+SET GLOBAL long_query_time = 1;
+SET GLOBAL log_queries_not_using_indexes = ON;</code></pre>
+
+<p><b>写配置文件</b>（永久生效，改 my.cnf / my.ini，重启后生效）：</p>
+<pre lang="ini" caption="my.cnf"><code>[mysqld]
+slow_query_log = ON
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 1
+log_queries_not_using_indexes = ON</code></pre>
+
+<h2>2.3 日志格式解读</h2>
+
+<pre lang="text" caption="一条典型的慢查询日志"><code># Time: 2024-07-29T14:23:05.123456Z
+# User@Host: root[root] @ localhost []
+# Query_time: 3.456789  Lock_time: 0.000123  Rows_sent: 1  Rows_examined: 2000000
+SET timestamp=1722258185;
+SELECT * FROM task_records WHERE user_id = 12345 AND status = 'completed';</code></pre>
+
+<table>
+<colgroup><col width="120"/><col width="200"/><col/></colgroup>
+<thead><tr><th background-color="light-gray">字段</th><th background-color="light-gray">含义</th><th background-color="light-gray">重点看什么</th></tr></thead>
+<tbody>
+<tr><td><code>Query_time</code></td><td>查询总耗时（秒）</td><td><b>最重要的指标</b>，越大越慢</td></tr>
+<tr><td><code>Lock_time</code></td><td>等待锁的时间</td><td>如果这个值大，说明有锁竞争</td></tr>
+<tr><td><code>Rows_sent</code></td><td>返回给客户端的行数</td><td>返回了多少行</td></tr>
+<tr><td><code>Rows_examined</code></td><td>实际扫描的行数</td><td><b>如果远大于 Rows_sent，说明扫描了大量无用行</b>（通常缺索引）</td></tr>
+</tbody>
+</table>
+
+<callout emoji="💡" background-color="light-yellow" border-color="yellow">
+<p><b>关键信号：Rows_examined vs Rows_sent</b></p>
+<p>如果一条 SQL 返回了 10 行（Rows_sent: 10），但扫描了 200 万行（Rows_examined: 2000000），说明数据库翻了 200 万行才找到这 10 行——几乎可以确定是缺索引。</p>
+<p>这个比值是判断"是否需要加索引"的最直观指标。</p>
+</callout>
+
+<h2>2.4 分析工具 mysqldumpslow</h2>
+
+<p>日志文件可能很大，直接看不现实。用 MySQL 自带的分析工具：</p>
+
+<pre lang="bash" caption=""><code># 按平均耗时排序，看 Top 10 慢 SQL
+mysqldumpslow -s at -t 10 /var/log/mysql/slow.log
+
+# 按总耗时排序（找出累计最浪费时间的 SQL）
+mysqldumpslow -s t -t 10 /var/log/mysql/slow.log
+
+# 按出现次数排序（找出最频繁的慢 SQL）
+mysqldumpslow -s c -t 10 /var/log/mysql/slow.log</code></pre>
+
+<callout emoji="🎯" background-color="light-red" border-color="red">
+<p><b>分析优先级：按"耗时 × 频次"排序</b></p>
+<p>一条 SQL 平均耗时 5 秒但一个月只出现 1 次，和一条 SQL 平均耗时 0.5 秒但每天出现 10000 次——后者优先级更高。</p>
+<p><b>优先级 = 平均耗时 × 出现次数</b>（就是 mysqldumpslow 输出的括号里的累计耗时）</p>
+<p>累计耗时最大的那条 SQL，就是你应该最先优化的目标。</p>
+</callout>
+
+<h1>三、慢查询优化三板斧</h1>
+
+<h2>3.1 补索引</h2>
+
+<p><b>问题场景：</b>EXPLAIN 显示 <code>type=ALL</code>，意味着数据库在<b>全表扫描</b>——从头到尾逐行翻找。</p>
+
+<pre lang="sql" caption="补索引前后对比"><code>-- 这条 SQL 每次执行都要扫 500 万行
+SELECT * FROM task_records WHERE user_id = 12345;
+
+-- EXPLAIN 显示：type: ALL, key: NULL, rows: 5000000
+
+-- 解决：给 user_id 加索引
+ALTER TABLE task_records ADD INDEX idx_user_id (user_id);
+
+-- 加完后：type: ref, key: idx_user_id, rows: 5
+-- 从扫 500 万行变成扫 5 行！</code></pre>
+
+<p><b>补索引的本质：</b>建立一棵新的 B+ 树（二级索引），查询时走两棵 B+ 树——先在二级索引里找主键，再回表查完整数据。</p>
+
+<h2>3.2 优化查询写法</h2>
+
+<p><b>避免 SELECT *：</b></p>
+<pre lang="sql" caption=""><code>-- ❌ 返回所有字段，包括大文本字段
+SELECT * FROM history WHERE user_id = 12345;
+
+-- ✅ 只查需要的字段，传输数据量小很多
+SELECT id, created_at, status FROM history WHERE user_id = 12345;</code></pre>
+
+<p><b>大结果集加分页：</b></p>
+<pre lang="sql" caption=""><code>-- ❌ 一次返回 100 万行
+SELECT id, name FROM users;
+
+-- ✅ 每页 20 条，按需加载
+SELECT id, name FROM users LIMIT 20 OFFSET 0;  -- 第 1 页
+SELECT id, name FROM users LIMIT 20 OFFSET 20; -- 第 2 页</code></pre>
+
+<h2>3.3 检查 JOIN</h2>
+
+<p>JOIN 是多表关联查询。如果其中某张表没走索引，整个查询就会被那张表拖慢。</p>
+
+<pre lang="text" caption="EXPLAIN 输出示例"><code>+----+-------+------+---------+----------+
+| id | table | type | key     | rows     |
++----+-------+------+---------+----------+
+|  1 | u     | ref  | idx_city|   500    |  ← users 表走索引
+|  2 | t     | ALL  | NULL    | 5000000  |  ← task_records 全表扫描！
++----+-------+------+---------+----------+</code></pre>
+
+<p><b>解决：给 JOIN 关联字段加索引。</b>确保 JOIN 涉及的每张表，在关联字段上都有索引。</p>
+
+<h2>3.4 索引常用命令速查</h2>
+
+<table>
+<colgroup><col width="120"/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">操作</th><th background-color="light-gray">命令</th><th background-color="light-gray">说明</th></tr></thead>
+<tbody>
+<tr><td><b>加单个索引</b></td><td><code>ALTER TABLE users ADD INDEX idx_city (city);</code></td><td>给 city 字段加索引</td></tr>
+<tr><td><b>加联合索引</b></td><td><code>ALTER TABLE users ADD INDEX idx_city_name (city, name);</code></td><td>同时给 city 和 name 建索引</td></tr>
+<tr><td><b>删掉索引</b></td><td><code>ALTER TABLE users DROP INDEX idx_city;</code></td><td>删除不再需要的索引</td></tr>
+<tr><td><b>查看索引</b></td><td><code>SHOW INDEX FROM users;</code></td><td>查看一张表有哪些索引</td></tr>
+</tbody>
+</table>
+
+<h1>四、MongoDB 索引原理（B 树）</h1>
+
+<p><b>一句话区分：</b>MySQL 用 <b>B+ 树</b>，MongoDB 用 <b>B 树</b>。它们很像，核心区别在于数据存放在哪里。</p>
+
+<pre lang="text" caption="B 树 vs B+ 树结构对比"><code>B 树（MongoDB）：              B+ 树（MySQL）：
+
+      [根: key + 数据]               [根: 只存 key]
+       /        \                    /        \
+  [中间: key+数据] [中间: key+数据]  [中间: 只存key] [中间: 只存key]
+     /    \        /    \             /    \        /    \
+  [叶]  [叶]    [叶]  [叶]         [叶]-[叶]-[叶]-[叶]-[叶]  ← 叶子有链表
+   ↑ 数据也在中间节点               ↑ 数据只在叶子节点</code></pre>
+
+<h2>4.1 B 树 vs B+ 树对比</h2>
+
+<table>
+<colgroup><col width="120"/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">维度</th><th background-color="light-gray">B 树（MongoDB）</th><th background-color="light-gray">B+ 树（MySQL）</th></tr></thead>
+<tbody>
+<tr><td><b>数据存在哪</b></td><td>每个节点都存数据</td><td>只有叶子节点存数据</td></tr>
+<tr><td><b>叶子有链表吗</b></td><td>没有</td><td>有双向链表</td></tr>
+<tr><td><b>查找过程</b></td><td>可能在中间节点就命中</td><td>一定要走到叶子节点</td></tr>
+<tr><td><b>范围查询</b></td><td>相对弱（没链表，需回溯）</td><td>很强（叶子链表顺序扫）</td></tr>
+</tbody>
+</table>
+
+<p><b>为什么 MongoDB 选 B 树？</b>MongoDB 的数据是文档（类似 JSON），一条文档可能很大。B 树让每个节点都能存数据，点查询时可能在中间节点就命中了，不用非得走到叶子，某些场景下更快。范围查询的劣势通过其他方式弥补。</p>
+
+<h2>4.2 概念对比：MySQL vs MongoDB</h2>
+
+<table>
+<colgroup><col width="120"/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">概念</th><th background-color="light-gray">MySQL（B+ 树）</th><th background-color="light-gray">MongoDB（B 树）</th></tr></thead>
+<tbody>
+<tr><td><b>聚簇索引</b></td><td>自动有，按主键排序存储</td><td>需要显式创建 clustered collection</td></tr>
+<tr><td><b>二级索引</b></td><td>叶子存：索引值 + 主键</td><td>叶子存：索引值 + 文档指针</td></tr>
+<tr><td><b>回表</b></td><td>拿主键回聚簇索引查</td><td>拿指针直接去读文档</td></tr>
+<tr><td><b>覆盖索引</b></td><td>查询字段都在索引里即可</td><td>还需要显式 <code>_id: 0</code> 排除 _id 字段</td></tr>
+</tbody>
+</table>
+
+<h2>4.3 MongoDB 索引常用命令</h2>
+
+<pre lang="javascript" caption=""><code>// 创建索引
+db.users.createIndex({city: 1})
+
+// 创建复合索引
+db.users.createIndex({city: 1, name: 1})
+
+// 删除索引
+db.users.dropIndex("city_1")
+
+// 查看所有索引
+db.users.getIndexes()</code></pre>
+
+<pre lang="javascript" caption="覆盖索引示例"><code>// ❌ 不能触发覆盖查询——默认返回 _id，而 _id 不在 city 索引里
+db.users.find({ city: "北京" }, { city: 1 })
+// 实际返回：{ _id: xxx, city: "北京" }
+
+// ✅ 显式排除 _id，就能触发覆盖查询
+db.users.find({ city: "北京" }, { city: 1, _id: 0 })
+// 实际返回：{ city: "北京" }</code></pre>

@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>S001 · DreamMaker Scheduler 整体架构总览</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.note-box {
+  background: #eef7ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+
+nav.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+
+@media print {
+  body { max-width: none; margin: 0; padding: 1cm; font-size: 11pt; }
+  a { color: var(--text); text-decoration: none; }
+}
+  </style>
+</head>
+<body>
+
+<h1>S001 · DreamMaker Scheduler 整体架构总览</h1>
+
+<div class="lesson-meta">
+  <span><strong>课程:</strong> DreamMaker Scheduler</span>
+  <span><strong>时长:</strong> ~35 分钟</span>
+  <span><strong>难度:</strong> ★★★☆☆</span>
+  <span><strong>前置:</strong> 了解 Go 基础、HTTP 微服务基本概念</span>
+</div>
+
+<h2>一、一句话架构</h2>
+
+<p>Scheduler = <strong>Go 微服务集群</strong> + <strong>Redis 任务队列</strong> + <strong>MongoDB 记录中心</strong> + <strong>etcd Worker 注册中心</strong> + <strong>K8s 服务发现</strong> + <strong>dmfr 内部框架</strong>。</p>
+
+<p>没有单一入口 —— 每个服务各有自己的 <code>app/&lt;service&gt;/main.go</code>。外部流量经 <strong>tmax istioingress</strong>（网易内部 K8s 平台的 Istio Ingress Gateway）进入。服务间内部通信使用 <code>dmfr.HTTPClient()</code>。任务状态分布在 Redis / Mongo / etcd 三套存储中。</p>
+
+<h2>二、基础设施说明</h2>
+
+<h3>2.1 tmax / Istio / Envoy 是什么</h3>
+
+<table>
+<tr><th>概念</th><th>解释</th></tr>
+<tr><td><strong>tmax</strong></td><td>网易内部 K8s 容器平台（类似阿里 ACK / 腾讯 TKE）</td></tr>
+<tr><td><strong>Istio</strong></td><td>开源 Service Mesh，提供流量路由、负载均衡、认证鉴权、可观测性</td></tr>
+<tr><td><strong>Envoy</strong></td><td>高性能 C++ 代理；是 Istio 的数据面。每个 Pod 内有一个 Envoy Sidecar</td></tr>
+<tr><td><strong>EnvoyFilter</strong></td><td>Istio 配置资源，用于注入自定义过滤逻辑（如在网关层做 JWT 鉴权）</td></tr>
+</table>
+
+<p>tmax istioingress 做三件事：</p>
+<ol>
+  <li><strong>路径路由</strong>：URL path → 内部服务（如 <code>/api-outer/...</code> → api-outer）</li>
+  <li><strong>统一鉴权</strong>：通过 EnvoyFilter 在网关层做 JWT 校验，各服务无需重复实现</li>
+  <li><strong>统一入口</strong>：前端、Monet、内部工具统一走这层</li>
+</ol>
+
+<h2>三、整体架构图</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph 外部客户端
+        Frontend["前端 (DM 主站)"]
+        Monet["Monet Agent (客户端)"]
+        Internal["内部工具 / 外部游戏"]
+    end
+
+    subgraph 网关与API入口
+        Istio["tmax istioingress + EnvoyFilter"]
+        Auth["JWT 鉴权"]
+        ApiOuter["api-outer"]
+        ApiServer["api-server"]
+    end
+
+    subgraph 业务服务层
+        AppGW["app-gateway<br/>(权限校验 / APP编排 / 参数映射 / 入队)"]
+        TwoD["2d"]
+        StoryBoard["story-board"]
+        Flow["flow (工作流引擎)"]
+    end
+
+    subgraph 基础设施
+        Redis["Redis (任务队列)"]
+        Mongo["MongoDB (AppRecord / TaskMsg)"]
+        Etcd["etcd (Worker/Task 注册)"]
+        Kafka["Kafka (异步消息)"]
+    end
+
+    subgraph 调度层
+        WS["worker-scheduler<br/>(多副本并行 + 任务分配)"]
+        Transformer["transformer_v2<br/>(tmax 推理调度)"]
+    end
+
+    subgraph Worker执行层
+        Sidecar["worker-sidecar<br/>(异构后端适配)"]
+        ComfyW["Comfy Worker"]
+        SDW["SD Worker"]
+        TrainW["Training Worker"]
+    end
+
+    subgraph 外部推理后端
+        ComfyUI["ComfyUI (本地 Pod)"]
+        SDUI["SD-WebUI (本地 Pod)"]
+        AIGW["AIGW (dreammaker-gateway)"]
+        Vendor["厂商 API (Kling/Runway/Sora 等)"]
+    end
+
+    Frontend --> Istio
+    Monet --> Istio
+    Internal --> Istio
+    Istio --> Auth
+    Auth --> ApiOuter
+    Auth --> ApiServer
+    ApiOuter --> AppGW
+    AppGW --> Redis
+    AppGW --> Mongo
+    AppGW --> Kafka
+    WS --> Redis
+    WS --> Mongo
+    WS --> Etcd
+    WS --> Sidecar
+    Sidecar --> ComfyW --> ComfyUI
+    Sidecar --> SDW --> SDUI
+    Sidecar --> TrainW
+    Sidecar --> AIGW
+    Sidecar --> Vendor
+</pre>
+</div>
+
+<h2>四、五层架构的职责边界</h2>
+
+<table>
+<tr><th>层级</th><th>核心组件</th><th>职责</th><th>不能做的事</th></tr>
+<tr>
+  <td>1. 外部请求层</td>
+  <td>前端 / Monet / 内部工具</td>
+  <td>组装 HTTP 请求，携带鉴权 Header</td>
+  <td>不能直接提交 Worker 任务</td>
+</tr>
+<tr>
+  <td>2. 业务服务层</td>
+  <td>api-outer / app-gateway / 2d / story-board</td>
+  <td>参数校验、鉴权、参数映射、持久化、入队、状态查询</td>
+  <td>不能直连 Worker，不能做 GPU 调度</td>
+</tr>
+<tr>
+  <td>3. 基础设施服务层</td>
+  <td>worker-scheduler</td>
+  <td>拉队列、分配任务、回写结果、Autoscaler</td>
+  <td>不关心具体推理逻辑</td>
+</tr>
+<tr>
+  <td>4. Worker 执行层</td>
+  <td>worker-sidecar + 各类 Worker</td>
+  <td>接收任务、适配后端、执行推理、上报进度/结果</td>
+  <td>不能反向依赖 app-gateway</td>
+</tr>
+<tr>
+  <td>5. 外部供应商层</td>
+  <td>ComfyUI / SD-WebUI / 火山 / 混元 / ...</td>
+  <td>实际 AI 推理</td>
+  <td>—</td>
+</tr>
+</table>
+
+<h2>五、三大核心组件</h2>
+
+<h3>5.1 app-gateway — 任务入口</h3>
+
+<p>四项职责：</p>
+<ol>
+  <li><strong>权限校验</strong>：<code>CheckAppAccess</code> —— 用户是否有权使用该 app/sub_app</li>
+  <li><strong>组件解析</strong>：解析 app component、group、cluster、taskMode、priority</li>
+  <li><strong>持久化</strong>：向 Mongo 写入 <code>AddAppRecord(status=queued)</code>，向 Redis 队列写入 pending task</li>
+  <li><strong>返回 task_id</strong>：立即返回，不等待 Worker 执行</li>
+</ol>
+
+<div class="highlight-box">
+  <strong>为什么不能绕过 app-gateway？</strong>
+  <ul>
+    <li><strong>安全</strong>：api-outer + app-gateway 是唯一的鉴权和限流入口</li>
+    <li><strong>可观测</strong>：所有任务必须创建 AppRecord，用于计费、审计、错误分析</li>
+    <li><strong>一致性</strong>：任务状态机（queued → running → success/failed）依赖 <code>action.Add</code> 建立初始状态</li>
+    <li><strong>可扩展</strong>：预处理 / 参数映射 / 优先级都在这层</li>
+  </ul>
+</div>
+
+<h3>5.2 worker-scheduler — 分布式调度核心</h3>
+
+<p>关键行为：</p>
+<ul>
+  <li><strong>多副本并行</strong>：多个 Pod 各自独立工作（无 Leader 选举）；通过 Redis 分布式锁协调关键操作（如 Autoscaler）</li>
+  <li><strong>拉队列</strong>：从 Redis 拉取 pending tasks</li>
+  <li><strong>加载消息</strong>：从 Mongo 加载 <code>AppTaskMsg</code>（Redis 中只存 task_id，完整参数在 Mongo）</li>
+  <li><strong>注册运行态</strong>：将任务写入 etcd running 注册表，作为"当前执行中任务"的 source of truth</li>
+  <li><strong>下发给 Worker（Pull 模型）</strong>：Worker 主动上报"我空闲了"（<code>report consume</code>），scheduler 再下发 —— 是 Worker "拉"，不是 scheduler "推"</li>
+  <li><strong>结果回写</strong>：Worker 上报结果 → scheduler 调用 <code>action.AfterCall / MapCallResponse</code> → 写 Mongo → 删 etcd 注册</li>
+</ul>
+
+<div class="highlight-box">
+  <strong>为什么要三套存储（Redis + Mongo + etcd）？</strong>
+  <ul>
+    <li><strong>Redis</strong>：短生命周期"待消费"队列。使用 ZSet（score = 入队时间戳，FIFO）；不同优先级放在不同 Redis key。还存任务状态缓存供前端 <code>/status</code> 轮询（亚秒响应，避免打 Mongo）。</li>
+    <li><strong>Mongo</strong>：长生命周期"任务记录中心"。所有任务参数、状态、结果存在这里，用于查询、审计、计费。</li>
+    <li><strong>etcd</strong>："运行态"强一致注册中心。支持 Lease + Watch：Worker 挂掉 → Lease 过期 → 自动清理。Mongo 做不到"心跳自动清理"。</li>
+  </ul>
+  <p><strong>核心原则</strong>：不同语义用不同存储，不要强求一套存储搞定所有事 —— 这是经典的分布式系统取舍。</p>
+</div>
+
+<h3>5.3 worker-sidecar — 异构后端适配器</h3>
+
+<p>worker-scheduler 只知道"把这个任务发给某个 Worker"，但实际的协议、参数、结果解析因后端而异（ComfyUI / SD-WebUI / Training / 外部供应商各不相同）。</p>
+
+<p>这就是生产级别的 <strong>Adapter Pattern</strong>：sidecar 将 scheduler 的派发逻辑与具体推理后端解耦。</p>
+
+<p>新增一个 AI 能力时：scheduler 派发代码<strong>不需要改</strong>。只需要：</p>
+<ol>
+  <li>在 sidecar 中新增 worker 实现（实现 <code>pkg.Worker</code> 接口）</li>
+  <li>在 app-gateway 的 action 层处理参数映射和结果处理</li>
+</ol>
+
+<div class="note-box">
+  <strong>关于 sidecar 命名：</strong>
+  <ul>
+    <li><strong>本地后端（ComfyUI / SD-WebUI / GPT-SoVITS）</strong>：sidecar 部署在同一个 Pod，通过 <code>localhost:8188</code> / <code>localhost:7861</code> 通信 —— 经典 Sidecar 模式</li>
+    <li><strong>外部供应商（火山 / Kling / Runway / Sora）</strong>：没有推理容器在旁边；sidecar 是独立进程调用外部 HTTP API —— 更像"Worker Adapter"</li>
+  </ul>
+  <p>统一叫 sidecar 是历史原因：项目最早只有本地推理后端，后来加了很多外部供应商，代码复用同一套上报/调度机制，名字就保留了。</p>
+</div>
+
+<h2>六、关键数据流：一个任务的完整生命周期</h2>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant C as Client / Monet
+    participant O as api-outer
+    participant A as app-gateway
+    participant M as MongoDB
+    participant R as Redis Queue
+    participant WS as worker-scheduler
+    participant E as etcd
+    participant W as worker-sidecar
+
+    C->>O: POST /apps/{app}/run
+    O->>O: JWT 认证 + API 模块权限校验
+    O->>A: RunApp(...)
+    A->>A: CheckAppAccess（App 访问权限）+ 参数映射
+    A->>M: AddAppRecord(status=queued)
+    A->>R: Produce pending task
+    A-->>O: task_id
+    O-->>C: task_id
+
+    Note over W,WS: 异步阶段 — Worker 主动拉取
+    W->>WS: report consume（我空闲）
+    WS->>R: 拉 pending task
+    WS->>M: 加载 AppTaskMsg
+    WS->>E: 注册 running task
+    WS-->>W: JobReportData
+
+    W->>W: 执行推理
+    W->>WS: report progress
+    W->>WS: report result
+
+    WS->>A: AfterCall / MapCallResponse
+    A->>M: 写入 Success / Failed
+    WS->>E: 删除 running task
+
+    C->>O: GET /apps/{app}/status?task_id=xxx
+    O->>A: GetAppTaskStatus
+    A->>M: 读取 record
+    A-->>C: status / output
+</pre>
+</div>
+
+<div class="highlight-box">
+  <strong>设计要点：</strong>
+  <ul>
+    <li>提交和执行完全异步 —— 提交后立即返回 task_id，客户端通过 <code>/status</code> 轮询</li>
+    <li>Worker "Pull" 模型 —— Worker 主动上报空闲，天然背压；Worker 不会被打爆</li>
+    <li>结果回写时，worker-scheduler <strong>不自己实现</strong>结果处理逻辑 —— 直接复用 <code>app-gateway/action</code> 包代码（Go 包引用，非 HTTP 调用）</li>
+  </ul>
+</div>
+
+<h2>七、dmfr 框架</h2>
+
+<p>dmfr（DreamMaker Framework）是内部 Go 框架，提供以下标准化能力：</p>
+
+<table>
+<tr><th>能力</th><th>用法</th><th>不用的后果</th></tr>
+<tr><td>HTTP Server</td><td><code>dmfr.HTTPServer()</code></td><td>手写 Wrapper 会遗漏 trace/metrics</td></tr>
+<tr><td>HTTP Client</td><td><code>dmfr.HTTPClient(serviceName)</code></td><td>手写 baseURL 绕过服务发现</td></tr>
+<tr><td>日志</td><td><code>logging.Info(ctx, "msg", zap.Field...)</code></td><td>散落的 logger 无法做 trace 关联</td></tr>
+<tr><td>错误码</td><td><code>ecode</code> 包</td><td>业务错误缺乏统一分类</td></tr>
+<tr><td>响应包装</td><td><code>httpServer.JSON(c, resp, err)</code></td><td>响应格式不一致</td></tr>
+<tr><td>JSON</td><td>优先用 Sonic，不用 <code>encoding/json</code></td><td>性能损失明显</td></tr>
+</table>
+
+<div class="note-box">
+  <strong>开发原则</strong>：能用 dmfr 解决的不要重复造轮子。新写代码前先确认框架层是否已有现成封装。
+</div>
+
+<h2>八、术语速查</h2>
+
+<table>
+<tr><th>术语</th><th>含义</th></tr>
+<tr><td>app-gateway</td><td>业务服务层，APP 任务编排入口</td></tr>
+<tr><td>worker-scheduler</td><td>基础设施服务层，多副本并行 + 任务分配</td></tr>
+<tr><td>worker-sidecar</td><td>Worker 执行层，异构后端适配</td></tr>
+<tr><td>api-outer</td><td>统一的外部 API 入口（前端、Monet、外部工具都走它）</td></tr>
+<tr><td>AppRecord</td><td>Mongo 中的任务记录，长期存储</td></tr>
+<tr><td>AppTaskMsg</td><td>核心任务消息结构体</td></tr>
+<tr><td>action</td><td>任务状态流转抽象（Add / AfterCall / Failed）</td></tr>
+<tr><td>dmfr</td><td>DreamMaker Framework，Go 脚手架</td></tr>
+<tr><td>ecode</td><td>dmfr 的错误码包</td></tr>
+<tr><td>Sub App</td><td>一个 APP 下的子应用，如 <code>image-generation/flux</code></td></tr>
+<tr><td>Hertz / Fiber</td><td>两套 Go HTTP 框架；新代码用 Hertz，老代码保留 Fiber</td></tr>
+</table>
+
+<nav class="lesson-nav">
+  <span></span>
+  <a href="S002-task-scheduling-redis-queue.html">下一课：S002 任务调度与 Redis 队列设计 →</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+
+</body>
+</html>

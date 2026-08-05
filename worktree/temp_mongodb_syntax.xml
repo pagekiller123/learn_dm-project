@@ -1,0 +1,347 @@
+<title>MongoDB 语法速查</title>
+
+<callout emoji="💡" background-color="light-blue" border-color="blue">
+<p><b>核心概念：</b>MongoDB 是文档数据库，数据以 JSON 文档（BSON）存储。一条记录 = 一个文档，一张表 = 一个集合（Collection）。所有查询操作用 <code>$</code> 开头的关键字（操作符）来描述。</p>
+</callout>
+
+<h1>一、核心概念对照（vs MySQL）</h1>
+
+<table>
+<colgroup><col width="100"/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">概念</th><th background-color="light-gray">MySQL</th><th background-color="light-gray">MongoDB</th></tr></thead>
+<tbody>
+<tr><td><b>数据库</b></td><td>Database</td><td>Database</td></tr>
+<tr><td><b>表</b></td><td>Table</td><td>Collection（集合）</td></tr>
+<tr><td><b>行</b></td><td>Row</td><td>Document（文档，一条 JSON）</td></tr>
+<tr><td><b>列</b></td><td>Column</td><td>Field（字段）</td></tr>
+<tr><td><b>主键</b></td><td>PRIMARY KEY</td><td><code>_id</code>（自动生成，全局唯一）</td></tr>
+<tr><td><b>查询语言</b></td><td>SQL</td><td>MQL（MongoDB Query Language）</td></tr>
+<tr><td><b>JOIN</b></td><td>JOIN</td><td><code>$lookup</code>（聚合管道内）</td></tr>
+<tr><td><b>事务</b></td><td>原生支持</td><td>4.0+ 支持多文档事务</td></tr>
+</tbody>
+</table>
+
+<h1>二、CRUD 基础操作</h1>
+
+<h2>2.1 插入（Insert）</h2>
+
+<pre lang="javascript" caption="插入单条"><code>// 插入一条文档
+db.users.insertOne({
+    name: "张三",
+    age: 25,
+    city: "北京",
+    tags: ["开发", "后端"]    // 数组类型，MySQL 做不到
+})
+
+// 插入多条
+db.users.insertMany([
+    { name: "李四", age: 30, city: "上海" },
+    { name: "王五", age: 28, city: "广州" }
+])</code></pre>
+
+<h2>2.2 查询（Find）</h2>
+
+<pre lang="javascript" caption="基础查询"><code>// 查所有文档
+db.users.find()
+
+// 条件查询（等价于 WHERE）
+db.users.find({ city: "北京" })
+
+// 多条件 AND
+db.users.find({ city: "北京", age: 25 })
+
+// 只返回指定字段（projection）
+db.users.find({ city: "北京" }, { name: 1, age: 1, _id: 0 })
+// 1 = 包含，0 = 排除</code></pre>
+
+<h2>2.3 查询操作符</h2>
+
+<table>
+<colgroup><col width="80"/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">操作符</th><th background-color="light-gray">含义</th><th background-color="light-gray">等价 SQL</th></tr></thead>
+<tbody>
+<tr><td><code>$eq</code></td><td>等于</td><td><code>=</code></td></tr>
+<tr><td><code>$ne</code></td><td>不等于</td><td><code>!=</code></td></tr>
+<tr><td><code>$gt</code></td><td>大于</td><td><code>&gt;</code></td></tr>
+<tr><td><code>$gte</code></td><td>大于等于</td><td><code>&gt;=</code></td></tr>
+<tr><td><code>$lt</code></td><td>小于</td><td><code>&lt;</code></td></tr>
+<tr><td><code>$lte</code></td><td>小于等于</td><td><code>&lt;=</code></td></tr>
+<tr><td><code>$in</code></td><td>在列表中</td><td><code>IN</code></td></tr>
+<tr><td><code>$nin</code></td><td>不在列表中</td><td><code>NOT IN</code></td></tr>
+<tr><td><code>$and</code></td><td>且</td><td><code>AND</code></td></tr>
+<tr><td><code>$or</code></td><td>或</td><td><code>OR</code></td></tr>
+<tr><td><code>$exists</code></td><td>字段是否存在</td><td><code>IS NOT NULL</code></td></tr>
+<tr><td><code>$regex</code></td><td>正则匹配</td><td><code>LIKE / REGEXP</code></td></tr>
+</tbody>
+</table>
+
+<pre lang="javascript" caption="操作符示例"><code>// 年龄大于 25
+db.users.find({ age: { $gt: 25 } })
+
+// 城市是北京或上海（OR）
+db.users.find({ city: { $in: ["北京", "上海"] } })
+
+// 年龄 20~30 之间（AND 隐式）
+db.users.find({ age: { $gte: 20, $lte: 30 } })
+
+// name 存在且以"张"开头
+db.users.find({ name: { $exists: true, $regex: /^张/ } })
+
+// 显式 OR
+db.users.find({ $or: [
+    { city: "北京" },
+    { age: { $lt: 20 } }
+]})</code></pre>
+
+<h2>2.4 更新（Update）</h2>
+
+<pre lang="javascript" caption="更新操作"><code>// 更新单条（$set 只改指定字段，其他不动）
+db.users.updateOne(
+    { name: "张三" },           // 过滤条件
+    { $set: { age: 26 } }      // 更新内容
+)
+
+// 更新多条
+db.users.updateMany(
+    { city: "北京" },
+    { $set: { status: "active" } }
+)
+
+// 常用更新操作符
+db.users.updateOne(
+    { name: "张三" },
+    {
+        $set: { city: "深圳" },        // 设置字段值
+        $inc: { loginCount: 1 },       // 数值加 1
+        $push: { tags: "新标签" },     // 往数组追加元素
+        $unset: { tempField: "" }      // 删除字段
+    }
+)</code></pre>
+
+<h2>2.5 删除（Delete）</h2>
+
+<pre lang="javascript" caption="删除操作"><code>// 删除单条
+db.users.deleteOne({ name: "张三" })
+
+// 删除多条
+db.users.deleteMany({ city: "北京" })
+
+// 清空集合（不删集合本身）
+db.users.deleteMany({})</code></pre>
+
+<h1>三、聚合管道（Aggregation Pipeline）</h1>
+
+<callout emoji="📌" background-color="light-yellow" border-color="yellow">
+<p>聚合管道是 MongoDB 最强大的查询能力，类似 SQL 的 GROUP BY + JOIN + 各种函数。数据像流水线一样经过每个阶段，前一个阶段的输出是后一个阶段的输入。</p>
+</callout>
+
+<h2>3.1 基本语法</h2>
+
+<pre lang="javascript" caption=""><code>db.collection.aggregate([
+    { 阶段1 },
+    { 阶段2 },
+    { 阶段3 },
+    ...
+])</code></pre>
+
+<h2>3.2 常用阶段（Stage）</h2>
+
+<table>
+<colgroup><col width="100"/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">阶段</th><th background-color="light-gray">作用</th><th background-color="light-gray">等价 SQL</th></tr></thead>
+<tbody>
+<tr><td><code>$match</code></td><td>过滤文档</td><td>WHERE</td></tr>
+<tr><td><code>$group</code></td><td>分组聚合</td><td>GROUP BY</td></tr>
+<tr><td><code>$sort</code></td><td>排序</td><td>ORDER BY</td></tr>
+<tr><td><code>$limit</code></td><td>限制条数</td><td>LIMIT</td></tr>
+<tr><td><code>$skip</code></td><td>跳过条数</td><td>OFFSET</td></tr>
+<tr><td><code>$project</code></td><td>选择/重命名字段</td><td>SELECT</td></tr>
+<tr><td><code>$lookup</code></td><td>关联查询</td><td>LEFT JOIN</td></tr>
+<tr><td><code>$unwind</code></td><td>展开数组</td><td>（SQL 无对应）</td></tr>
+<tr><td><code>$count</code></td><td>计数</td><td>COUNT</td></tr>
+<tr><td><code>$addFields</code></td><td>新增计算字段</td><td>（SQL 无对应）</td></tr>
+</tbody>
+</table>
+
+<h2>3.3 完整示例</h2>
+
+<pre lang="javascript" caption="统计每个城市的用户数，按人数降序，取前 5"><code>db.users.aggregate([
+    // 阶段 1：过滤，只要 status 为 active 的
+    { $match: { status: "active" } },
+
+    // 阶段 2：按城市分组，统计数量
+    { $group: {
+        _id: "$city",           // 按 city 字段分组（$ 表示引用字段值）
+        count: { $sum: 1 },     // 每匹配一条就 +1
+        avgAge: { $avg: "$age" } // 顺便算平均年龄
+    }},
+
+    // 阶段 3：按 count 降序排列
+    { $sort: { count: -1 } },   // -1 = 降序，1 = 升序
+
+    // 阶段 4：只取前 5 条
+    { $limit: 5 }
+])</code></pre>
+
+<h2>3.4 $group 累加器</h2>
+
+<table>
+<colgroup><col width="100"/><col/></colgroup>
+<thead><tr><th background-color="light-gray">累加器</th><th background-color="light-gray">作用</th></tr></thead>
+<tbody>
+<tr><td><code>$sum</code></td><td>求和</td></tr>
+<tr><td><code>$avg</code></td><td>平均值</td></tr>
+<tr><td><code>$min</code></td><td>最小值</td></tr>
+<tr><td><code>$max</code></td><td>最大值</td></tr>
+<tr><td><code>$first</code></td><td>组内第一条</td></tr>
+<tr><td><code>$last</code></td><td>组内最后一条</td></tr>
+<tr><td><code>$push</code></td><td>收集到数组</td></tr>
+<tr><td><code>$addToSet</code></td><td>收集到数组（去重）</td></tr>
+</tbody>
+</table>
+
+<h2>3.5 $lookup（关联查询）</h2>
+
+<pre lang="javascript" caption="类似 SQL 的 LEFT JOIN"><code>// 等价 SQL：
+// SELECT t.*, u.name FROM task_records t
+// LEFT JOIN users u ON t.user_id = u._id
+
+db.task_records.aggregate([
+    { $lookup: {
+        from: "users",          // 要关联的集合
+        localField: "user_id",  // 当前集合的字段
+        foreignField: "_id",    // 关联集合的字段
+        as: "user_info"         // 结果存到这个字段（数组）
+    }},
+    { $unwind: "$user_info" }   // 把数组展开成单条（可选）
+])</code></pre>
+
+<h2>3.6 $unwind（展开数组）</h2>
+
+<pre lang="javascript" caption=""><code>// 原始文档：{ name: "张三", tags: ["开发", "后端", "Go"] }
+
+db.users.aggregate([
+    { $unwind: "$tags" }
+])
+
+// 展开后变成 3 条：
+// { name: "张三", tags: "开发" }
+// { name: "张三", tags: "后端" }
+// { name: "张三", tags: "Go" }</code></pre>
+
+<h1>四、系统变量</h1>
+
+<table>
+<colgroup><col width="100"/><col/></colgroup>
+<thead><tr><th background-color="light-gray">变量</th><th background-color="light-gray">含义</th></tr></thead>
+<tbody>
+<tr><td><code>$$ROOT</code></td><td>当前处理的整条文档</td></tr>
+<tr><td><code>$$CURRENT</code></td><td>当前上下文中的文档（默认等于 ROOT）</td></tr>
+<tr><td><code>$$NOW</code></td><td>当前时间</td></tr>
+<tr><td><code>$$REMOVE</code></td><td>删除字段（在 $project 中使用）</td></tr>
+</tbody>
+</table>
+
+<p><b>单 $ vs 双 $$：</b></p>
+<ul>
+<li><code>$fieldName</code>（单 $）：引用文档中的字段值，如 <code>"$city"</code> = 取出 city 字段的值</li>
+<li><code>$$variable</code>（双 $$）：引用系统变量，如 <code>$$ROOT</code> = 整条文档</li>
+</ul>
+
+<h1>五、索引操作</h1>
+
+<pre lang="javascript" caption=""><code>// 创建单字段索引（1 = 升序，-1 = 降序）
+db.users.createIndex({ city: 1 })
+
+// 创建复合索引
+db.users.createIndex({ city: 1, age: -1 })
+
+// 创建唯一索引
+db.users.createIndex({ email: 1 }, { unique: true })
+
+// 查看集合所有索引
+db.users.getIndexes()
+
+// 删除索引
+db.users.dropIndex("city_1")
+
+// 查看查询是否走索引（类似 EXPLAIN）
+db.users.find({ city: "北京" }).explain("executionStats")</code></pre>
+
+<h1>六、分片集群相关</h1>
+
+<callout emoji="📌" background-color="light-blue" border-color="blue">
+<p>DM 的 MongoDB 是分片集群，你在慢查询日志或执行计划里会看到一些分片特有的概念。</p>
+</callout>
+
+<table>
+<colgroup><col width="120"/><col/></colgroup>
+<thead><tr><th background-color="light-gray">概念</th><th background-color="light-gray">含义</th></tr></thead>
+<tbody>
+<tr><td><b>mongos</b></td><td>路由器，客户端连接 mongos，mongos 把请求分发到正确的分片</td></tr>
+<tr><td><b>Shard</b></td><td>分片，一个分片存储一部分数据。DM 有 3 个分片</td></tr>
+<tr><td><b>Config Server</b></td><td>存储分片元数据（哪个数据在哪个分片上）</td></tr>
+<tr><td><b>Shard Key</b></td><td>分片键，决定数据分到哪个分片的字段</td></tr>
+<tr><td><code>$mergeCursors</code></td><td>内部操作：mongos 合并多个分片的查询结果（不是你写的）</td></tr>
+</tbody>
+</table>
+
+<p><b>分片对查询性能的影响：</b></p>
+<ul>
+<li>查询条件包含 shard key → 只查对应分片（精准路由，快）</li>
+<li>查询条件不包含 shard key → 所有分片都要查（scatter-gather，慢）</li>
+<li>所以选 shard key 很重要——选最常用的查询字段</li>
+</ul>
+
+<h1>七、常用运维命令</h1>
+
+<pre lang="javascript" caption=""><code>// 查看当前数据库
+db
+
+// 查看所有集合
+show collections
+
+// 查看集合文档数量
+db.users.countDocuments()
+
+// 查看集合存储信息
+db.users.stats()
+
+// 查看集合索引大小
+db.users.totalIndexSize()
+
+// 查看当前正在执行的操作
+db.currentOp()
+
+// 杀掉某个操作
+db.killOp(opId)
+
+// 查看慢查询（类似 slow_query_log）
+db.profile.find({ millis: { $gt: 100 } }).sort({ ts: -1 }).limit(10)
+
+// 开启 profiling（记录所有操作）
+db.setProfilingLevel(1, { slowms: 100 })  // 1 = 记录慢查询
+db.setProfilingLevel(2)                     // 2 = 记录所有操作
+db.setProfilingLevel(0)                     // 0 = 关闭</code></pre>
+
+<h1>八、SQL 转 MongoDB 速查</h1>
+
+<table>
+<colgroup><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">SQL</th><th background-color="light-gray">MongoDB</th></tr></thead>
+<tbody>
+<tr><td><code>SELECT * FROM users</code></td><td><code>db.users.find()</code></td></tr>
+<tr><td><code>SELECT name, age FROM users</code></td><td><code>db.users.find({}, {name:1, age:1, _id:0})</code></td></tr>
+<tr><td><code>WHERE age = 25</code></td><td><code>{ age: 25 }</code></td></tr>
+<tr><td><code>WHERE age &gt; 25</code></td><td><code>{ age: { $gt: 25 } }</code></td></tr>
+<tr><td><code>WHERE city IN ('北京','上海')</code></td><td><code>{ city: { $in: ["北京","上海"] } }</code></td></tr>
+<tr><td><code>ORDER BY age DESC</code></td><td><code>.sort({ age: -1 })</code></td></tr>
+<tr><td><code>LIMIT 10 OFFSET 20</code></td><td><code>.limit(10).skip(20)</code></td></tr>
+<tr><td><code>COUNT(*)</code></td><td><code>db.users.countDocuments()</code></td></tr>
+<tr><td><code>GROUP BY city</code></td><td><code>$group: { _id: "$city", ... }</code></td></tr>
+<tr><td><code>LEFT JOIN</code></td><td><code>$lookup</code></td></tr>
+<tr><td><code>INSERT INTO</code></td><td><code>insertOne / insertMany</code></td></tr>
+<tr><td><code>UPDATE SET</code></td><td><code>updateOne + $set</code></td></tr>
+<tr><td><code>DELETE FROM</code></td><td><code>deleteOne / deleteMany</code></td></tr>
+</tbody>
+</table>

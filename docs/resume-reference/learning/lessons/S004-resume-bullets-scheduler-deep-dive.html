@@ -318,240 +318,132 @@ flowchart LR
 </div>
 
 <!-- ================================================================== -->
-<h2>三、新 AI 能力全链路接入 — 音频 / 3D（Bullet 3）</h2>
+<h2>三、多集群 Worker 发现与任务路由（Bullet 3）</h2>
 
 <div class="highlight-box">
-  <strong>重要</strong>：这是你本人主导的 MR（!1020 "Feature/seed audio 1.0"），也是面试中最能展开讲的 Bullet。面试官会围绕"你具体做了什么"反复追问，务必对全链路每一步都烂熟于心。
+  <strong>面试价值</strong>：多集群调度是后端面试高频题 — 涉及服务发现、负载均衡、集群路由、流量迁移。能讲清楚"为什么要多集群、Pod 怎么发现、流量怎么切"，比讲"接了一个新 API"含金量高一个量级。
 </div>
 
-<p><strong>一句话</strong>：独立完成 Seed-TTS 音频模型和 Meshy 3D 模型的全链路接入，覆盖 App 注册、参数校验、队列入队、Worker 执行、产物处理到前端查询 6 个环节，实现"配置即界面"的零代码扩展架构。</p>
+<p><strong>一句话</strong>：实现 Worker 执行层的多 Kubernetes 集群 Pod 发现与调度，通过域名路由和前置参数校验将任务分发到不同集群，解决单集群 GPU 资源瓶颈。</p>
 
 <h3>3.1 业务背景</h3>
-<p>DreamMaker 从纯图片平台扩展到多模态（音频、3D），需要快速接入新的 AI 供应商。挑战：</p>
+<p>DreamMaker 的 AI 任务（图像生成、3D 建模、视频渲染）依赖 GPU 资源。随着用户和模型增长，单个 K8s 集群的 GPU 不够用了：</p>
 <ul>
-  <li>音频（Seed-TTS）和 3D（Meshy）的输入输出格式与图片完全不同</li>
-  <li>3D 模型生成耗时极长（30-90min），超出原有超时设计</li>
-  <li>外部供应商 API 各不相同，需要统一适配</li>
-  <li>小程序商城需要动态渲染新能力的参数 UI</li>
+  <li><strong>资源瓶颈</strong>：高峰期单集群 GPU 全部占满，新任务排队时间长</li>
+  <li><strong>地域需求</strong>：部分供应商 API 在特定机房响应更快</li>
+  <li><strong>容灾隔离</strong>：单集群故障不应影响全部任务</li>
 </ul>
+<p>需要让 Worker 可以运行在多个 K8s 集群上，scheduler 能跨集群发现和调度任务。</p>
 
-<h3>3.2 全链路 6 步详解</h3>
+<h3>3.2 技术方案</h3>
 
 <div class="diagram">
 <pre class="mermaid">
 flowchart TB
-    subgraph Step1["1. App 注册"]
-        A1[MongoDB dreamworker_apps] --> A2[定义 params/capabilities]
+    subgraph Gateway["app-gateway"]
+        Validate["前置参数校验"]
+        Router["集群路由<br/>（按任务类型/模型选择集群）"]
     end
-    subgraph Step2["2. 小程序商城"]
-        B1[参数类型: slider/select/upload] --> B2[前端动态渲染 UI]
+    subgraph Cluster_A["K8s 集群 A (主集群)"]
+        WS_A["worker-scheduler A<br/>（Leader 选举）"]
+        Pod_A1["Worker Pod 1"]
+        Pod_A2["Worker Pod 2"]
     end
-    subgraph Step3["3. app-gateway 校验"]
-        C1[Action 匹配] --> C2[参数 validate] --> C3[入 Redis 队列]
+    subgraph Cluster_B["K8s 集群 B (3618)"]
+        WS_B["worker-scheduler B<br/>（Leader 选举）"]
+        Pod_B1["Worker Pod 3"]
+        Pod_B2["Worker Pod 4"]
     end
-    subgraph Step4["4. Worker 执行"]
-        D1[sidecar 拉取] --> D2[调用供应商 API] --> D3[轮询结果]
+    subgraph Discovery["服务发现"]
+        DNS["域名映射<br/>cluster-a.dm.internal<br/>cluster-b.dm.internal"]
+        ETCD["etcd<br/>Worker 注册表"]
     end
-    subgraph Step5["5. 产物处理"]
-        E1[下载代理] --> E2[格式转换] --> E3[上传内部 CDN]
-    end
-    subgraph Step6["6. 前端查询"]
-        F1[records 接口] --> F2[返回状态+产物 URL]
-    end
-    Step1 --> Step2 --> Step3 --> Step4 --> Step5 --> Step6
+
+    Gateway --> Validate --> Router
+    Router -->|"域名 A"| WS_A
+    Router -->|"域名 B"| WS_B
+    WS_A --> Pod_A1
+    WS_A --> Pod_A2
+    WS_B --> Pod_B1
+    WS_B --> Pod_B2
+    Pod_A1 -.->|注册| ETCD
+    Pod_B1 -.->|注册| ETCD
+    DNS -.-> Router
 </pre>
 </div>
 
-<h4>Step 1: App 注册（MongoDB）</h4>
-<pre><code>// MongoDB: dreamworker_apps 集合
-{
-  "app_code": "seed-tts-v1",
-  "app_name": "Seed-TTS 语音合成",
-  "category": "audio",
-  "capabilities": ["text-to-speech", "voice-clone"],
-  "params": [
-    {
-      "name": "text",
-      "type": "textarea",
-      "required": true,
-      "max_length": 5000
-    },
-    {
-      "name": "voice_id",
-      "type": "select",
-      "options": ["male-1", "female-1", "custom"],
-      "default": "female-1"
-    },
-    {
-      "name": "speed",
-      "type": "slider",
-      "min": 0.5,
-      "max": 2.0,
-      "step": 0.1,
-      "default": 1.0
+<p>核心改动三层：</p>
+
+<pre><code>// 1. 域名配置 — server_api.go
+// 每个集群对应一个内部域名，app-gateway 根据路由结果选择域名
+var clusterEndpoints = map[string]string{
+    "default":  "https://cluster-a.dm.internal",
+    "3618":     "https://cluster-b.dm.internal",
+}
+
+// 2. 前置参数校验 — gateway 层
+// 根据模型类型和集群能力做前置校验，避免任务发到不支持的集群
+func preValidate(req *TaskReq, cluster string) error {
+    caps := getClusterCapabilities(cluster)
+    if !caps.Supports(req.ModelType) {
+        return ErrClusterNotSupport
     }
-  ],
-  "worker_type": "audio",
-  "timeout_minutes": 10,
-  "queue_name": "audio_task_queue"
+    return nil
+}
+
+// 3. Pod 发现 — worker-scheduler
+// 改造 Pod 发现逻辑，支持跨集群列举可用 Worker
+func discoverPods(ctx context.Context, clusterID string) ([]*WorkerPod, error) {
+    // 通过 K8s API 或 etcd 查询指定集群的 Worker Pod
+    pods, err := k8sClient.ListPods(ctx, clusterID, labelSelector)
+    return pods, err
 }</code></pre>
-
-<h4>Step 2: 小程序商城 — 配置即界面</h4>
-<p>前端根据 <code>params</code> 数组的 <code>type</code> 字段动态渲染对应的 UI 控件（slider、select、upload、textarea 等），无需为新能力写前端代码。</p>
-
-<h4>Step 3: app-gateway 校验 + 入队</h4>
-<pre><code>// app-gateway 处理流程
-func HandleTaskCreate(ctx context.Context, req *TaskCreateReq) error {
-    // 1. Action 匹配：根据 app_code 找到 App 配置
-    appConf, err := dao.GetAppByCode(ctx, req.AppCode)
-    if err != nil { return err }
-
-    // 2. 参数校验：逐字段检查类型、范围、必填
-    if err := validateParams(req.Params, appConf.Params); err != nil {
-        return errcode.InvalidParams.WithMsg(err.Error())
-    }
-
-    // 3. 入 Redis 队列
-    task := &Task{
-        TaskID:   generateTaskID(),
-        AppCode:  req.AppCode,
-        Params:   req.Params,
-        UserID:   req.UserID,
-        Status:   StatusPending,
-        CreateAt: time.Now(),
-    }
-    return redis.ZAdd(ctx, appConf.QueueName, task, float64(task.CreateAt.Unix()))
-}</code></pre>
-
-<h4>Step 4: Worker 执行（Seed-TTS 为例）</h4>
-<pre><code>// worker-sidecar: audio executor
-func (e *AudioExecutor) Execute(ctx context.Context, task *Task) (*Result, error) {
-    // 构造供应商请求
-    req := &SeedTTSRequest{
-        Text:    task.Params["text"].(string),
-        VoiceID: task.Params["voice_id"].(string),
-        Speed:   task.Params["speed"].(float64),
-    }
-
-    // 调用供应商 API（异步）
-    jobID, err := e.client.CreateJob(ctx, req)
-    if err != nil { return nil, err }
-
-    // 轮询结果（供应商异步模式）
-    for {
-        select {
-        case <-ctx.Done():
-            return nil, ctx.Err()
-        case <-time.After(pollInterval):
-            status, err := e.client.GetJobStatus(ctx, jobID)
-            if err != nil { return nil, err }
-            switch status.State {
-            case "completed":
-                return &Result{OutputURL: status.OutputURL}, nil
-            case "failed":
-                return nil, fmt.Errorf("supplier failed: %s", status.Error)
-            }
-            // "processing" -> continue polling
-        }
-    }
-}</code></pre>
-
-<h4>Step 5: 产物处理</h4>
-<pre><code>// 下载代理 + 格式转换 + 上传 CDN
-func processOutput(ctx context.Context, outputURL string, task *Task) (string, error) {
-    // 1. 通过代理下载（解决外网下载慢/超时）
-    data, err := proxyDownload(ctx, outputURL)
-    if err != nil { return "", err }
-
-    // 2. 格式转换（如 Meshy 的 glb -> 内部标准格式）
-    if needConvert(task.AppCode) {
-        data, err = convertFormat(data, task.AppCode)
-        if err != nil { return "", err }
-    }
-
-    // 3. 上传内部 CDN
-    cdnURL, err := cdn.Upload(ctx, data, task.TaskID)
-    if err != nil { return "", err }
-
-    return cdnURL, nil
-}</code></pre>
-
-<h4>Step 6: 前端查询</h4>
-<p>通过 <code>GET /api/records/:taskId</code> 返回任务状态和产物 URL，前端轮询直到 status=completed。</p>
 
 <h3>3.3 关键代码路径</h3>
 <table>
-  <tr><th>文件路径</th><th>职责</th></tr>
-  <tr><td><code>app/app-gateway/internal/handler/task_create.go</code></td><td>任务创建入口、参数校验</td></tr>
-  <tr><td><code>app/app-gateway/internal/validator/params_validator.go</code></td><td>通用参数校验器（配置驱动）</td></tr>
-  <tr><td><code>app/worker-sidecar/internal/executor/audio_executor.go</code></td><td>Seed-TTS 音频执行器</td></tr>
-  <tr><td><code>app/worker-sidecar/internal/executor/meshy_executor.go</code></td><td>Meshy 3D 执行器</td></tr>
-  <tr><td><code>app/worker-sidecar/internal/supplier/seedtts/client.go</code></td><td>Seed-TTS API 封装</td></tr>
-  <tr><td><code>app/worker-sidecar/internal/supplier/meshy/client.go</code></td><td>Meshy API 封装</td></tr>
-  <tr><td><code>app/worker-sidecar/internal/output/proxy_download.go</code></td><td>外部 URL 代理下载</td></tr>
-  <tr><td><code>pkg/cdn/upload.go</code></td><td>CDN 上传工具</td></tr>
+  <tr><th>文件</th><th>职责</th><th>改动</th></tr>
+  <tr><td><code>app/app-gateway/internal/server_api.go</code></td><td>集群域名映射</td><td>新增多集群域名配置</td></tr>
+  <tr><td><code>app/app-gateway/internal/validator/</code></td><td>前置参数校验</td><td>新增集群能力校验</td></tr>
+  <tr><td><code>app/worker-scheduler/service/discovery.go</code></td><td>Pod 发现</td><td>支持多集群 Pod 列举</td></tr>
+  <tr><td><code>app/worker-scheduler/dao/dao.go</code></td><td>集群路由表</td><td>读取集群→模型映射关系</td></tr>
+  <tr><td><code>pkg/cluster/config.go</code></td><td>集群配置</td><td>集群元信息和域名定义</td></tr>
 </table>
 
-<h3>3.4 踩坑记录</h3>
-
-<div class="highlight-box">
-<strong>踩坑 1: Meshy 外部 URL 下载超时</strong><br>
-Meshy 返回的产物 URL 指向海外 CDN，国内直连 &gt;30s 经常超时。解决：在 output 层添加代理下载逻辑，走公司海外代理节点，延迟从 30s+ 降到 &lt;3s。
-</div>
-
-<div class="highlight-box">
-<strong>踩坑 2: 3D 模型生成超时</strong><br>
-原有系统默认超时 60min，但 Meshy 的 "AI Texture" + "Smart Topology" 组合任务耗时可达 80min。将 3D 类任务的超时从 60min 调到 90min，并在 Worker 心跳中增加"仍在轮询供应商"的状态上报，避免 scheduler 误判任务死亡。
-</div>
-
-<div class="highlight-box">
-<strong>踩坑 3: smart-topology 参数映射</strong><br>
-Meshy API 的 <code>topology_mode</code> 参数值为 <code>"smart"</code>，但前端 UI 显示 "智能拓扑重建"，中间需要做 value 映射。在 App 注册的 params 中通过 <code>value_map</code> 字段实现。
-</div>
-
-<h3>3.5 设计决策</h3>
+<h3>3.4 设计决策</h3>
 <table>
-  <tr><th>决策点</th><th>选择</th><th>原因</th></tr>
-  <tr><td>音频/3D 是否复用图片 Worker？</td><td>独立 Worker 类型</td><td>资源隔离；超时策略不同；依赖不同</td></tr>
-  <tr><td>轮询间隔</td><td>音频 2s / 3D 10s</td><td>匹配供应商处理速度，避免过度请求</td></tr>
-  <tr><td>产物存储</td><td>统一上传内部 CDN</td><td>避免外链过期；统一权限控制</td></tr>
-  <tr><td>超时设计</td><td>每个 App 独立配置</td><td>不同模态耗时差异极大（音频 10s vs 3D 90min）</td></tr>
+  <tr><th>决策点</th><th>选择</th><th>替代方案</th><th>为什么</th></tr>
+  <tr><td>集群路由方式</td><td>域名切换</td><td>直接 IP / Service Mesh</td><td>域名切换最简单，配置变更即生效，无需额外基础设施</td></tr>
+  <tr><td>调度器部署</td><td>每个集群独立 Leader</td><td>全局单调度器</td><td>独立 Leader 避免跨集群网络延迟影响调度；单集群故障不扩散</td></tr>
+  <tr><td>Worker 注册</td><td>etcd 统一注册表</td><td>各集群独立注册</td><td>统一注册便于全局监控和调度决策</td></tr>
+  <tr><td>新集群接入</td><td>配置域名即可</td><td>代码改动</td><td>域名映射 + 能力声明在配置里，无需改调度核心代码</td></tr>
 </table>
 
 <div class="defend">
 <h4>面试防守</h4>
 <ol>
-  <li><strong>Q: "全链路接入"具体你做了哪些？是从零开始还是有框架？</strong><br>A: 框架（5 层架构、队列机制、sidecar 模式）已经存在，我的工作是：1) 定义 App 配置 Schema 并写入 MongoDB；2) 实现 audio_executor / meshy_executor，封装供应商 API 调用和轮询逻辑；3) 添加产物代理下载和格式转换；4) 处理超时、参数映射等适配问题。核心创造性工作在 executor 和供应商适配层。</li>
-  <li><strong>Q: 遇到最大的技术困难是什么？</strong><br>A: Meshy 3D 模型的超时问题。原有 60min 超时导致长任务被误杀，但简单加大超时又会让真正卡死的任务占用资源。最终方案是：1) App 级可配超时；2) Worker 轮询时持续上报"供应商仍在处理"状态；3) 只有在供应商无响应（连续 3 次轮询失败）时才判定超时。</li>
-  <li><strong>Q: 你怎么测试这些接入？</strong><br>A: 三层测试：1) 单元测试 mock 供应商 API 返回；2) 集成测试用供应商的 sandbox/test 环境；3) 灰度发布只对内部用户开放，观察日志和成功率再全量。</li>
-  <li><strong>Q: 为什么用轮询而不是 Webhook？</strong><br>A: 供应商（Seed-TTS / Meshy）的 API 设计就是轮询模式，没有提供 Webhook 回调。即使有 Webhook，我们仍需要轮询作为兜底（Webhook 可能丢失）。</li>
-  <li><strong>Q: 接入一个新模型大概需要多长时间？改多少代码？</strong><br>A: 如果供应商 API 模式类似（异步创建 + 轮询），主要工作是：1 个 executor 文件（~200 行）+ 1 个 supplier client 文件（~150 行）+ MongoDB 配置。总共约 400 行代码 + 配置，2-3 天完成含测试。这是"配置即界面"设计的价值——参数校验、队列、前端 UI 全部复用。</li>
+  <li><strong>Q: 为什么不用 Service Mesh（如 Istio）做跨集群路由？</strong><br>A: 我们的场景不需要 Mesh 那么重的方案。任务是异步入队的（不是同步 RPC），gateway 只需要知道往哪个集群的队列发，域名切换就够了。引入 Istio 增加运维复杂度，收益不大。</li>
+  <li><strong>Q: 两个集群的 scheduler 怎么协调？会不会出现任务被两边同时消费？</strong><br>A: 不会。每个集群有独立的 Redis 队列和独立的 worker-scheduler（各自做 Leader 选举）。gateway 在入队时就决定了任务进哪个集群的队列，不存在跨集群竞争。</li>
+  <li><strong>Q: 一个集群挂了，任务怎么转移到另一个？</strong><br>A: 当前方案是手动切换 — 运维修改域名映射，gateway 后续任务走另一个集群。已入队未执行的任务需要人工迁移。未来可以做自动 failover：监控集群健康 → 自动修改路由。</li>
+  <li><strong>Q: 怎么决定任务发到哪个集群？</strong><br>A: 按模型类型路由。部分 GPU 密集型模型（如 transformer v2）固定走有大显存 GPU 的集群；通用模型走默认集群。路由规则在配置里，修改不需要改代码。</li>
 </ol>
 </div>
 
 <div class="resume-hook">
 <h4>简历关联</h4>
-<p><strong>推荐写法（强力版）</strong>：独立完成 Seed-TTS 音频合成与 Meshy 3D 模型的全链路接入，覆盖 MongoDB App 注册、参数校验、Redis 队列入队、Worker 异步执行、产物代理下载与 CDN 上传 6 个环节；通过"配置即界面"设计，将新能力接入周期从 2 周缩短至 2-3 天。</p>
-<p><strong>关键词</strong>：Full-Stack Integration、Worker Pattern、Async Polling、Proxy Download、Configuration-as-UI</p>
-<p><strong>加分点</strong>：强调"独立完成"、"全链路"、有具体踩坑和解决方案可讲。</p>
+<p><strong>推荐写法</strong>：实现 Worker 执行层的多 K8s 集群 Pod 发现与任务路由，通过域名切换和前置参数校验将任务分发到不同集群的 Worker 节点，解决单集群 GPU 资源瓶颈；新集群接入只需配置域名映射，无需修改调度核心代码。</p>
+<p><strong>关键词</strong>：Multi-Cluster Scheduling、Service Discovery、Pod Discovery、Domain-based Routing、Kubernetes</p>
 </div>
 
 <div class="quiz">
-  <div class="quiz-question">Q1: "配置即界面"具体是怎么实现的？</div>
-  <div class="quiz-answer" id="q5a">MongoDB 的 dreamworker_apps 集合中，每个 App 的 params 数组定义了参数的 name、type（slider/select/upload/textarea）、范围、默认值等。前端读取这个配置后动态渲染对应的 UI 控件，无需为新能力写前端代码。</div>
+  <div class="quiz-question">Q1: 多集群方案中，每个集群的 worker-scheduler 是独立还是共享 Leader 选举？</div>
+  <div class="quiz-answer" id="q5a">独立。每个集群各自做 K8s LeaseLock Leader 选举，避免跨集群网络延迟影响调度，也实现故障隔离。</div>
   <button class="quiz-toggle" onclick="document.getElementById('q5a').classList.toggle('visible')">显示答案</button>
 </div>
 
 <div class="quiz">
-  <div class="quiz-question">Q2: Worker 轮询供应商时，如何避免被 scheduler 误判为死亡？</div>
-  <div class="quiz-answer" id="q6a">Worker-sidecar 在轮询等待期间持续向 scheduler 上报心跳，心跳中携带"polling_supplier"状态。scheduler 只有在心跳超时（连续 2min 无心跳）时才将任务重新标记为 pending。</div>
+  <div class="quiz-question">Q2: 新集群接入需要改代码吗？</div>
+  <div class="quiz-answer" id="q6a">不需要。只需在配置中添加域名映射和集群能力声明（支持哪些模型类型），gateway 根据配置自动路由。</div>
   <button class="quiz-toggle" onclick="document.getElementById('q6a').classList.toggle('visible')">显示答案</button>
-</div>
-
-<div class="quiz">
-  <div class="quiz-question">Q3: 为什么 3D 任务需要代理下载而音频不需要？</div>
-  <div class="quiz-answer" id="q7a">Meshy 的产物 URL 指向海外 CDN（国内直连慢/超时），而 Seed-TTS 是火山引擎的国内服务，返回的 URL 国内访问正常。但代码设计上代理下载是通用的——通过配置决定是否启用。</div>
-  <button class="quiz-toggle" onclick="document.getElementById('q7a').classList.toggle('visible')">显示答案</button>
 </div>
 
 <!-- ================================================================== -->

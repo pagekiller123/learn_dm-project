@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>S002 · 任务调度全链路与 Redis 队列设计</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.note-box {
+  background: #eef7ff;
+  border-left: 3px solid #2563eb;
+  padding: 0.9rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+
+nav.lesson-nav {
+  display: flex;
+  justify-content: space-between;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-family: var(--sans);
+  font-size: 0.9em;
+}
+
+@media print {
+  body { max-width: none; margin: 0; padding: 1cm; font-size: 11pt; }
+  a { color: var(--text); text-decoration: none; }
+}
+  </style>
+</head>
+<body>
+
+<h1>S002 · 任务调度全链路与 Redis 队列设计</h1>
+
+<div class="lesson-meta">
+  <span><strong>课程:</strong> DreamMaker Scheduler</span>
+  <span><strong>时长:</strong> ~45 分钟</span>
+  <span><strong>难度:</strong> ★★★☆☆</span>
+  <span><strong>前置:</strong> S001 架构总览</span>
+</div>
+
+<h2>一、任务状态机</h2>
+
+<p>每个任务都有 5 种内部状态：</p>
+
+<table>
+<tr><th>状态</th><th>含义</th><th>触发函数 (action_base.go)</th><th>Mongo DAO (dao_record.go)</th></tr>
+<tr><td><code>queued</code></td><td>已存储 + 已入队，等待消费</td><td><code>Base.Add()</code></td><td><code>AddAppRecord()</code></td></tr>
+<tr><td><code>running</code></td><td>Worker 已取走，执行中</td><td><code>Base.Run()</code></td><td><code>RunAppRecord()</code></td></tr>
+<tr><td><code>success</code></td><td>执行成功，结果已写入</td><td><code>Base.Success()</code></td><td><code>SuccessAppRecord()</code></td></tr>
+<tr><td><code>failed</code></td><td>执行失败，错误已记录</td><td><code>Base.Failed()</code></td><td><code>FailedAppRecord()</code></td></tr>
+<tr><td><code>stopped</code></td><td>用户主动取消</td><td><code>Base.Stop()</code></td><td><code>StopAppRecord()</code></td></tr>
+</table>
+
+<div class="diagram">
+<pre class="mermaid">
+stateDiagram-v2
+    [*] --> queued : Add (存储 + 入队)
+    queued --> running : Run (被 Worker 消费)
+    running --> success : Success
+    running --> failed : Failed
+    running --> stopped : Stop (用户取消)
+    queued --> failed : 异常 (入队后异常)
+</pre>
+</div>
+
+<p>每次状态流转后，<code>SetCache()</code> 更新 Redis 缓存，使 <code>/status</code> 轮询可以亚秒响应。</p>
+
+<div class="note-box">
+  <strong>注意：</strong>外部 API 将 <code>queued</code> 展示为 <code>waiting</code>，但内部只有上述 5 种状态。状态常量定义在 <code>model/constance.go</code>。
+</div>
+
+<h2>二、Action 编排模式</h2>
+
+<h3>2.1 设计模式：Template Method + Strategy</h3>
+
+<p>核心 Action 接口定义在 <code>app/app-gateway/action/interface.go</code>：</p>
+
+<pre><code>type Action interface {
+    ActionName() string
+    Add(ctx, msg) error           // 入库（Mongo）
+    Run(ctx, msg) error           // 标记 running
+    Stop(ctx, msg) error          // 用户取消
+    Success(ctx, msg) error       // 标记成功
+    UpdateOutput(ctx, msg) error  // 中间结果更新
+    Failed(ctx, msg, err) error   // 标记失败
+    GetAppMsg(ctx, taskID, msg) error    // 读 Mongo 任务记录
+    ProduceResult(ctx, msg) error        // 写结果到 Kafka
+}</code></pre>
+
+<h3>2.2 可选接口（Go 类型断言实现能力检测）</h3>
+
+<table>
+<tr><th>可选接口</th><th>职责</th><th>检查方式</th></tr>
+<tr><td><code>RequestMapper</code></td><td>参数映射（APP 配置 → 请求参数）</td><td><code>action.(RequestMapper)</code></td></tr>
+<tr><td><code>MsgProducer</code></td><td>入队（produce pending task）</td><td><code>action.(MsgProducer)</code></td></tr>
+<tr><td><code>MsgConsumer</code></td><td>出队（consume pending task）</td><td><code>action.(MsgConsumer)</code></td></tr>
+<tr><td><code>Generator</code></td><td>生成下发给 Worker 的 JobReportData</td><td><code>action.(Generator)</code></td></tr>
+<tr><td><code>CallResponseMapper</code></td><td>映射 Worker 返回结果</td><td><code>action.(CallResponseMapper)</code></td></tr>
+<tr><td><code>Progressor</code></td><td>进度读写</td><td><code>action.(Progressor)</code></td></tr>
+<tr><td><code>PreprocessProducer</code></td><td>预处理入队</td><td><code>action.(PreprocessProducer)</code></td></tr>
+<tr><td><code>Caller</code></td><td>直接调用后端（非 Worker 模式）</td><td><code>action.(Caller)</code></td></tr>
+</table>
+
+<p>为什么用类型断言而不是一个大接口：不同 action 类型需要不同能力，全放一个接口会强制空实现。Go 的类型断言是天然的"接口隔离"。</p>
+
+<h3>2.3 编排链路</h3>
+
+<pre><code>BeforeProduce (参数映射) → Produce (存储+入队) → Consume (出队) → BeforeCall (调用前映射) → GenerateTask (生成 JobData) → AfterCall (结果处理)</code></pre>
+
+<h3>2.4 三层代码结构</h3>
+
+<table>
+<tr><th>层级</th><th>文件</th><th>角色</th></tr>
+<tr><td>Base</td><td><code>action_base.go</code></td><td>所有 action 的公共实现：Add/Run/Success/Failed/ProduceResult + MapRequest</td></tr>
+<tr><td>commonAction</td><td><code>action_common.go</code></td><td>组合 Base，实现 ZSet 队列入队/出队/抢占。大多数新供应商直接复用</td></tr>
+<tr><td>专用 action</td><td><code>action_comfyui.go</code> / <code>action_midjourney.go</code> 等</td><td>仅当工作流程差异较大时才需要单独写</td></tr>
+</table>
+
+<h2>三、Redis 队列设计（核心）</h2>
+
+<h3>3.1 两种队列对比：List vs ZSet</h3>
+
+<table>
+<tr><th>维度</th><th>旧方案 - List (ComfyUI/SD)</th><th>新方案 - Sorted Set (commonAction)</th></tr>
+<tr><td>数据结构</td><td>Redis List</td><td>Redis Sorted Set (ZSet)</td></tr>
+<tr><td>入队</td><td><code>LPush</code></td><td><code>ZAdd(key, score, member)</code></td></tr>
+<tr><td>出队</td><td><code>BRPop</code>（阻塞弹出）</td><td><code>ZRange</code> + <code>ZRem</code>（扫描 + 原子删除）</td></tr>
+<tr><td>排序</td><td>FIFO</td><td>按 score 排序（优先级 + 时间戳）</td></tr>
+<tr><td>消息体</td><td>完整 AppTaskMsg JSON</td><td>仅 <code>user::taskID</code>；完整数据在 Mongo</td></tr>
+<tr><td>优先级</td><td>不支持</td><td>不同优先级不同 Redis key</td></tr>
+<tr><td>并发控制</td><td>无</td><td>member 中 user 前缀可做按用户限制</td></tr>
+<tr><td>竞争安全</td><td><code>BRPop</code> 原子弹出</td><td><code>ZRem</code> 返回值 ≥ 1 表示抢到</td></tr>
+</table>
+
+<h3>3.2 为什么 Redis 只存 ID 不存完整消息</h3>
+<ul>
+  <li>AppTaskMsg 可能包含 base64 图片、ComfyUI 工作流 JSON（体积大）</li>
+  <li>ZSet member 越短排序越快</li>
+  <li>任务参数可能在预处理阶段被修改；双份存储需要同步</li>
+  <li>"Redis 做索引层，Mongo 做数据层"—— 关注点分离</li>
+</ul>
+
+<h3>3.3 队列 Key 结构 —— 不是一个大队列，而是多个小队列</h3>
+
+<p>格式：<code>apps_pending_task::{priority}::{source}::{taskMode}::{cluster}::{env}</code></p>
+
+<table>
+<tr><th>维度</th><th>含义</th><th>示例值</th></tr>
+<tr><td>priority</td><td>优先级</td><td>0, 1, 2</td></tr>
+<tr><td>source</td><td>请求来源</td><td><code>dm</code>, <code>sf</code>, <code>mj</code></td></tr>
+<tr><td>taskMode</td><td>任务模式</td><td><code>default</code>, <code>fast</code></td></tr>
+<tr><td>cluster</td><td>资源集群</td><td><code>v2prod</code>, <code>aliyun-hangzhou-1</code></td></tr>
+</table>
+
+<p>示例：</p>
+<pre><code>apps_pending_task::dm::default::v2prod::prod          ← 普通优先级
+apps_pending_task::2::dm::default::v2prod::prod       ← 高优先级 (priority=2)
+apps_pending_task::dm::fast::aliyun-hangzhou-1::prod  ← fast 模式，阿里云集群</code></pre>
+
+<p><strong>为什么拆成多个队列：</strong></p>
+<ul>
+  <li><strong>隔离</strong>：不同 cluster 的 Worker 只消费自己集群的任务</li>
+  <li><strong>独立限流</strong>：不同 source/taskMode 可以有不同消费规则</li>
+  <li><strong>优先级调度</strong>：WeightedScheduler 可以在不同优先级 key 间轮转</li>
+  <li><strong>性能</strong>：小队列意味着 ZRange 扫描范围更小</li>
+</ul>
+
+<h3>3.4 ZSet 入队</h3>
+
+<p>代码在 <code>commonAction.Produce()</code>：</p>
+
+<pre><code>key = priority.BuildPendingKey(pri, msg.Source, msg.TaskMode, msg.Cluster, dmfr.ENV())
+member := fmt.Sprintf("%s::%s", msg.GetRealUser(), msg.TaskID)
+c.dao.GetRedis().ZAdd(ctx, key, msg.PreprocessTime, member)</code></pre>
+
+<p>关键设计：</p>
+<ul>
+  <li><strong>priority=0</strong>：key 省略 priority 段（向后兼容旧任务）</li>
+  <li><strong>score = 毫秒时间戳</strong>（<code>msg.PreprocessTime</code>）：同优先级内 FIFO 语义</li>
+  <li><strong>member 包含 user</strong>：出队时无需额外查询即可做并发控制</li>
+</ul>
+
+<h3>3.5 ZSet 出队 —— 乐观抢占</h3>
+
+<p>代码在 <code>commonAction.tryConsume()</code>，核心流程：</p>
+
+<ol>
+  <li><code>ZRange(0, 255)</code> —— 批量扫描前 256 个 member</li>
+  <li>逐个解析 member，取出 user 和 taskID</li>
+  <li>检查 <code>GetUser()</code> —— 该用户是否已有正在执行的任务？</li>
+  <li>如果并发冲突 → 加入 <code>queueJob</code> 列表，跳过</li>
+  <li>如果无冲突 → <code>grabJob()</code> 尝试抢占</li>
+  <li><code>grabJob</code>：<code>ZRem</code> 返回 ≥ 1？抢到了！从 Mongo 加载 + 注册到 etcd</li>
+  <li>第一轮结束后 → 第二轮遍历 <code>queueJob</code>（并发冲突的任务）</li>
+</ol>
+
+<pre><code>func (c *commonAction) tryConsume(ctx context.Context, pri int, msg *model.AppTaskMsg) error {
+    pendingTaskKey := priority.BuildPendingKey(pri, ...)
+    members, _ := rds.ZRange(ctx, pendingTaskKey, 0, 255)
+
+    queueJob := []string{}  // 有并发冲突的 member，第二轮再试
+    for _, member := range members {
+        user, taskID := c.splitMember(member)
+
+        // 检查该用户是否已有任务在跑
+        if c.concurrentManager.GetUser(source, taskMode, cluster, user) >= 1 {
+            queueJob = append(queueJob, member)
+            continue  // 先跳过，给其他用户机会
+        }
+        if err := c.grabJob(ctx, pendingTaskKey, member, msg); err == nil {
+            return nil  // 抢到了！
+        }
+    }
+    // 第二轮：消费有并发冲突的任务（所有无冲突的都没抢到时）
+    for _, member := range queueJob {
+        if err := c.grabJob(ctx, pendingTaskKey, member, msg); err == nil {
+            return nil
+        }
+    }
+    return err
+}
+
+func (c *commonAction) grabJob(ctx context.Context, key, member string, msg *model.AppTaskMsg) error {
+    num, _ := c.dao.GetRedis().ZRem(ctx, key, member)
+    if num < 1 {
+        return err  // 被别的 scheduler 抢走了
+    }
+    // 抢到了：从 Mongo 加载完整消息 + 注册到 etcd
+    c.dao.GetAppRecord(ctx, taskID, msg)
+    c.schedulerDao.AddTask(ctx, msg)
+    return nil
+}</code></pre>
+
+<div class="highlight-box">
+  <strong>为什么 ZRem 不需要 Lua 脚本？</strong>
+  <ul>
+    <li><code>ZRem</code> 本身是原子的（Redis 单线程模型）</li>
+    <li>不需要原子的"读取-检查-删除"封装</li>
+    <li><code>ZRange</code> 只是"peek"；真正的竞争点在 <code>ZRem</code></li>
+    <li>多个 scheduler 同时 <code>ZRange</code> 到同一个 member 没关系 —— 谁先 <code>ZRem</code> 谁赢</li>
+    <li>如果需要"仅当 score < X 才删除"（条件删除），才需要 Lua；这里的条件判断（并发控制）在应用层做</li>
+  </ul>
+</div>
+
+<h3>3.6 两轮扫描策略的意义</h3>
+
+<ul>
+  <li><strong>第一轮</strong>：跳过并发冲突用户（<code>GetUser() >= 1</code>），优先分配给没有运行中任务的用户 —— <strong>公平性</strong>（防止一个高频用户独占 Worker）</li>
+  <li><strong>第二轮</strong>：如果第一轮没找到，消费冲突任务 —— <strong>吞吐量</strong>（不让 Worker 空闲）</li>
+</ul>
+
+<p>这是经典的<strong>公平性 vs 吞吐量</strong>权衡。</p>
+
+<h2>四、优先级调度 —— WeightedScheduler</h2>
+
+<p>代码在 <code>pkg/priority/scheduler.go</code>：</p>
+
+<pre><code>func (s *WeightedScheduler) NextPriority(qctx QueueContext, cfg *Config) (int, bool) {
+    sortedCfg := cfg.SortedQueues()  // 按优先级降序排
+    if pri, found := pickPriority(st, sortedCfg); found {
+        st.counters[pri]--  // 消耗一次配额
+        return pri, true
+    }
+    resetCounters(st, sortedCfg)  // 所有配额耗尽 → 重置
+    if pri, found := pickPriority(st, sortedCfg); found {
+        st.counters[pri]--
+        return pri, true
+    }
+    return 0, false
+}</code></pre>
+
+<p>示例配置 <code>[{priority:2, weight:5}, {priority:1, weight:3}, {priority:0, weight:2}]</code>：每 10 次消费中，priority=2 得 5 次，priority=1 得 3 次，priority=0 得 2 次。一轮结束后配额重置。</p>
+
+<h3>4.1 Consume 的三层策略</h3>
+
+<pre><code>// 1. 无 queues 配置 → 原始行为
+if cfg == nil || len(cfg.Queues) == 0 {
+    c.tryConsume(ctx, 0, msg)
+    return
+}
+// 2. 加权选择
+if cfg.Enabled && c.prioScheduler != nil {
+    if pri, ok := c.prioScheduler.NextPriority(qctx, cfg); ok {
+        if c.tryConsume(ctx, pri, msg) == nil && msg.TaskID != "" {
+            return
+        }
+    }
+}
+// 3. 降序兜底
+for _, p := range priority.AllPriorities(cfg) {
+    if c.tryConsume(ctx, p, msg) == nil && msg.TaskID != "" {
+        return
+    }
+}</code></pre>
+
+<div class="note-box">
+  <strong>防饥饿机制：</strong>配额制度保证即使 weight=1 的队列每轮也能至少被消费 1 次。降序兜底意味着如果高优先级队列为空，低优先级任务立即有机会。相比严格优先级（高负载下完全饿死低优先级），加权轮转是经典的公平调度方式。
+</div>
+
+<h2>五、用户并发控制</h2>
+
+<p>代码在 <code>app/worker-scheduler/manager/concurrent.go</code>：</p>
+
+<pre><code>type ConcurrentManager struct {
+    taskMap *ConcurrentMap[string, *atomic.Int64]  // source::taskMode::cluster → count
+    userMap *ConcurrentMap[string, *atomic.Int64]  // source::taskMode::cluster::user → count
+}</code></pre>
+
+<p>两个 map 分别跟踪<strong>任务维度</strong>和<strong>用户维度</strong>的并发数。</p>
+
+<h3>5.1 CAS 原子操作</h3>
+
+<pre><code>func (c *ConcurrentManager) addClampNonNegative(v *atomic.Int64, delta int64) int64 {
+    for {
+        curr := v.Load()
+        if delta < 0 && curr == 0 { return 0 }     // 不能减到负数
+        next := curr + delta
+        if delta < 0 && next < 0 { next = 0 }      // 钳位到 0
+        if v.CompareAndSwap(curr, next) {           // CAS：成功则返回，失败则重试
+            return next
+        }
+    }
+}</code></pre>
+
+<p>为什么用 CAS 而不是 Mutex：低竞争场景（只在任务开始/结束时更新），CAS（乐观、无阻塞）比 Mutex（悲观、goroutine 调度开销）性能更好。</p>
+
+<h3>5.2 etcd Watch 驱动同步</h3>
+
+<ul>
+  <li>新任务注册到 etcd（<code>/task/{env}/{taskID}</code>） → Watch 事件触发 <code>ConcurrentManager.Add(..., +1)</code></li>
+  <li>任务完成或 Worker 死亡（etcd key 过期/删除） → Watch 事件触发 <code>Add(..., -1)</code></li>
+  <li>ConcurrentManager 是<strong>最终一致</strong>的 —— etcd 保证有序的 Watch event 递送</li>
+</ul>
+
+<h3>5.3 多 Pod 一致性</h3>
+
+<ul>
+  <li>每个 worker-scheduler Pod 都有自己的内存 ConcurrentManager</li>
+  <li>所有 Pod Watch 同一个 <code>/task/{env}/</code> 前缀</li>
+  <li>任意 Pod 分配任务（写 etcd） → 所有 Pod 收到 Put 事件 → 各自 +1</li>
+  <li>任务完成（删 etcd） → 所有 Pod 收到 Delete 事件 → 各自 -1</li>
+  <li>不是严格精确的：etcd Watch 有毫秒级延迟；极端边缘情况下可能短暂超出并发限制，但对实际使用场景可接受</li>
+</ul>
+
+<h2>六、Kafka 事件广播</h2>
+
+<p><strong>Kafka 的角色</strong>：任务完成后通知下游系统。Redis 队列负责<strong>任务调度</strong>（谁下一个被消费）；Kafka 负责<strong>事件广播</strong>（告诉所有关心方）。</p>
+
+<table>
+<tr><th>函数</th><th>写入时机</th><th>消息内容</th><th>下游消费者</th></tr>
+<tr><td><code>WriteResult</code></td><td>任务成功/失败后</td><td>完整 <code>AppTaskMsg</code>（含 output）</td><td><code>consumer</code> 服务：数据上报、告警、分析、模型统计</td></tr>
+<tr><td><code>WriteStep</code></td><td>每次状态变更</td><td><code>AppTaskMsgStep</code>（状态流转事件）</td><td><code>monitor</code> 服务：Prometheus 指标（运行时间、排队时间等）</td></tr>
+</table>
+
+<div class="note-box">
+  <strong>重要区分：</strong>Kafka 通知的是<strong>内部后端服务</strong>（统计、监控、告警），不是用户。用户通过 <code>GET /apps/{app}/status</code> 读 Mongo 获取结果。
+</div>
+
+<pre><code>func (d *Dao) WriteResult(ctx context.Context, taskMsg *model.AppTaskMsg) error {
+    dataBytes, _ := json.Marshal(taskMsg)
+    return d.kafkaResult.WriteMessages(ctx, kafka.Message{
+        Key:   []byte(taskMsg.TaskID),   // 同一任务的消息落在同一 partition
+        Value: dataBytes,
+    })
+}</code></pre>
+
+<p><code>Key = TaskID</code> 保证同一任务的消息在一个 partition 内有序。</p>
+
+<h3>6.1 Redis 队列 vs Kafka 对比</h3>
+
+<table>
+<tr><th>维度</th><th>Redis Queue (ZSet/List)</th><th>Kafka</th></tr>
+<tr><td>定位</td><td>任务调度（"谁下一个"）</td><td>事件广播（"通知所有关心方"）</td></tr>
+<tr><td>消费方式</td><td>竞争式（取走即消失）</td><td>各 Consumer Group 独立消费全量</td></tr>
+<tr><td>持久化</td><td>内存为主，重启可能丢失</td><td>磁盘持久化，可配保留时间</td></tr>
+<tr><td>吞吐</td><td>单机 10W+ QPS，单线程</td><td>分布式多 partition 并行，百万 QPS</td></tr>
+<tr><td>有序性</td><td>单 key 内有序</td><td>单 partition 内有序（按 key 路由）</td></tr>
+<tr><td>延迟</td><td>微秒（内存）</td><td>毫秒（磁盘写入）</td></tr>
+<tr><td>重放</td><td>不支持（消费即消失）</td><td>支持（重置 offset 重新消费）</td></tr>
+<tr><td>DM 中用于</td><td>任务排队 + 乐观抢占</td><td>结果通知 + 状态变更事件</td></tr>
+</table>
+
+<h2>七、完整数据流（端到端）</h2>
+
+<p>把前面所有内容串起来，一次任务从提交到完成的完整链路：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    autonumber
+    participant C as Client
+    participant O as api-outer
+    participant AG as app-gateway
+    participant R as Redis (ZSet)
+    participant M as MongoDB
+    participant WS as worker-scheduler
+    participant E as etcd
+    participant W as worker-sidecar
+    participant K as Kafka
+
+    C->>O: POST /apps/{app}/run
+    O->>O: JWT 认证 + API 模块权限
+
+    rect rgb(254,242,242)
+    Note over AG: 提交阶段（BeforeProduce → Produce）
+    O->>AG: RunApp(...)
+    AG->>AG: CheckAppAccess + MapRequest（参数映射）
+    AG->>M: AddAppRecord(status=queued)
+    AG->>R: ZAdd(pendingKey, preprocessTime, "user::taskID")
+    AG-->>O: task_id
+    O-->>C: task_id
+    end
+
+    rect rgb(238,247,255)
+    Note over WS: 调度阶段（Consume → GenerateTask）
+    W->>WS: report consume（我空闲了）
+    WS->>WS: WeightedScheduler.NextPriority()
+    WS->>R: ZRange(0, 255) 扫描候选
+    WS->>WS: 并发检查 + 两轮扫描
+    WS->>R: ZRem(pendingKey, member) 原子抢占
+    WS->>M: GetAppRecord 加载完整消息
+    WS->>E: AddTask 注册 running task
+    WS->>M: RunAppRecord(status=running)
+    WS-->>W: JobReportData
+    end
+
+    rect rgb(240,253,244)
+    Note over W: 执行 + 结果回写阶段
+    W->>W: 执行推理（调后端 API）
+    W->>WS: report result
+    WS->>WS: AfterCall + MapCallResponse
+    WS->>M: SuccessAppRecord(status=success)
+    WS->>K: WriteResult（Kafka）
+    WS->>E: DeleteTask 删除注册
+    end
+
+    C->>O: GET /apps/{app}/status?task_id=xxx
+    O->>AG: GetStatus
+    AG->>M: 读取 record
+    AG-->>C: status + output
+</pre>
+</div>
+
+<nav class="lesson-nav">
+  <a href="S001-scheduler-architecture-overview.html">← S001 架构总览</a>
+  <a href="S003-worker-scheduling-high-availability.html">下一课：S003 Worker 调度与高可用 →</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+
+</body>
+</html>

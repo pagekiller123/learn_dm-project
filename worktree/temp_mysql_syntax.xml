@@ -1,0 +1,586 @@
+<title>MySQL 语法速查</title>
+
+<callout emoji="💡" background-color="light-blue" border-color="blue">
+<p><b>核心概念：</b>MySQL 是关系型数据库，数据以行（Row）存储在表（Table）中。用 SQL（Structured Query Language）进行所有查询操作。DM 项目的 MongoDB 和 MySQL 配合使用——MongoDB 存任务记录等灵活结构，MySQL 存用户、配置等结构化数据。</p>
+</callout>
+
+<h1>一、核心概念</h1>
+
+<table>
+<colgroup><col width="100"/><col/></colgroup>
+<thead><tr><th background-color="light-gray">概念</th><th background-color="light-gray">含义</th></tr></thead>
+<tbody>
+<tr><td><b>Database</b></td><td>数据库，一个项目一个库</td></tr>
+<tr><td><b>Table</b></td><td>表，类似 Excel 的一张工作表</td></tr>
+<tr><td><b>Row</b></td><td>行，一条记录</td></tr>
+<tr><td><b>Column</b></td><td>列，一个字段（有固定类型：INT、VARCHAR、DATETIME 等）</td></tr>
+<tr><td><b>PRIMARY KEY</b></td><td>主键，每行唯一标识，不能重复、不能为空</td></tr>
+<tr><td><b>INDEX</b></td><td>索引，加速查询（详见「数据库索引与慢查询」笔记）</td></tr>
+</tbody>
+</table>
+
+<h1>二、数据类型速查</h1>
+
+<table>
+<colgroup><col width="120"/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">类型</th><th background-color="light-gray">含义</th><th background-color="light-gray">示例</th></tr></thead>
+<tbody>
+<tr><td><code>INT</code></td><td>整数（4 字节）</td><td>25、-100</td></tr>
+<tr><td><code>BIGINT</code></td><td>大整数（8 字节）</td><td>主键 id 常用</td></tr>
+<tr><td><code>VARCHAR(n)</code></td><td>可变长字符串，最多 n 个字符</td><td><code>VARCHAR(255)</code></td></tr>
+<tr><td><code>TEXT</code></td><td>长文本（最大 64KB）</td><td>文章内容</td></tr>
+<tr><td><code>JSON</code></td><td>JSON 格式（MySQL 5.7+）</td><td>灵活结构字段</td></tr>
+<tr><td><code>DATETIME</code></td><td>日期时间</td><td><code>2024-07-29 14:23:05</code></td></tr>
+<tr><td><code>TIMESTAMP</code></td><td>时间戳（自动时区转换）</td><td>created_at、updated_at</td></tr>
+<tr><td><code>DECIMAL(m,d)</code></td><td>精确小数</td><td>金额：<code>DECIMAL(10,2)</code></td></tr>
+<tr><td><code>BOOLEAN</code></td><td>布尔值（实际是 TINYINT(1)）</td><td>0 或 1</td></tr>
+<tr><td><code>ENUM</code></td><td>枚举，只能取指定值</td><td><code>ENUM('active','inactive')</code></td></tr>
+</tbody>
+</table>
+
+<h1>三、CRUD 基础操作</h1>
+
+<h2>3.1 插入（INSERT）</h2>
+
+<pre lang="sql" caption=""><code>-- 插入单条
+INSERT INTO users (name, age, city)
+VALUES ('张三', 25, '北京');
+
+-- 插入多条
+INSERT INTO users (name, age, city)
+VALUES
+    ('李四', 30, '上海'),
+    ('王五', 28, '广州');</code></pre>
+
+<h2>3.2 查询（SELECT）</h2>
+
+<pre lang="sql" caption=""><code>-- 查所有列
+SELECT * FROM users;
+
+-- 查指定列
+SELECT name, age FROM users;
+
+-- 条件查询（WHERE）
+SELECT * FROM users WHERE city = '北京';
+
+-- 多条件 AND
+SELECT * FROM users WHERE city = '北京' AND age &gt; 25;
+
+-- 多条件 OR
+SELECT * FROM users WHERE city = '北京' OR city = '上海';
+
+-- IN（在列表中）
+SELECT * FROM users WHERE city IN ('北京', '上海', '广州');
+
+-- LIKE（模糊匹配，% 代表任意字符）
+SELECT * FROM users WHERE name LIKE '张%';    -- 以"张"开头
+SELECT * FROM users WHERE name LIKE '%三';    -- 以"三"结尾
+SELECT * FROM users WHERE name LIKE '%三%';   -- 包含"三"
+
+-- BETWEEN（范围）
+SELECT * FROM users WHERE age BETWEEN 20 AND 30;
+
+-- IS NULL / IS NOT NULL
+SELECT * FROM users WHERE phone IS NULL;
+
+-- 去重
+SELECT DISTINCT city FROM users;</code></pre>
+
+<h2>3.3 排序、分页</h2>
+
+<pre lang="sql" caption=""><code>-- 升序排列
+SELECT * FROM users ORDER BY age ASC;
+
+-- 降序排列（-1 在 MongoDB 里表示降序，MySQL 用 DESC 关键字）
+SELECT * FROM users ORDER BY age DESC;
+
+-- 多字段排序：先按城市升序，同城市按年龄降序
+SELECT * FROM users ORDER BY city ASC, age DESC;
+
+-- 分页（LIMIT + OFFSET）
+SELECT * FROM users ORDER BY id LIMIT 20;            -- 第 1 页，每页 20 条
+SELECT * FROM users ORDER BY id LIMIT 20 OFFSET 20;  -- 第 2 页
+SELECT * FROM users ORDER BY id LIMIT 20 OFFSET 40;  -- 第 3 页</code></pre>
+
+<h2>3.4 更新（UPDATE）</h2>
+
+<pre lang="sql" caption=""><code>-- 更新单条
+UPDATE users SET age = 26 WHERE name = '张三';
+
+-- 更新多条
+UPDATE users SET status = 'inactive' WHERE city = '北京';
+
+-- 同时更新多个字段
+UPDATE users
+SET age = 26, city = '深圳', updated_at = NOW()
+WHERE name = '张三';
+
+-- 数值自增
+UPDATE users SET login_count = login_count + 1 WHERE name = '张三';</code></pre>
+
+<callout emoji="⚠️" background-color="light-red" border-color="red">
+<p><b>UPDATE 和 DELETE 一定要带 WHERE！</b>不带 WHERE 会更新/删除全表所有行，这是最常见的生产事故之一。</p>
+</callout>
+
+<h2>3.5 删除（DELETE）</h2>
+
+<pre lang="sql" caption=""><code>-- 删除指定行
+DELETE FROM users WHERE name = '张三';
+
+-- 删除多条
+DELETE FROM users WHERE status = 'inactive';
+
+-- 清空表（保留表结构，自增 ID 重置）
+TRUNCATE TABLE users;
+
+-- 清空表（逐行删除，不重置自增 ID）
+DELETE FROM users;</code></pre>
+
+<h1>四、聚合函数</h1>
+
+<p>聚合函数对一组值进行计算，返回单个结果。单独使用时，整张表就是一个"组"。</p>
+
+<table>
+<colgroup><col width="100"/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">函数</th><th background-color="light-gray">作用</th><th background-color="light-gray">示例</th></tr></thead>
+<tbody>
+<tr><td><code>COUNT(*)</code></td><td>统计行数</td><td><code>SELECT COUNT(*) FROM users</code></td></tr>
+<tr><td><code>COUNT(col)</code></td><td>统计非 NULL 的行数</td><td><code>SELECT COUNT(phone) FROM users</code></td></tr>
+<tr><td><code>SUM(col)</code></td><td>求和</td><td><code>SELECT SUM(amount) FROM orders</code></td></tr>
+<tr><td><code>AVG(col)</code></td><td>平均值</td><td><code>SELECT AVG(age) FROM users</code></td></tr>
+<tr><td><code>MAX(col)</code></td><td>最大值</td><td><code>SELECT MAX(age) FROM users</code></td></tr>
+<tr><td><code>MIN(col)</code></td><td>最小值</td><td><code>SELECT MIN(age) FROM users</code></td></tr>
+</tbody>
+</table>
+
+<pre lang="sql" caption=""><code>-- 用户总数
+SELECT COUNT(*) AS total_users FROM users;
+
+-- 北京用户的平均年龄
+SELECT AVG(age) AS avg_age FROM users WHERE city = '北京';
+
+-- 总订单金额
+SELECT SUM(amount) AS total_amount FROM orders;</code></pre>
+
+<h1>五、GROUP BY（分组聚合）</h1>
+
+<callout emoji="📌" background-color="light-yellow" border-color="yellow">
+<p><b>GROUP BY 是 SQL 里最重要的聚合概念，也是 MongoDB $group 的灵感来源。</b>理解了 GROUP BY，看 MongoDB 的 $group 就秒懂。</p>
+</callout>
+
+<h2>5.1 核心思想</h2>
+
+<p>GROUP BY 把数据按某个字段分成若干组，然后对每组分别做聚合计算（COUNT、SUM、AVG 等）。</p>
+
+<pre lang="text" caption="GROUP BY 的直觉理解"><code>原始数据：
+| name | city   | age |
+|------|--------|-----|
+| 张三 | 北京   | 25  |
+| 李四 | 上海   | 30  |
+| 王五 | 北京   | 28  |
+| 赵六 | 上海   | 35  |
+| 钱七 | 北京   | 22  |
+
+GROUP BY city → 分成两组：
+  北京组：张三(25), 王五(28), 钱七(22)  → COUNT=3, AVG(age)=25
+  上海组：李四(30), 赵六(35)            → COUNT=2, AVG(age)=32.5</code></pre>
+
+<h2>5.2 基本语法</h2>
+
+<pre lang="sql" caption=""><code>-- 每个城市有多少人
+SELECT city, COUNT(*) AS user_count
+FROM users
+GROUP BY city;
+
+-- 结果：
+-- | city   | user_count |
+-- |--------|------------|
+-- | 北京   | 3          |
+-- | 上海   | 2          |</code></pre>
+
+<h2>5.3 多字段分组</h2>
+
+<pre lang="sql" caption=""><code>-- 按城市 + 状态分组统计
+SELECT city, status, COUNT(*) AS cnt
+FROM users
+GROUP BY city, status;
+
+-- 结果：
+-- | city   | status   | cnt |
+-- |--------|----------|-----|
+-- | 北京   | active   | 2   |
+-- | 北京   | inactive | 1   |
+-- | 上海   | active   | 2   |</code></pre>
+
+<h2>5.4 HAVING（分组后过滤）</h2>
+
+<p><b>WHERE 是在分组前过滤原始数据，HAVING 是在分组后过滤聚合结果。</b></p>
+
+<pre lang="sql" caption=""><code>-- 找出用户数超过 100 的城市
+SELECT city, COUNT(*) AS user_count
+FROM users
+GROUP BY city
+HAVING COUNT(*) &gt; 100;
+
+-- WHERE + HAVING 联合使用
+SELECT city, COUNT(*) AS active_count
+FROM users
+WHERE status = 'active'          -- 先过滤：只算 active 用户
+GROUP BY city
+HAVING COUNT(*) &gt; 10             -- 再过滤：只要超过 10 人的城市
+ORDER BY active_count DESC;       -- 最后排序</code></pre>
+
+<callout emoji="💡" background-color="light-blue" border-color="blue">
+<p><b>SQL 执行顺序（重要）：</b></p>
+<ol>
+<li><b>FROM</b> → 确定从哪张表取数据</li>
+<li><b>WHERE</b> → 过滤原始行</li>
+<li><b>GROUP BY</b> → 分组</li>
+<li><b>HAVING</b> → 过滤分组后的结果</li>
+<li><b>SELECT</b> → 选择要输出的列</li>
+<li><b>ORDER BY</b> → 排序</li>
+<li><b>LIMIT</b> → 限制条数</li>
+</ol>
+<p>这就是为什么 WHERE 里不能用聚合函数（COUNT/SUM），而 HAVING 里可以——因为 WHERE 在 GROUP BY 之前执行，那时候还没分组呢。</p>
+</callout>
+
+<h2>5.5 常用聚合场景</h2>
+
+<pre lang="sql" caption=""><code>-- 每天的新增用户数
+SELECT DATE(created_at) AS day, COUNT(*) AS new_users
+FROM users
+GROUP BY DATE(created_at)
+ORDER BY day DESC;
+
+-- 每个用户的订单总金额
+SELECT user_id, SUM(amount) AS total_amount, COUNT(*) AS order_count
+FROM orders
+GROUP BY user_id
+ORDER BY total_amount DESC;
+
+-- 每种状态的任务数量（DM 场景）
+SELECT status, COUNT(*) AS cnt
+FROM task_records
+GROUP BY status;
+
+-- 每个 APP 的成功率
+SELECT app_name,
+       COUNT(*) AS total,
+       SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) AS success_count,
+       SUM(CASE WHEN status = 'success' THEN 1 ELSE 0 END) / COUNT(*) * 100 AS success_rate
+FROM task_records
+GROUP BY app_name
+ORDER BY success_rate DESC;</code></pre>
+
+<h2>5.6 GROUP BY vs MongoDB $group 对照</h2>
+
+<callout emoji="🔗" background-color="light-green" border-color="green">
+<p><b>理解了这个对照，你就同时掌握了 SQL 和 MongoDB 的聚合。</b></p>
+</callout>
+
+<table>
+<colgroup><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">SQL</th><th background-color="light-gray">MongoDB</th></tr></thead>
+<tbody>
+<tr><td><code>GROUP BY city</code></td><td><code>$group: { _id: "$city" }</code></td></tr>
+<tr><td><code>GROUP BY city, status</code></td><td><code>$group: { _id: { city: "$city", status: "$status" } }</code></td></tr>
+<tr><td><code>COUNT(*)</code></td><td><code>$sum: 1</code></td></tr>
+<tr><td><code>SUM(amount)</code></td><td><code>$sum: "$amount"</code></td></tr>
+<tr><td><code>AVG(age)</code></td><td><code>$avg: "$age"</code></td></tr>
+<tr><td><code>MAX(age)</code></td><td><code>$max: "$age"</code></td></tr>
+<tr><td><code>MIN(age)</code></td><td><code>$min: "$age"</code></td></tr>
+<tr><td><code>WHERE + GROUP BY</code></td><td><code>$match</code> + <code>$group</code>（$match 放前面）</td></tr>
+<tr><td><code>HAVING</code></td><td><code>$match</code>（放在 $group 后面）</td></tr>
+</tbody>
+</table>
+
+<pre lang="sql" caption="SQL 写法：每个城市的活跃用户数，只要超过 10 人的"><code>SELECT city, COUNT(*) AS cnt
+FROM users
+WHERE status = 'active'
+GROUP BY city
+HAVING COUNT(*) &gt; 10
+ORDER BY cnt DESC;</code></pre>
+
+<pre lang="javascript" caption="等价的 MongoDB 写法"><code>db.users.aggregate([
+    { $match: { status: "active" } },              // = WHERE
+    { $group: {                                     // = GROUP BY
+        _id: "$city",                               //   按 city 分组
+        cnt: { $sum: 1 }                            //   COUNT(*)
+    }},
+    { $match: { cnt: { $gt: 10 } } },              // = HAVING
+    { $sort: { cnt: -1 } }                         // = ORDER BY DESC
+])</code></pre>
+
+<callout emoji="💡" background-color="light-blue" border-color="blue">
+<p><b>记忆技巧：</b></p>
+<ul>
+<li>SQL 的 <code>GROUP BY field</code> = MongoDB 的 <code>_id: "$field"</code>（_id 就是分组键）</li>
+<li>SQL 的 <code>COUNT(*)</code> = MongoDB 的 <code>$sum: 1</code>（每匹配一条就 +1）</li>
+<li>SQL 的 <code>HAVING</code> = MongoDB 在 <code>$group</code> 后面再加一个 <code>$match</code></li>
+<li>管道里 stage 的顺序很重要：<code>$match</code> 在 <code>$group</code> 前面 = WHERE，在后面 = HAVING</li>
+</ul>
+</callout>
+
+<h1>六、JOIN（多表关联）</h1>
+
+<h2>6.1 JOIN 类型</h2>
+
+<table>
+<colgroup><col width="120"/><col/></colgroup>
+<thead><tr><th background-color="light-gray">类型</th><th background-color="light-gray">含义</th></tr></thead>
+<tbody>
+<tr><td><b>INNER JOIN</b></td><td>两边都匹配才保留（最常用）</td></tr>
+<tr><td><b>LEFT JOIN</b></td><td>左表全部保留，右表匹配不上的填 NULL</td></tr>
+<tr><td><b>RIGHT JOIN</b></td><td>右表全部保留，左表匹配不上的填 NULL</td></tr>
+<tr><td><b>FULL JOIN</b></td><td>两边都保留（MySQL 不支持，用 UNION 模拟）</td></tr>
+</tbody>
+</table>
+
+<h2>6.2 基本语法</h2>
+
+<pre lang="sql" caption=""><code>-- 查用户和他们的任务（INNER JOIN）
+SELECT u.name, t.status
+FROM users u
+INNER JOIN task_records t ON u.id = t.user_id;
+
+-- 查所有用户，有任务的显示任务状态，没任务的显示 NULL（LEFT JOIN）
+SELECT u.name, t.status
+FROM users u
+LEFT JOIN task_records t ON u.id = t.user_id;
+
+-- 多表 JOIN
+SELECT u.name, t.status, a.app_name
+FROM users u
+INNER JOIN task_records t ON u.id = t.user_id
+INNER JOIN apps a ON t.app_id = a.id
+WHERE t.created_at &gt; '2024-01-01';</code></pre>
+
+<callout emoji="📌" background-color="light-yellow" border-color="yellow">
+<p><b>JOIN 性能关键：</b>确保 JOIN 的关联字段上有索引！否则会变成全表扫描。详见「数据库索引与慢查询」笔记。</p>
+</callout>
+
+<h1>七、子查询</h1>
+
+<pre lang="sql" caption=""><code>-- WHERE 子查询：找出订单金额超过平均值的用户
+SELECT name FROM users
+WHERE id IN (
+    SELECT user_id FROM orders
+    WHERE amount &gt; (SELECT AVG(amount) FROM orders)
+);
+
+-- FROM 子查询（派生表）
+SELECT city, avg_age
+FROM (
+    SELECT city, AVG(age) AS avg_age
+    FROM users
+    GROUP BY city
+) AS city_stats
+WHERE avg_age &gt; 30;
+
+-- EXISTS 子查询：找出有任务记录的用户
+SELECT name FROM users u
+WHERE EXISTS (
+    SELECT 1 FROM task_records t WHERE t.user_id = u.id
+);</code></pre>
+
+<h1>八、常用函数</h1>
+
+<h2>8.1 字符串函数</h2>
+
+<table>
+<colgroup><col/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">函数</th><th background-color="light-gray">作用</th><th background-color="light-gray">示例</th></tr></thead>
+<tbody>
+<tr><td><code>CONCAT(a, b)</code></td><td>拼接字符串</td><td><code>CONCAT(first_name, ' ', last_name)</code></td></tr>
+<tr><td><code>LENGTH(s)</code></td><td>字符串长度</td><td><code>LENGTH(name)</code></td></tr>
+<tr><td><code>UPPER(s)</code></td><td>转大写</td><td><code>UPPER(city)</code></td></tr>
+<tr><td><code>SUBSTRING(s, pos, len)</code></td><td>截取子串</td><td><code>SUBSTRING(name, 1, 3)</code></td></tr>
+<tr><td><code>REPLACE(s, a, b)</code></td><td>替换</td><td><code>REPLACE(name, '旧', '新')</code></td></tr>
+</tbody>
+</table>
+
+<h2>8.2 日期函数</h2>
+
+<table>
+<colgroup><col/><col/><col/></colgroup>
+<thead><tr><th background-color="light-gray">函数</th><th background-color="light-gray">作用</th><th background-color="light-gray">示例</th></tr></thead>
+<tbody>
+<tr><td><code>NOW()</code></td><td>当前日期时间</td><td><code>SELECT NOW()</code></td></tr>
+<tr><td><code>CURDATE()</code></td><td>当前日期</td><td><code>SELECT CURDATE()</code></td></tr>
+<tr><td><code>DATE(dt)</code></td><td>取日期部分</td><td><code>DATE(created_at)</code></td></tr>
+<tr><td><code>DATE_FORMAT(dt, fmt)</code></td><td>格式化日期</td><td><code>DATE_FORMAT(NOW(), '%Y-%m')</code></td></tr>
+<tr><td><code>DATEDIFF(d1, d2)</code></td><td>两个日期相差天数</td><td><code>DATEDIFF(NOW(), created_at)</code></td></tr>
+<tr><td><code>DATE_ADD(dt, INTERVAL)</code></td><td>日期加减</td><td><code>DATE_ADD(NOW(), INTERVAL 7 DAY)</code></td></tr>
+</tbody>
+</table>
+
+<h2>8.3 条件函数</h2>
+
+<pre lang="sql" caption=""><code>-- CASE WHEN（类似编程语言的 if-else）
+SELECT name,
+    CASE
+        WHEN age &lt; 20 THEN '少年'
+        WHEN age &lt; 40 THEN '青年'
+        WHEN age &lt; 60 THEN '中年'
+        ELSE '老年'
+    END AS age_group
+FROM users;
+
+-- IF（简单二选一）
+SELECT name, IF(age &gt;= 18, '成年', '未成年') AS status
+FROM users;
+
+-- IFNULL（处理 NULL 值）
+SELECT name, IFNULL(phone, '未填写') AS phone
+FROM users;
+
+-- COALESCE（返回第一个非 NULL 值）
+SELECT COALESCE(phone, email, '无联系方式') AS contact
+FROM users;</code></pre>
+
+<h1>九、事务（Transaction）</h1>
+
+<callout emoji="📌" background-color="light-yellow" border-color="yellow">
+<p><b>事务 = 一组操作要么全部成功，要么全部撤销。</b>经典例子：转账——A 扣钱和 B 加钱必须同时成功，不能只完成一半。</p>
+</callout>
+
+<pre lang="sql" caption=""><code>-- 开始事务
+START TRANSACTION;
+
+-- 操作 1：A 扣 100
+UPDATE accounts SET balance = balance - 100 WHERE user_id = 1;
+
+-- 操作 2：B 加 100
+UPDATE accounts SET balance = balance + 100 WHERE user_id = 2;
+
+-- 确认没问题，提交
+COMMIT;
+
+-- 如果出错了，撤销所有操作
+-- ROLLBACK;</code></pre>
+
+<p><b>事务四大特性（ACID）：</b></p>
+
+<table>
+<colgroup><col width="120"/><col/></colgroup>
+<thead><tr><th background-color="light-gray">特性</th><th background-color="light-gray">含义</th></tr></thead>
+<tbody>
+<tr><td><b>原子性（A）</b></td><td>事务里的操作要么全做，要么全不做</td></tr>
+<tr><td><b>一致性（C）</b></td><td>事务前后数据总量保持平衡（A 扣了 100，B 一定加 100）</td></tr>
+<tr><td><b>隔离性（I）</b></td><td>并发事务互不干扰</td></tr>
+<tr><td><b>持久性（D）</b></td><td>COMMIT 之后数据永久保存，即使断电也不丢</td></tr>
+</tbody>
+</table>
+
+<h1>十、视图、存储过程、触发器</h1>
+
+<h2>10.1 视图（View）</h2>
+
+<pre lang="sql" caption="视图 = 保存的查询，像一张虚拟表"><code>-- 创建视图
+CREATE VIEW active_beijing_users AS
+SELECT name, age, phone
+FROM users
+WHERE city = '北京' AND status = 'active';
+
+-- 使用视图（和查表一样）
+SELECT * FROM active_beijing_users WHERE age &gt; 25;
+
+-- 删除视图
+DROP VIEW active_beijing_users;</code></pre>
+
+<h2>10.2 存储过程（Stored Procedure）</h2>
+
+<pre lang="sql" caption="存储过程 = 预编译的 SQL 函数"><code>-- 创建存储过程
+DELIMITER //
+CREATE PROCEDURE GetUserStats(IN p_city VARCHAR(50))
+BEGIN
+    SELECT COUNT(*) AS total, AVG(age) AS avg_age
+    FROM users WHERE city = p_city;
+END //
+DELIMITER ;
+
+-- 调用
+CALL GetUserStats('北京');</code></pre>
+
+<h1>十一、表结构操作（DDL）</h1>
+
+<pre lang="sql" caption=""><code>-- 创建表
+CREATE TABLE users (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    age INT DEFAULT 0,
+    city VARCHAR(50),
+    status ENUM('active', 'inactive') DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- 添加列
+ALTER TABLE users ADD COLUMN phone VARCHAR(20);
+
+-- 修改列类型
+ALTER TABLE users MODIFY COLUMN age SMALLINT;
+
+-- 重命名列
+ALTER TABLE users RENAME COLUMN city TO location;
+
+-- 删除列
+ALTER TABLE users DROP COLUMN phone;
+
+-- 查看表结构
+DESCRIBE users;
+SHOW CREATE TABLE users;
+
+-- 删除表
+DROP TABLE users;</code></pre>
+
+<h1>十二、常用运维命令</h1>
+
+<pre lang="sql" caption=""><code>-- 查看当前数据库
+SELECT DATABASE();
+
+-- 查看所有表
+SHOW TABLES;
+
+-- 查看表行数（近似值，很快）
+SHOW TABLE STATUS LIKE 'users';
+
+-- 精确行数（慢，大表慎用）
+SELECT COUNT(*) FROM users;
+
+-- 查看表索引
+SHOW INDEX FROM users;
+
+-- 查看当前连接
+SHOW PROCESSLIST;
+
+-- 杀掉某个连接
+KILL process_id;
+
+-- 查看表大小
+SELECT
+    table_name AS '表名',
+    ROUND(data_length / 1024 / 1024, 2) AS '数据(MB)',
+    ROUND(index_length / 1024 / 1024, 2) AS '索引(MB)',
+    table_rows AS '行数'
+FROM information_schema.tables
+WHERE table_schema = 'your_database_name'
+ORDER BY data_length DESC;</code></pre>
+
+<h1>十三、SQL 执行顺序总结</h1>
+
+<callout emoji="💡" background-color="light-blue" border-color="blue">
+<p>面试高频题。记住这个顺序，写复杂 SQL 就不会搞混：</p>
+</callout>
+
+<pre lang="text" caption=""><code>书写顺序：  SELECT → FROM → JOIN → WHERE → GROUP BY → HAVING → ORDER BY → LIMIT
+
+执行顺序：  FROM → JOIN → WHERE → GROUP BY → HAVING → SELECT → ORDER BY → LIMIT
+           ↑ 先确定数据源  ↑ 过滤行  ↑ 分组    ↑ 过滤组  ↑ 选列   ↑ 排序     ↑ 截取</code></pre>
+
+<p><b>为什么重要？</b></p>
+<ul>
+<li>WHERE 里不能用 SELECT 里定义的别名（因为 WHERE 先于 SELECT 执行）</li>
+<li>HAVING 里可以用 SELECT 的别名（因为 HAVING 先于 SELECT 执行……不对，HAVING 在 SELECT 之前执行，但 MySQL 做了扩展允许在 HAVING 里用别名）</li>
+<li>ORDER BY 里可以用 SELECT 的别名（因为 ORDER BY 在 SELECT 之后执行）</li>
+</ul>

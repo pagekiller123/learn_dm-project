@@ -2647,7 +2647,7 @@ sequenceDiagram
 <tr><td>app-gateway</td><td>业务服务层，APP 任务的编排入口</td></tr>
 <tr><td>worker-scheduler</td><td>基础服务层，多副本并行 + 任务分配</td></tr>
 <tr><td>worker-sidecar</td><td>Worker 执行层，异构后端适配</td></tr>
-<tr><td>api-outer</td><td>外部工具 / 游戏的 API 入口</td></tr>
+<tr><td>api-outer</td><td>统一的外部 API 入口（前端、Monet、外部工具都走它）</td></tr>
 <tr><td>AppRecord</td><td>Mongo 里的任务记录，长期存储</td></tr>
 <tr><td>AppTaskMsg</td><td>任务核心消息结构</td></tr>
 <tr><td>action</td><td>任务状态推进的抽象（Add / AfterCall / Failed）</td></tr>

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I06 - 高可用弹性扩缩容与容错降级</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+:root {
+  --text: #1a1a1a; --text-muted: #555; --bg: #fffdf6; --accent: #b91c1c;
+  --accent-soft: #fef2f2; --code-bg: #f4f1eb; --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { font-family: var(--serif); color: var(--text); background: var(--bg); max-width: 1100px; margin: 3rem auto 3rem 280px; padding: 0 1.5rem; line-height: 1.7; }
+h1, h2, h3, h4 { font-family: var(--sans); font-weight: 600; line-height: 1.3; margin-top: 2.5rem; margin-bottom: 0.8rem; }
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+p { margin: 0.8rem 0; }
+code { font-family: var(--mono); background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid var(--accent); font-family: var(--mono); font-size: 0.9em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+pre.mermaid { border-left: none; background: white; text-align: center; font-family: var(--sans); }
+blockquote { border-left: 3px solid var(--border); margin: 1.2rem 0; padding: 0.5rem 1.2rem; color: var(--text-muted); background: #faf7ed; font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--sans); font-size: 0.95em; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; }
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+.lesson-meta { font-family: var(--sans); font-size: 0.85em; color: var(--text-muted); margin-bottom: 1.5rem; padding: 0.8rem 1rem; background: var(--code-bg); border-radius: 6px; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.highlight-box { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 4px; }
+.highlight-box strong { color: var(--accent); }
+.script-block { background: #f0fdf4; border: 2px solid #16a34a; padding: 1.2rem 1.5rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; line-height: 1.8; }
+.script-block h4 { color: #16a34a; margin-top: 0; }
+.script-block .script-label { display: inline-block; background: #16a34a; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 0.5rem; }
+.defend { background: #fef2f2; border: 2px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; }
+.defend h4 { margin-top: 0; color: var(--accent); }
+.diagram { background: white; padding: 1.2rem; border: 1px solid var(--border); border-radius: 6px; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+#toc-sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; overflow-y: auto; background: #faf8f0; border-right: 1px solid var(--border); padding: 1.5rem 1rem; font-family: var(--sans); font-size: 0.85em; z-index: 100; transition: transform 0.3s; }
+#toc-sidebar h3 { font-size: 0.95em; color: var(--accent); margin: 0 0 0.8rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+#toc-sidebar ul { list-style: none; padding: 0; margin: 0; }
+#toc-sidebar li { margin: 0.15rem 0; }
+#toc-sidebar a { color: var(--text-muted); text-decoration: none; display: block; padding: 0.2rem 0.5rem; border-radius: 3px; line-height: 1.4; transition: all 0.15s; border-left: 3px solid transparent; }
+#toc-sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+#toc-sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-left-color: var(--accent); }
+#toc-sidebar .toc-h2 { padding-left: 0.5rem; }
+#toc-sidebar .toc-h3 { padding-left: 1.2rem; font-size: 0.9em; color: #888; }
+#toc-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.9em; }
+@media (max-width: 1100px) {
+  #toc-sidebar { transform: translateX(-100%); }
+  #toc-sidebar.open { transform: translateX(0); }
+  #toc-toggle { display: block; }
+  body { margin-left: 0 !important; max-width: none !important; }
+}
+</style>
+</head>
+<body>
+
+<h1>I06 — 高可用弹性扩缩容与容错降级</h1>
+
+<div class="lesson-meta">
+  <span><strong>定位</strong> 分布式系统工程深挖</span>
+  <span><strong>覆盖题数</strong> 10 题</span>
+  <span><strong>难度</strong> ★★★★☆</span>
+  <span><strong>时长</strong> ~50 分钟</span>
+</div>
+
+<h2>一、课程概述</h2>
+
+<p>本章覆盖高可用和容错两大方向共 10 道面试题，是分布式系统工程能力的核心考察区。面试官通过 etcd Lease、K8s 扩缩容、供应商降级三个切入点，判断候选人是否真正理解"生产级系统如何保持稳定运行"。</p>
+
+<table>
+<tr><th>模块</th><th>考察维度</th><th>权重</th><th>意图</th></tr>
+<tr><td>etcd Lease 心跳</td><td>服务发现原理</td><td>20%</td><td>是否理解心跳参数设计的 tradeoff</td></tr>
+<tr><td>故障转移</td><td>异常处理策略</td><td>15%</td><td>任务丢失/重复执行的风险意识</td></tr>
+<tr><td>K8s 扩缩容</td><td>弹性伸缩设计</td><td>20%</td><td>为什么不用 HPA、自定义指标设计能力</td></tr>
+<tr><td>指数退避重试</td><td>容错模式</td><td>15%</td><td>退避参数、异常分类的工程判断力</td></tr>
+<tr><td>供应商切换</td><td>降级策略</td><td>15%</td><td>故障切换 vs 负载均衡的区别</td></tr>
+<tr><td>量化指标</td><td>数据自圆其说</td><td>15%</td><td>35%/50% 的统计方法和可信度</td></tr>
+</table>
+
+<h2>二、核心知识精讲</h2>
+
+<h3>2.1 etcd Lease 租约机制</h3>
+
+<p>etcd Lease 是服务注册发现的核心：Worker 启动时创建一个 TTL=90s 的 Lease，将自己的注册 key 绑定到这个 Lease，然后每 30s 发送 KeepAlive 续约。如果 Worker 宕机，停止续约后 90s Lease 过期，key 自动删除，scheduler 通过 Watch 感知到节点下线。</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    participant W as Worker 节点
+    participant E as etcd 集群
+    participant S as Scheduler（Leader）
+
+    W->>E: Grant Lease（TTL=90s）
+    E-->>W: LeaseID=abc123
+    W->>E: Put /workers/worker-0（LeaseID=abc123）
+    E-->>S: Watch 事件：PUT /workers/worker-0
+
+    loop 每 30s
+        W->>E: KeepAlive（LeaseID=abc123）
+        E-->>W: TTL 重置为 90s
+    end
+
+    Note over W: Worker 宕机，停止续约
+    Note over E: 90s 后 Lease 过期
+    E->>E: 自动删除 /workers/worker-0
+    E-->>S: Watch 事件：DELETE /workers/worker-0
+    S->>S: 标记 worker-0 为 DOWN
+    S->>S: 将其未完成任务入重试队列
+</pre>
+</div>
+
+<p><strong>30s 心跳间隔的设计依据</strong>：TTL=90s 允许 3 次心跳失败窗口（30s×3=90s）。调小到 10s → etcd 负载增大 3 倍，大量 KeepAlive 请求可能影响 etcd 读写性能。调大到 60s → 只有 1.5 次容错窗口（90/60），一次网络抖动就可能误判下线，增加不必要的任务重新调度。</p>
+
+<h3>2.2 Worker 故障转移策略</h3>
+
+<table>
+<tr><th>场景</th><th>策略</th><th>原因</th></tr>
+<tr><td>Worker 心跳超时</td><td>标记 DOWN + 任务入重试队列</td><td>不确定任务执行到哪一步，需要重新执行</td></tr>
+<tr><td>任务执行中 Worker 崩溃</td><td>重新调度到其他 Worker</td><td>AI 任务通常是幂等的（相同输入产出相同结果）</td></tr>
+<tr><td>任务已提交到供应商</td><td>查询供应商状态再决定</td><td>避免重复提交（某些供应商会重复计费）</td></tr>
+<tr><td>重试 N 次仍失败</td><td>标记为 FAILED + 告警</td><td>防止无限重试占用资源</td></tr>
+</table>
+
+<h3>2.3 自定义 K8s 扩缩容</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    Start["定时检查<br/>（每 30s）"] --> Check{"队列积压量<br/>是否超过阈值？"}
+    Check -->|"积压 > 50"| ScaleUp["扩容：调用 K8s API<br/>增加 StatefulSet Replicas"]
+    Check -->|"积压 < 10 且<br/>空闲 Worker > 30%"| ScaleDown["缩容：从最大序号开始<br/>减少 Replicas"]
+    Check -->|"正常范围"| NoOp["维持不变"]
+
+    ScaleUp --> Cooldown["冷却期 3 分钟<br/>防止频繁扩缩"]
+    ScaleDown --> Drain["等待目标 Worker<br/>完成当前任务"]
+    Drain --> Cooldown
+    NoOp --> Start
+    Cooldown --> Start
+</pre>
+</div>
+
+<p><strong>为什么不用 HPA</strong>：K8s 原生 HPA 基于 CPU/内存指标做扩缩容决策。但 AI 任务的瓶颈不是 CPU——Worker 大部分时间在等待外部 AI 供应商返回结果（IO 等待），CPU 利用率很低但实际上负载很满。正确的指标是<strong>队列积压深度</strong>和<strong>Worker 空闲比例</strong>，这需要自定义扩缩容逻辑。</p>
+
+<p><strong>StatefulSet vs Deployment</strong>：Worker 用 StatefulSet 部署有两个原因：(1) 稳定的网络标识（worker-0, worker-1...），与 etcd 注册的 key 对应，scheduler 能精确知道哪个 Worker 是哪个；(2) 有序缩容，缩容时从最大序号开始下掉，可以确保先下掉最近扩容的（通常是空闲的）节点。</p>
+
+<h3>2.4 指数退避重试</h3>
+
+<pre><code>退避阶梯：1s → 2s → 4s → 8s → 16s → 32s
+最大重试次数：6次
+总等待上限：63s（1+2+4+8+16+32）
+
+触发条件：HTTP 429（限流）/ 503（服务不可用）/ 连接超时 / 网络错误
+不重试条件：HTTP 400（参数错误）/ 401（认证失败）/ 403（权限不足）/ 模型不存在</code></pre>
+
+<h3>2.5 供应商容错降级链路</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    Task["任务到达"] --> Primary["调用主供应商"]
+    Primary --> Result{"返回结果"}
+    Result -->|"200 成功"| Done["任务完成"]
+    Result -->|"429/503"| Retry{"指数退避重试<br/>（最多6次）"}
+    Retry -->|"恢复成功"| Done
+    Retry -->|"超时未恢复"| Fallback["切换备用供应商"]
+    Fallback --> FBResult{"备用结果"}
+    FBResult -->|"成功"| Done
+    FBResult -->|"也失败"| Failed["标记 FAILED<br/>+ 告警"]
+    Result -->|"400/401/403"| Failed
+</pre>
+</div>
+
+<p><strong>白名单管控</strong>：容错降级通过配置白名单控制生效范围。配置存储在 MongoDB，按 app_code（能力标识）粒度管控——只有白名单内的能力才启用备用供应商切换，其他能力直接返回失败。测试环境和生产环境通过不同的配置集区分，部署时通过环境变量加载对应配置。</p>
+
+<h3>2.6 量化指标的统计方法</h3>
+
+<div class="highlight-box">
+<strong>35% 空闲算力降低</strong>：对比扩缩容上线前后各两周的监控数据。扩缩容前，集群固定 20 个 Worker 节点，低峰期（如凌晨）大部分节点空闲，平均空闲率约 55%。上线后动态扩缩容根据队列积压调整节点数，低峰期缩容到 8-10 个节点，平均空闲率降至约 20%。(55%-20%)/55% ≈ 降低 35%。
+</div>
+
+<div class="highlight-box">
+<strong>50% 任务失败率降低</strong>：取容错降级上线前后各一个月的任务状态统计。上线前第三方供应商 429 导致的任务失败率约 8%（高峰期可达 15%）。上线后通过退避重试+备用链路切换，同类失败率降至约 4%（高峰期约 7%）。(8%-4%)/8% = 降低 50%。统计维度是"因供应商限流/不可用导致的最终失败"，不包括参数错误等不可重试类型。
+</div>
+
+<h2>三、面试易错点</h2>
+
+<div class="highlight-box">
+<strong>错误 1</strong>：说"心跳间隔越小越好"。错！心跳过频会增加 etcd 负载，在大规模集群下（100+ Worker）可能影响 etcd 的 Raft 一致性性能。要讲清楚 tradeoff。
+</div>
+
+<div class="highlight-box">
+<strong>错误 2</strong>：混淆"重试"和"重新调度"。重试是同一个 Worker 对同一个供应商请求重试（指数退避），重新调度是把任务分配给另一个 Worker 执行。两者层级不同。
+</div>
+
+<div class="highlight-box">
+<strong>错误 3</strong>：说"用 HPA 也行"。面试官追问为什么不用，你说"也行"等于没回答。必须讲清楚 HPA 的局限：基于 CPU/内存指标，而 AI 任务瓶颈是 IO 等待和 GPU 占用，CPU 指标完全不能反映真实负载。
+</div>
+
+<div class="highlight-box">
+<strong>错误 4</strong>：量化数字说不出统计口径。面试官问"35% 怎么统计的"你答不出来，这个数字就等于没说。必须能讲出"对比哪个时间段、什么维度、计算公式是什么"。
+</div>
+
+<h2>四、满分逐字稿</h2>
+
+<h3>Q1：etcd Lease 租约机制原理？心跳 30s 依据？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>etcd Lease 本质上是一个带 TTL 的"租约对象"，所有绑定到这个 Lease 的 key 会在 Lease 过期时一起删除。</strong></p>
+<p>在我们的调度平台里，Worker 启动时做三件事：第一，调用 etcd Grant 创建一个 TTL=90s 的 Lease；第二，调用 Put 将自己的注册信息（如 /workers/worker-0）绑定到这个 Lease；第三，启动一个后台协程，每 30s 调用 KeepAlive 续约，重置 TTL 到 90s。</p>
+<p>如果 Worker 宕机或网络断连，KeepAlive 停止，90s 后 Lease 过期，etcd 自动删除该 Worker 的所有注册 key。Scheduler 通过 Watch 机制监听 /workers/ 前缀，收到 DELETE 事件后立即将该 Worker 标记为 DOWN，并将其未完成的任务放入重试队列重新调度。</p>
+<p><strong>30s 心跳的依据是 TTL 的三分之一。</strong>TTL=90s 的情况下，30s 心跳间隔意味着有 3 次容错窗口——即使连续 2 次心跳因为网络抖动失败，第 3 次成功仍然能续约，不会误判下线。如果调小到 10s，心跳请求量增加 3 倍，在 100+ Worker 的集群规模下会给 etcd 带来显著的写入压力，影响其 Raft 共识的稳定性。如果调大到 60s，容错窗口只剩 1.5 次，一次持续 30s 以上的网络抖动就会误判下线，导致不必要的任务重新调度和 Worker 抖动。所以 30s 是一个在故障感知速度和系统负载之间取得平衡的经验值。</p>
+</div>
+
+<h3>Q2：Worker 故障时任务如何处理？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>我们采用"检测→标记→重试→兜底"四步策略。</strong></p>
+<p>首先是检测：Scheduler 通过 etcd Watch 实时监听 Worker 注册 key 的变化，DELETE 事件触发故障处理流程。</p>
+<p>其次是标记：将该 Worker 状态设为 DOWN，同时扫描 MongoDB 中该 Worker 名下所有 status=RUNNING 的任务，全部标记为 FAILED_RETRYABLE。</p>
+<p>然后是重试：这些任务进入重试队列，由 Scheduler 重新分配给其他健康 Worker。这里有一个关键点——AI 生成任务通常是幂等的，相同参数提交两次会得到不同结果（因为随机种子不同），但不会产生"重复消费"的副作用，所以重试是安全的。但有一个例外：如果任务已经提交到外部供应商并且供应商已经开始计算，重新提交会导致重复计费。所以在重试前，我们会先查询供应商侧的任务状态——如果已经在执行中，就等待其完成而不是重新提交。</p>
+<p>最后是兜底：每个任务有最大重试次数限制（默认 3 次），超过后标记为 FAILED_FINAL 并触发告警。防止某些因为参数问题永远无法成功的任务无限重试占用队列资源。</p>
+</div>
+
+<h3>Q3：自定义 K8s 扩缩容 vs HPA？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>我们没用 HPA 的原因很简单：HPA 的指标模型不适合 AI 任务场景。</strong></p>
+<p>HPA 默认基于 CPU 和内存利用率做扩缩容决策。但我们的 Worker 大部分时间在做什么？在等外部 AI 供应商返回结果——这是纯 IO 等待，CPU 利用率可能只有 5%，但这个 Worker 实际上已经满载了，因为它的并发任务槽位已经用完。如果用 HPA，它看到 CPU 5% 会觉得"资源充足"甚至触发缩容，这完全是错误判断。</p>
+<p>所以我们自定义了扩缩容模块。核心指标是两个：<strong>队列积压深度</strong>和<strong>Worker 空闲比例</strong>。队列积压 > 50 且持续 2 个检查周期（1分钟）→ 触发扩容；空闲 Worker 比例 > 30% 且队列积压 < 10 → 触发缩容。扩缩容操作通过 client-go 调用 K8s API 修改 StatefulSet 的 Replicas 字段。</p>
+<p>有几个细节：第一，扩缩容有 3 分钟冷却期，防止指标抖动导致频繁扩缩（thrashing）。第二，缩容时不是立即杀 Pod，而是先标记目标 Worker 为"不接新任务"，等它完成当前任务后再缩容，实现<strong>优雅下线</strong>。第三，设置了最小副本数下限（比如 5），即使完全空闲也不会缩到零，保证有基础算力响应突发请求。</p>
+<p>上线后对比固定 20 节点部署，动态扩缩容把平均空闲算力占用降低了约 35%——主要收益在低峰时段，节点数从 20 缩到 8-10 个。</p>
+</div>
+
+<h3>Q4：StatefulSet 部署 Worker 的原因？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>用 StatefulSet 而不是 Deployment 主要是两个原因：稳定网络标识和有序扩缩容。</strong></p>
+<p>第一，稳定网络标识。StatefulSet 的 Pod 名称是 worker-0、worker-1 这种固定命名，而 Deployment 的 Pod 名称是随机后缀（如 worker-7f8b9c）。Worker 启动时在 etcd 注册的 key 是 /workers/worker-0，Scheduler 根据这个 key 来分配任务和追踪状态。如果用 Deployment，Pod 重启后名称变了，etcd 里的旧 key 就成了僵尸数据，需要额外的清理逻辑。StatefulSet 保证重启后名称不变，注册 key 自然对得上。</p>
+<p>第二，有序扩缩容。StatefulSet 缩容时默认从最大序号开始删除（worker-19 先于 worker-18）。这意味着我们可以在扩容时新增的节点优先被缩容掉，而初始的稳定节点保持在线。结合优雅下线机制，缩容过程是可预测、可控制的。Deployment 的缩容是随机的，可能下掉一个正在执行任务的 Pod，处理起来更复杂。</p>
+</div>
+
+<h3>Q5：35% 空闲算力降低的统计维度？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>这个 35% 的统计方法是对比扩缩容上线前后各两周的 Worker 空闲率均值。</strong></p>
+<p>空闲率的定义是：在每个 5 分钟采样窗口内，"空闲 Worker 数 / 总 Worker 数"。空闲 Worker 的判定标准是"当前没有执行中的任务"。上线前集群固定 20 个节点，日间高峰空闲率约 20%，凌晨低谷空闲率高达 80%，加权平均约 55%。上线后动态扩缩容，日间根据队列积压扩到 15-25 个节点，凌晨缩到 8-10 个，加权平均空闲率降到约 20%。(55%-20%) / 55% ≈ 降低 36%，四舍五入为 35%。</p>
+<p>说实话这个数字的主要贡献是低峰时段的缩容收益——高峰期反而可能比固定部署多扩了几个节点。但从整体资源利用率看，动态扩缩容确实显著减少了"付了钱但没在用"的算力浪费。</p>
+</div>
+
+<h3>Q6：指数退避重试的阶梯设计？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>我们的指数退避阶梯是 1s→2s→4s→8s→16s→32s，最多 6 次重试，最长总等待 63 秒。</strong></p>
+<p>为什么是这个参数？首先，基数 1s 是因为 429 限流通常是秒级恢复——供应商的限流窗口一般是 1 分钟内 N 次请求，等 1 秒后重试大概率能过。底数 2 的指数增长确保在供应商持续限流时不会疯狂重试加剧拥塞。上限 32s 是因为 AI 生成任务本身耗时较长（图像生成通常 10-30 秒），用户对"多等 30 秒"的感知没那么敏感，但超过 1 分钟体验就很差了。6 次重试、总等待 63 秒，是在"尽量等供应商恢复"和"不让用户等太久"之间的平衡点。</p>
+<p>实现上还加了一个<strong>抖动因子</strong>（jitter）：实际等待时间 = 基础退避 × (0.5 + random(0, 0.5))。这是为了避免多个任务同时触发 429 后在相同时刻重试，造成"惊群效应"再次打满供应商限流。</p>
+</div>
+
+<h3>Q7：可重试 vs 不可重试异常分类？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>核心判断标准是：这个错误是否有可能通过重试自行恢复。</strong></p>
+<p>可重试异常包括：HTTP 429（限流，等一会就恢复）、503（服务暂时不可用）、连接超时（网络抖动）、DNS 解析失败（临时性网络问题）。这类错误的共同特点是"现在不行，过一会可能就行了"。</p>
+<p>不可重试异常包括：HTTP 400（参数错误，重试 100 次参数还是错的）、401（认证失败）、403（权限不足）、404（模型或接口不存在）、422（参数校验不通过）。这类错误是确定性的，重试没有意义，应该立即返回失败并告知用户具体原因。</p>
+<p>在代码实现上，我们定义了一个 RetryableError 接口，供应商适配层在捕获 HTTP 错误时根据状态码决定抛出 RetryableError 还是普通 Error。重试逻辑只对 RetryableError 生效。还有一种特殊情况：供应商返回 200 但 body 里的 code 表示"模型正在加载中"，这也归类为可重试——因为冷启动加载通常 10-30 秒就完成。</p>
+</div>
+
+<h3>Q8：多供应商兜底切换策略？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>我们的策略是"故障切换"而不是"负载均衡切换"。</strong>区别在于：负载均衡是所有供应商同时接流量按权重分配，故障切换是平时只走主供应商，主供应商持续不可用时才切到备用。</p>
+<p>选择故障切换的原因是：不同供应商的模型效果有差异，我们希望优先使用效果最好的那个，备用供应商是"能用但效果可能略差"的兜底。如果做负载均衡，用户会发现"同样的提示词，生成结果质量时好时差"，体验不一致。</p>
+<p>切换触发条件：同一供应商连续 3 次重试失败（即指数退避 6 次都没恢复，算 1 次失败），触发切换到备用链路。切换后不是永久切换——我们有一个"恢复探测"机制，每 5 分钟对主供应商发一次健康检查请求，如果返回正常，后续新任务恢复使用主供应商。这样避免了主供应商恢复后流量仍然走备用链路的问题。</p>
+</div>
+
+<h3>Q9：白名单管控实现？测试/生产环境区分？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>白名单配置存储在 MongoDB，按 app_code 粒度管控。</strong></p>
+<p>每个 AI 能力（如文生图、图生视频）在系统中有唯一的 app_code 标识。白名单配置记录哪些 app_code 启用容错降级、对应的主备供应商是什么、退避参数是什么。只有白名单内的能力才会触发备用供应商切换，白名单外的能力在主供应商失败后直接返回错误。</p>
+<p>这样设计的原因是：不是所有供应商都有备用链路。有些 AI 能力只有一个供应商能提供（比如某些私有化部署的模型），对这些能力做供应商切换没有意义。白名单机制让运维可以精细化控制哪些能力启用降级，避免全局生效带来的不确定性。</p>
+<p>测试和生产环境通过部署时的环境变量区分——DM_ENV=test 或 DM_ENV=prod，服务启动时加载对应的配置集。测试环境的白名单通常覆盖所有能力（方便测试降级链路），生产环境只覆盖已验证过备用链路效果的能力。</p>
+</div>
+
+<h3>Q10：50% 失败率降低的压测数据？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>50% 的统计口径是：因供应商限流/不可用导致的最终任务失败率，对比容错降级上线前后各一个月的数据。</strong></p>
+<p>上线前，第三方供应商返回 429 或 503 时任务直接标记为 FAILED，没有任何重试。统计显示这类失败占总任务量的约 8%，高峰期（如大型活动期间全公司美术师集中使用）可达 15%。</p>
+<p>上线后，指数退避重试消化了大部分 429 场景（大约 70% 的 429 在前 2 次重试内恢复），剩余的通过备用供应商切换兜底，同类失败率降至约 4%。(8%-4%)/8% = 降低 50%。</p>
+<p>关于线上峰值 QPS，说实话我没有做过专门的压测，这个数据我需要查监控才能给出准确数字。但从日常观察看，高峰期平台整体的任务提交 QPS 大约在每秒几十到一两百这个量级——AI 生成任务本身是重型任务（单任务执行时间 10s-几分钟），不是传统互联网那种上万 QPS 的场景，瓶颈不在吞吐量而在并发执行容量和供应商限流。</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral', securityLevel: 'loose'});</script>
+
+<button id="toc-toggle" onclick="document.getElementById('toc-sidebar').classList.toggle('open')">&#9776; 目录</button>
+<nav id="toc-sidebar">
+  <h3>目录导航</h3>
+  <ul id="toc-list"></ul>
+</nav>
+<script>
+(function(){
+  var hs=Array.from(document.querySelectorAll('h1,h2,h3')).filter(function(h){return !h.closest('#toc-sidebar');});
+  var ul=document.getElementById('toc-list');
+  hs.forEach(function(h,i){
+    if(!h.id)h.id='sec-'+i;
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href='#'+h.id; a.textContent=h.textContent;
+    a.className='toc-'+h.tagName.toLowerCase();
+    a.onclick=function(e){e.preventDefault();document.getElementById(h.id).scrollIntoView({behavior:'smooth'});document.getElementById('toc-sidebar').classList.remove('open');};
+    li.appendChild(a);ul.appendChild(li);
+  });
+  var links=ul.querySelectorAll('a');
+  var ticking=false;
+  window.addEventListener('scroll',function(){
+    if(!ticking){requestAnimationFrame(function(){
+      var cur='';
+      hs.forEach(function(h){if(h.getBoundingClientRect().top<=100)cur=h.id;});
+      links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur);});
+      ticking=false;
+    });ticking=true;}
+  });
+})();
+</script>
+
+</body>
+</html>

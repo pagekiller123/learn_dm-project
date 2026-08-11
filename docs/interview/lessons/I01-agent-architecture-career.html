@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I01 - AI Agent 架构全局观与职业定位</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+:root {
+  --text: #1a1a1a; --text-muted: #555; --bg: #fffdf6; --accent: #b91c1c;
+  --accent-soft: #fef2f2; --code-bg: #f4f1eb; --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { font-family: var(--serif); color: var(--text); background: var(--bg); max-width: 1100px; margin: 3rem auto 3rem 280px; padding: 0 1.5rem; line-height: 1.7; }
+h1, h2, h3, h4 { font-family: var(--sans); font-weight: 600; line-height: 1.3; margin-top: 2.5rem; margin-bottom: 0.8rem; }
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+p { margin: 0.8rem 0; }
+code { font-family: var(--mono); background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid var(--accent); font-family: var(--mono); font-size: 0.9em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+pre.mermaid { border-left: none; background: white; text-align: center; font-family: var(--sans); }
+blockquote { border-left: 3px solid var(--border); margin: 1.2rem 0; padding: 0.5rem 1.2rem; color: var(--text-muted); background: #faf7ed; font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--sans); font-size: 0.95em; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; }
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+.lesson-meta { font-family: var(--sans); font-size: 0.85em; color: var(--text-muted); margin-bottom: 1.5rem; padding: 0.8rem 1rem; background: var(--code-bg); border-radius: 6px; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+.highlight-box { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 4px; }
+.highlight-box strong { color: var(--accent); }
+.script-block { background: #f0fdf4; border: 2px solid #16a34a; padding: 1.2rem 1.5rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; line-height: 1.8; }
+.script-block h4 { color: #16a34a; margin-top: 0; }
+.script-block .script-label { display: inline-block; background: #16a34a; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 0.5rem; }
+.defend { background: #fef2f2; border: 2px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; }
+.defend h4 { margin-top: 0; color: var(--accent); }
+.diagram { background: white; padding: 1.2rem; border: 1px solid var(--border); border-radius: 6px; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+#toc-sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; overflow-y: auto; background: #faf8f0; border-right: 1px solid var(--border); padding: 1.5rem 1rem; font-family: var(--sans); font-size: 0.85em; z-index: 100; transition: transform 0.3s; }
+#toc-sidebar h3 { font-size: 0.95em; color: var(--accent); margin: 0 0 0.8rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+#toc-sidebar ul { list-style: none; padding: 0; margin: 0; }
+#toc-sidebar li { margin: 0.15rem 0; }
+#toc-sidebar a { color: var(--text-muted); text-decoration: none; display: block; padding: 0.2rem 0.5rem; border-radius: 3px; line-height: 1.4; transition: all 0.15s; border-left: 3px solid transparent; }
+#toc-sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+#toc-sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-left-color: var(--accent); }
+#toc-sidebar .toc-h2 { padding-left: 0.5rem; }
+#toc-sidebar .toc-h3 { padding-left: 1.2rem; font-size: 0.9em; color: #888; }
+#toc-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.9em; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+@media (max-width: 1100px) {
+  #toc-sidebar { transform: translateX(-100%); box-shadow: 2px 0 12px rgba(0,0,0,0.1); }
+  #toc-sidebar.open { transform: translateX(0); }
+  #toc-toggle { display: block; }
+  body { margin-left: 0 !important; max-width: none !important; }
+}
+</style>
+</head>
+<body>
+
+<h1>I01 — AI Agent 架构全局观与职业定位</h1>
+
+<div class="lesson-meta">
+  <span><strong>定位</strong> 面试破冰 + 全局架构</span>
+  <span><strong>覆盖题数</strong> 4 题</span>
+  <span><strong>难度</strong> ★★★☆☆</span>
+  <span><strong>时长</strong> ~30 分钟</span>
+</div>
+
+<h2 id="s1">一、课程概述</h2>
+
+<p>本章覆盖面试开场的 4 道高频题，看似简单，实则是面试官建立第一印象的关键环节。自我介绍决定后续追问方向，五层架构是整场面试的骨架，讲不清就后面全塌。</p>
+
+<table>
+<tr><th>题号</th><th>考察维度</th><th>权重</th><th>面试官意图</th></tr>
+<tr><td>Q1</td><td>自我介绍</td><td>15%</td><td>表达能力、技术亮点提炼、岗位匹配度</td></tr>
+<tr><td>Q2</td><td>职业选择逻辑</td><td>10%</td><td>自我认知、技术判断力、是否跟风</td></tr>
+<tr><td>Q3</td><td>算法 vs 工程对比</td><td>10%</td><td>岗位理解深度、优劣势坦诚度</td></tr>
+<tr><td>Q4</td><td>五层架构详解</td><td>25%</td><td>系统全局观、技术深度、上下游理解</td></tr>
+</table>
+
+<div class="highlight-box">
+  <strong>核心风险提示</strong>：严厉评价指出"分布式调度与Agent业务的耦合讲的弱，看起来两块是分开做的"。Q4 必须讲清楚 Agent 画布如何通过 app-gateway 提交任务到调度平台，形成端到端闭环，否则会被扣分。
+</div>
+
+<h2 id="s2">二、核心知识精讲</h2>
+
+<h3>2.1 DreamMaker 平台定位</h3>
+
+<p>DreamMaker 是网易互娱内部的 AI 美术平台，目标是把市面上的 AI 模型（文生图、图生视频、3D生成、语音等）统一封装成内部服务，让游戏美术师通过智能体交互完成创作，从"亲手画"转变为"驾驭 AI Agent 操作"。</p>
+
+<h3>2.2 五层微服务架构</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph L1["第一层：外部请求层"]
+        Client["Monet 桌面客户端<br/>（Electron + Agent）"]
+        Web["DreamMaker 主站<br/>（Web 前端）"]
+    end
+
+    subgraph L2["第二层：业务服务层"]
+        AG["app-gateway<br/>任务入口 · 参数校验 · 入队"]
+        BizSvc["其他业务服务<br/>（用户/项目/素材管理）"]
+    end
+
+    subgraph L3["第三层：基础服务层"]
+        WS["worker-scheduler<br/>Leader 选举 · 任务分配"]
+        Redis["Redis<br/>ZSet 优先级队列"]
+        Etcd["etcd<br/>服务注册 · 配置"]
+        Mongo["MongoDB<br/>任务持久化"]
+    end
+
+    subgraph L4["第四层：Worker 执行层"]
+        SC["worker-sidecar<br/>任务执行 · 状态上报"]
+        W1["图像 Worker"]
+        W2["视频 Worker"]
+        W3["3D Worker"]
+        W4["LLM Worker"]
+        Wn["... 共 10 类"]
+    end
+
+    subgraph L5["第五层：外部供应商层"]
+        P1["Stable Diffusion"]
+        P2["腾讯混元"]
+        P3["火山引擎"]
+        P4["OpenAI / 其他"]
+    end
+
+    Client -->|"HTTP/SSE"| AG
+    Web -->|"HTTP"| AG
+    AG -->|"入队"| Redis
+    AG -->|"记录"| Mongo
+    WS -->|"消费分配"| Redis
+    WS -->|"Watch 节点"| Etcd
+    WS -->|"分配任务"| SC
+    SC --> W1 & W2 & W3 & W4 & Wn
+    W1 & W2 & W3 --> P1 & P2 & P3 & P4
+    SC -->|"状态回调"| Mongo
+</pre>
+</div>
+
+<h3>2.3 Agent 到调度的端到端链路（核心！）</h3>
+
+<p>这是面试官最容易追问的点——Agent 画布和调度平台如何打通：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    participant U as 用户（画布UI）
+    participant A as Monet Agent<br/>（Python/LangGraph）
+    participant GW as app-gateway<br/>（Go）
+    participant S as worker-scheduler
+    participant W as Worker + Sidecar
+    participant P as 外部供应商
+
+    U->>A: "帮我生成一张赛博朋克风格图"
+    A->>A: LLM 推理 → 选择 create_image 工具
+    A->>GW: HTTP POST /api/task（带参数、画布ID）
+    GW->>GW: 参数校验 + 权限检查
+    GW->>GW: 写入 Redis ZSet（score=优先级+时间戳）
+    GW-->>A: 返回 task_id
+    A-->>U: SSE 推送"任务已提交，排队中..."
+
+    S->>S: ZRange 消费 → ZRem 抢占
+    S->>W: gRPC 分配任务
+    W->>P: 调用 Stable Diffusion API
+    P-->>W: 返回图片
+    W->>W: 上传结果到 OSS
+    W-->>S: 状态回调（成功 + 结果URL）
+    S-->>GW: 任务完成通知
+    GW-->>A: 回调/轮询获取结果
+    A-->>U: SSE 推送"生成完成" + 渲染到画布
+</pre>
+</div>
+
+<h3>2.4 各层技术选型 WHY</h3>
+
+<table>
+<tr><th>组件</th><th>选型</th><th>为什么</th></tr>
+<tr><td>Agent 框架</td><td>LangGraph</td><td>原生状态机 + Checkpointer 持久化 + interrupt 人机交互，比 LangChain AgentExecutor 更灵活可控</td></tr>
+<tr><td>Agent 服务</td><td>FastAPI + Asyncio</td><td>原生 async 支持 SSE 长连接，性能优于 Flask</td></tr>
+<tr><td>网关/调度</td><td>Go + Hertz/Fiber</td><td>高并发低延迟，适合 IO 密集的任务分发</td></tr>
+<tr><td>任务队列</td><td>Redis ZSet</td><td>天然有序集合支持优先级，ZRem 原子操作无需分布式锁</td></tr>
+<tr><td>服务发现</td><td>etcd</td><td>Lease + Watch 实现心跳和实时感知，比 ZooKeeper 轻量</td></tr>
+<tr><td>任务存储</td><td>MongoDB</td><td>AI 任务参数高度异构（图像/视频/3D字段完全不同），Schema-free 适配</td></tr>
+<tr><td>编排部署</td><td>K8s StatefulSet</td><td>Worker 需要稳定网络标识 + 有序扩缩容</td></tr>
+</table>
+
+<h3>2.5 算法岗 vs Agent 应用岗对比</h3>
+
+<table>
+<tr><th>维度</th><th>模型算法岗</th><th>Agent 应用开发岗</th></tr>
+<tr><td>核心技能</td><td>模型训练、微调、数据工程、评测</td><td>系统设计、工程架构、工具链、可靠性</td></tr>
+<tr><td>日常工作</td><td>实验→调参→评测→论文</td><td>需求→架构→编码→联调→部署→运维</td></tr>
+<tr><td>技术栈</td><td>PyTorch、HuggingFace、vLLM</td><td>LangGraph、FastAPI、Go、Redis、K8s</td></tr>
+<tr><td>衡量标准</td><td>Benchmark 指标提升</td><td>系统稳定性、用户体验、工程质量</td></tr>
+<tr><td>职业天花板</td><td>需要顶刊/顶会背景</td><td>偏向架构师/技术Leader方向</td></tr>
+</table>
+
+<h2 id="s3">三、面试易错点</h2>
+
+<div class="highlight-box">
+<strong>致命错误 1</strong>：自我介绍流水账念简历。面试官已经看过简历，重复念一遍浪费时间。应该提炼 2-3 个技术亮点，用一句话概括每个。
+</div>
+
+<div class="highlight-box">
+<strong>致命错误 2</strong>：讲五层架构时只讲调度不讲 Agent，或只讲 Agent 不讲调度。必须讲清楚两者如何打通——Agent 的工具调用如何变成调度平台的任务。
+</div>
+
+<div class="highlight-box">
+<strong>致命错误 3</strong>：被问"为什么选 Agent 不选算法"时贬低算法岗。正确话术是"两者都有价值，我选择 Agent 是因为我的技能组合和职业兴趣更匹配工程侧"。
+</div>
+
+<div class="highlight-box">
+<strong>致命错误 4</strong>：被追问"LangGraph 换掉你还能做吗"时心虚。要展示对底层原理的理解——状态机本质就是 while 循环 + 状态字典 + 条件路由，框架只是封装。
+</div>
+
+<h2 id="s4">四、满分逐字稿</h2>
+
+<h3>Q1：1分钟 / 3分钟自我介绍</h3>
+
+<div class="script-block">
+<span class="script-label">1 分钟版</span>
+<h4>面试标准逐字稿</h4>
+<p>面试官好，我叫XXX，目前研究生在读，求职方向是 AI Agent 应用开发。</p>
+<p>我有两段大厂 AI 实习经历。最近一段在<strong>网易互娱 AI Lab</strong>，负责 DreamMaker AI 美术平台的核心开发，做了两个模块：一个是<strong>Monet AI Agent 画布</strong>，基于 Python 和 LangGraph 搭建了分层上下文感知架构、SSE 流式协议和人机审批引擎，让 Agent 能实时感知画布状态并安全地执行创作操作；另一个是<strong>分布式 AI 任务调度平台</strong>，用 Go 和 Redis/etcd/K8s 实现了优先级队列调度、弹性扩缩容和供应商容错降级，支撑 10 类 AI 任务的高可用执行。</p>
+<p>之前在<strong>科大讯飞</strong>做过 13B 多模态大模型的 SFT 微调，负责长 CoT 数据集构建和评测，MathVista 指标提升了 14.6%。这段经历让我理解模型能力的边界，反过来指导我在 Agent 工程侧做更合理的设计。</p>
+<p>总结来说，我的优势是<strong>既懂模型又懂工程</strong>，能从 Agent 应用层一直贯通到底层调度和模型推理，期待能深入交流。</p>
+</div>
+
+<div class="script-block">
+<span class="script-label">3 分钟版（在1分钟版基础上展开）</span>
+<h4>面试标准逐字稿</h4>
+<p>面试官好，我叫XXX，研究生在读，求职方向是 AI Agent 应用开发。我有两段大厂 AI 实习，一段偏模型微调，一段偏 Agent 工程，覆盖了从模型训练到系统落地的完整链路。</p>
+
+<p><strong>最近一段在网易互娱 AI Lab</strong>，做 DreamMaker AI 美术平台。这个平台服务网易内部游戏美术师，把各种 AI 生成能力（图像、视频、3D）封装成统一服务。我主要负责两个核心模块：</p>
+
+<p>第一个是 <strong>Monet AI Agent 画布</strong>。核心挑战是 LLM 无法直接感知动态画布状态——如果把全量画布信息塞进 System Prompt，Token 会爆炸；如果不给，Agent 就是瞎操作。我设计了一套<strong>三层分层上下文注入架构</strong>：入口层通过 ContextVar 做会话隔离并预加载画布概览，推理层每次 LLM 调用前动态注入最新快照，工具层让 Agent 按需查询细节。这套方案把常驻 Token 降了约 40%。此外我还做了基于 LangGraph Checkpointer 的<strong>对话断点恢复</strong>、<strong>SSE 流式协议</strong>（抽象适配器基类实现框架无感切换）、以及基于 interrupt 机制的 <strong>HITL 人机审批引擎</strong>，高危操作必须人工确认才能执行。</p>
+
+<p>第二个是<strong>分布式 AI 任务调度平台</strong>，用 Go 开发。我基于 Redis ZSet 搭建了优先级任务队列，用 ZRange+ZRem 无锁乐观抢占避免分布式锁开销，实现加权轮询调度防止低优先级饥饿，吞吐量提升约 25%。高可用方面，基于 etcd Lease+Watch 做 Worker 心跳检测和服务发现，搭建了自定义 K8s 扩缩容模块按队列积压动态扩缩 StatefulSet，空闲算力降低约 35%。还针对第三方供应商 429 限流设计了指数退避+备用链路切换的容错降级，任务失败率降了约 50%。</p>
+
+<p><strong>之前在科大讯飞</strong>做 13B 星火多模态大模型的 SFT 后训练。我负责搭建长 CoT 数据集生产流水线，产出 30 万+高质量样本；用 LoRA 做轻量化微调，基于 vLLM 搭建评测服务，MathVista 提升 14.6%，MMVet 提升 16.4%。这段经历让我深入理解了模型能力边界——知道模型什么时候会幻觉、什么时候推理会断链，这直接影响了我在 Agent 侧设计 HITL 审批和输出校验的思路。</p>
+
+<p>总结来说，我的核心优势是<strong>模型理解+工程落地的双重能力</strong>，能从 Agent 交互层贯通到底层分布式调度，期待和您深入交流。</p>
+</div>
+
+<h3>Q2：为什么主攻 Agent/AI 应用开发？职业选择逻辑？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p>这个问题我认真想过。<strong>结论是：我选择 Agent 应用开发不是因为算法不好，而是因为我的能力模型和职业兴趣更匹配工程落地侧。</strong></p>
+
+<p>在讯飞做多模态微调的时候，我发现自己最有成就感的不是调出更高的 Benchmark 分数，而是把数据流水线搭通、把评测链路自动化、把推理服务部署上线这些工程问题。模型训练很多时候是"调参→等结果→再调参"，而我更喜欢"发现问题→设计方案→写代码→看到系统跑起来"的快节奏反馈循环。</p>
+
+<p>到了网易做 Agent 画布，这种感觉更强烈了。Agent 应用开发需要<strong>同时理解模型能力边界和工程系统约束</strong>——你得知道 LLM 什么时候会幻觉所以需要 HITL 审批，你得知道 Token 窗口有限所以需要分层上下文，你还得处理分布式调度、并发、容错这些纯工程问题。这种"模型+系统"的交叉点，恰好是我两段实习经历的交集。</p>
+
+<p>而且从行业趋势看，<strong>大模型能力正在快速商品化</strong>，未来的竞争壁垒越来越在应用层——怎么把模型能力可靠地、高效地、安全地交付给用户。这个方向需要的恰恰是 Agent 应用工程师。</p>
+
+<p>当然，我也清楚自己的短板：没有顶会论文、模型理论深度不如专业算法同学。但我认为在 Agent 应用岗位上，<strong>工程架构能力和系统设计能力</strong>的权重更高，这是我的优势区。</p>
+</div>
+
+<h3>Q3：算法岗 vs Agent 应用岗核心区别？你的优劣势？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>我认为核心区别在于优化目标不同：算法岗优化模型指标，Agent 应用岗优化系统指标。</strong></p>
+
+<p>具体来说，算法岗的日常是数据清洗、模型训练、调参、评测，衡量标准是 Benchmark 分数提升了多少个点。Agent 应用岗的日常是需求分析、架构设计、编码联调、部署运维，衡量标准是系统稳定性、响应延迟、用户体验。</p>
+
+<p>但两者有一个重要交集：<strong>Agent 应用工程师必须理解模型能力边界</strong>。比如我在设计 HITL 审批引擎时，之所以把写入操作设为强制审批，就是因为在讯飞做微调时深刻体会到 LLM 的幻觉问题——模型可能"自信地"调用错误工具或传错参数。不懂模型的 Agent 工程师，设计出来的系统要么过于信任模型（出事故），要么过于不信任模型（体验差）。</p>
+
+<p>我的<strong>优势</strong>：两段实习覆盖了模型和工程两侧，能做到端到端理解。在网易我同时做了 Agent 应用层（Python/LangGraph）和底层调度（Go/Redis/etcd/K8s），技术栈覆盖面比较广。</p>
+
+<p>我的<strong>短板</strong>也很明确：没有顶会论文经历，模型理论深度不够，如果面试官深挖 Transformer 架构细节或训练优化技巧，我的回答深度有限。另外在 Agent 记忆系统（长时记忆、向量检索）方面，我的项目经验是空白的，目前只做了会话内的短时上下文优化。这是我后续需要补的。</p>
+</div>
+
+<h3>Q4：DreamMaker 五层微服务架构详解</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿（核心重点题）</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>DreamMaker 采用五层微服务架构，从上到下分别是：外部请求层、业务服务层、基础服务层、Worker 执行层、外部供应商层。</strong>我按请求链路从上往下讲。</p>
+
+<p><strong>第一层是外部请求层</strong>，包括 Monet 桌面客户端和 DreamMaker 主站 Web 前端。Monet 客户端是 Electron 应用，内嵌了我做的 Agent 服务，用户在画布上对话，Agent 理解意图后调用工具。主站是 Web 端，提供更完整的项目管理和素材管理功能。两个入口都通过 HTTP 请求打到下一层。</p>
+
+<p><strong>第二层是业务服务层</strong>，核心组件是 app-gateway。它负责三件事：<strong>任务入口接收、参数校验、入队</strong>。当 Agent 决定生成一张图片时，它调用 create_image 工具，这个工具实际上是向 app-gateway 发 HTTP POST 请求。Gateway 校验参数合法性、检查用户配额，然后把任务写入 Redis ZSet 队列，同时在 MongoDB 创建任务记录，返回 task_id。这一层还有其他业务服务处理用户管理、项目管理等非 AI 任务。</p>
+
+<p><strong>第三层是基础服务层</strong>，核心是 worker-scheduler。它做两件事：<strong>Leader 选举和任务分配</strong>。多个 scheduler 实例通过 etcd 做 Leader 选举，只有 Leader 负责消费 Redis 队列和分配任务。消费方式是 ZRange 获取最高优先级任务，然后 ZRem 原子删除实现无锁抢占。分配时根据 Worker 类型匹配和负载情况，把任务 gRPC 推送给对应的 Worker Sidecar。这一层还依赖 etcd 做服务注册发现和配置管理，Redis 做任务队列，MongoDB 做任务持久化。</p>
+
+<p><strong>第四层是 Worker 执行层</strong>，由 worker-sidecar 加各类 Worker 组成。Sidecar 是统一的任务执行框架，负责接收任务、调用具体 Worker、上报状态和结果。Worker 分 10 大类：图像、视频、3D、腾讯混元、火山引擎、语音、LLM、工具类、工作流、桌面软件。每类 Worker 封装了对应的 AI 能力调用逻辑。部署上用 K8s StatefulSet，因为 Worker 需要稳定的网络标识来和 scheduler 的注册信息对应，而且缩容时需要有序地从最大序号开始下掉空闲节点。</p>
+
+<p><strong>第五层是外部供应商层</strong>，包括 Stable Diffusion、腾讯混元、火山引擎、OpenAI 等。Worker 通过 HTTP/gRPC 调用这些外部 API。因为供应商接口不稳定，经常返回 429 限流，所以我在这一层设计了指数退避重试+备用供应商切换的容错降级策略。</p>
+
+<p><strong>整个链路打通来看</strong>：用户在画布上说"生成一张图"→ Agent 推理选择工具 → 工具调用 app-gateway 入队 → scheduler 消费分配 → Worker 调用供应商 → 结果回传 → Agent 通过 SSE 推送给前端渲染。这是我实际参与的端到端链路，Agent 侧和调度侧我都有代码贡献。</p>
+</div>
+
+<div class="defend">
+<h4>追问防御</h4>
+<p><strong>追问1：你说 Agent 侧和调度侧都参与了，具体哪些是你写的？</strong></p>
+<p>回答：Agent 画布侧我是主要开发者，三层上下文、SSE 协议、HITL 引擎都是我设计和实现的。调度侧我是"参与"角色，主要贡献在优先级队列的加权轮询调度算法和供应商容错降级模块，整体架构是团队 senior 设计的，我在理解架构的基础上负责具体模块的实现和优化。</p>
+
+<p><strong>追问2：这个架构有什么不足？</strong></p>
+<p>回答：目前有几个技术债。一是 scheduler 虽然做了 Leader 选举但只有单 Leader 消费队列，高峰期可能成为瓶颈，后续可以考虑分片消费。二是 Agent 侧的 Checkpointer 用的是本地 SQLite，多实例部署时状态不共享，生产环境应该换成 PostgreSQL 或 Redis 后端。三是 Agent 和调度平台之间目前是同步轮询获取结果，理想方案是基于 WebSocket 或消息队列做异步回调。</p>
+</div>
+
+<h2 id="s5">五、知识速查表</h2>
+
+<table>
+<tr><th>概念</th><th>一句话解释</th></tr>
+<tr><td>app-gateway</td><td>任务入口网关：校验 → 入队 → 返回 task_id</td></tr>
+<tr><td>worker-scheduler</td><td>调度中心：Leader 选举 → 消费队列 → 分配任务</td></tr>
+<tr><td>worker-sidecar</td><td>执行框架：接收任务 → 调用 Worker → 上报结果</td></tr>
+<tr><td>Redis ZSet</td><td>优先级队列：score = 优先级权重 + 时间戳</td></tr>
+<tr><td>etcd Lease</td><td>服务注册 + 心跳：TTL 90s，30s 续约</td></tr>
+<tr><td>StatefulSet</td><td>有状态部署：稳定网络标识 + 有序扩缩容</td></tr>
+<tr><td>LangGraph</td><td>Agent 状态机框架：节点 + 边 + State + Checkpointer</td></tr>
+<tr><td>ContextVar</td><td>Python asyncio 请求级上下文隔离</td></tr>
+</table>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral', securityLevel: 'loose'});</script>
+
+<button id="toc-toggle" onclick="document.getElementById('toc-sidebar').classList.toggle('open')">&#9776; 目录</button>
+<nav id="toc-sidebar">
+  <h3>目录导航</h3>
+  <ul id="toc-list"></ul>
+</nav>
+<script>
+(function(){
+  var hs=Array.from(document.querySelectorAll('h1,h2,h3')).filter(function(h){return !h.closest('#toc-sidebar');});
+  var ul=document.getElementById('toc-list');
+  hs.forEach(function(h,i){
+    if(!h.id)h.id='sec-'+i;
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href='#'+h.id; a.textContent=h.textContent;
+    a.className='toc-'+h.tagName.toLowerCase();
+    a.onclick=function(e){e.preventDefault();document.getElementById(h.id).scrollIntoView({behavior:'smooth'});document.getElementById('toc-sidebar').classList.remove('open');};
+    li.appendChild(a);ul.appendChild(li);
+  });
+  var links=ul.querySelectorAll('a');
+  var ticking=false;
+  window.addEventListener('scroll',function(){
+    if(!ticking){requestAnimationFrame(function(){
+      var cur='';
+      hs.forEach(function(h){if(h.getBoundingClientRect().top<=100)cur=h.id;});
+      links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur);});
+      ticking=false;
+    });ticking=true;}
+  });
+})();
+</script>
+
+</body>
+</html>

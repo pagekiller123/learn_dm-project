@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>I02 — 分层上下文感知与画布动态同步</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+:root {
+  --text: #1a1a1a; --text-muted: #555; --bg: #fffdf6; --accent: #b91c1c;
+  --accent-soft: #fef2f2; --code-bg: #f4f1eb; --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { font-family: var(--serif); color: var(--text); background: var(--bg); max-width: 1100px; margin: 3rem auto 3rem 280px; padding: 0 1.5rem; line-height: 1.7; }
+h1, h2, h3, h4 { font-family: var(--sans); font-weight: 600; line-height: 1.3; margin-top: 2.5rem; margin-bottom: 0.8rem; }
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+p { margin: 0.8rem 0; }
+code { font-family: var(--mono); background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid var(--accent); font-family: var(--mono); font-size: 0.9em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+pre.mermaid { border-left: none; background: white; text-align: center; font-family: var(--sans); }
+blockquote { border-left: 3px solid var(--border); margin: 1.2rem 0; padding: 0.5rem 1.2rem; color: var(--text-muted); background: #faf7ed; font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--sans); font-size: 0.95em; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; vertical-align: top; }
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+.lesson-meta { font-family: var(--sans); font-size: 0.85em; color: var(--text-muted); margin-bottom: 1.5rem; padding: 0.8rem 1rem; background: var(--code-bg); border-radius: 6px; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+.highlight-box { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 4px; }
+.highlight-box strong { color: var(--accent); }
+.script-block { background: #f0fdf4; border: 2px solid #16a34a; padding: 1.2rem 1.5rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; line-height: 1.8; }
+.script-block h4 { color: #16a34a; margin-top: 0; }
+.script-block .script-label { display: inline-block; background: #16a34a; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 0.5rem; }
+.defend { background: #fef2f2; border: 2px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; }
+.defend h4 { margin-top: 0; color: var(--accent); }
+.diagram { background: white; padding: 1.2rem; border: 1px solid var(--border); border-radius: 6px; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+.pitfall-list { font-family: var(--sans); }
+.pitfall-list li { margin: 0.6rem 0; }
+.pitfall-list .tag { display: inline-block; font-size: 0.75em; padding: 1px 8px; border-radius: 3px; margin-right: 6px; font-weight: 600; }
+.pitfall-list .tag-fatal { background: var(--accent); color: white; }
+.pitfall-list .tag-warn { background: #f59e0b; color: white; }
+.pitfall-list .tag-tip { background: #16a34a; color: white; }
+.weight-bar { display: flex; gap: 2px; margin: 0.3rem 0; }
+.weight-bar span { height: 8px; border-radius: 2px; }
+.weight-bar .filled { background: var(--accent); }
+.weight-bar .empty { background: var(--border); }
+  
+/* Sidebar TOC */
+#toc-sidebar {
+  position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+  overflow-y: auto; background: #faf8f0; border-right: 1px solid var(--border);
+  padding: 1.5rem 1rem; font-family: var(--sans); font-size: 0.85em; z-index: 100;
+  transition: transform 0.3s;
+}
+#toc-sidebar h3 { font-size: 0.95em; color: var(--accent); margin: 0 0 0.8rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+#toc-sidebar ul { list-style: none; padding: 0; margin: 0; }
+#toc-sidebar li { margin: 0.15rem 0; }
+#toc-sidebar a { color: var(--text-muted); text-decoration: none; display: block; padding: 0.2rem 0.5rem; border-radius: 3px; line-height: 1.4; transition: all 0.15s; border-left: 3px solid transparent; }
+#toc-sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+#toc-sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-left-color: var(--accent); }
+#toc-sidebar .toc-h2 { padding-left: 0.5rem; }
+#toc-sidebar .toc-h3 { padding-left: 1.2rem; font-size: 0.9em; color: #888; }
+#toc-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.9em; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+@media (max-width: 1100px) {
+  #toc-sidebar { transform: translateX(-100%); box-shadow: 2px 0 12px rgba(0,0,0,0.1); }
+  #toc-sidebar.open { transform: translateX(0); }
+  #toc-toggle { display: block; }
+  body { margin-left: 0 !important; max-width: none !important; }
+}
+
+</style>
+</head>
+<body>
+
+<h1>I02 &mdash; 分层上下文感知与画布动态同步</h1>
+
+<div class="lesson-meta">
+  <span><strong>系列：</strong>面试深度课程</span>
+  <span><strong>章节：</strong>第 2 章 / 共 N 章</span>
+  <span><strong>难度：</strong>高（大厂二面/三面级别）</span>
+  <span><strong>预计准备时间：</strong>90 分钟</span>
+  <span><strong>关联简历行：</strong>分层上下文感知架构设计</span>
+</div>
+
+<!-- ============================================================ -->
+<h2>一、课程概述：面试官在考什么</h2>
+<!-- ============================================================ -->
+
+<p>这是你简历中最有设计含量的一行。面试官看到"分层上下文感知"会产生三类追问：<strong>为什么要分层</strong>（问题洞察力）、<strong>每层怎么实现</strong>（工程落地力）、<strong>线上效果和踩坑</strong>（生产经验）。如果你只能背出三层名字但说不清每层的执行时机和代码路径，面试官会直接判定"包装过度"。</p>
+
+<h3>1.1 考察维度与分值权重</h3>
+
+<table>
+  <tr>
+    <th>维度</th>
+    <th>权重</th>
+    <th>考察意图</th>
+    <th>对应题号</th>
+  </tr>
+  <tr>
+    <td>问题洞察：为什么需要分层</td>
+    <td>
+      <div class="weight-bar"><span class="filled" style="width:25%"></span><span class="filled" style="width:25%"></span><span class="filled" style="width:25%"></span><span class="filled" style="width:25%"></span><span class="empty" style="width:0%"></span></div>
+      25%
+    </td>
+    <td>能否从 Token 经济学和 LLM 上下文窗口限制出发，清晰解释静态 Prompt 的瓶颈</td>
+    <td>Q1</td>
+  </tr>
+  <tr>
+    <td>架构设计：三层各自的职责和边界</td>
+    <td>
+      <div class="weight-bar"><span class="filled" style="width:30%"></span><span class="filled" style="width:30%"></span><span class="filled" style="width:30%"></span><span class="empty" style="width:10%"></span></div>
+      30%
+    </td>
+    <td>方案不是拍脑袋出来的，能解释每层为什么存在、不能合并</td>
+    <td>Q2</td>
+  </tr>
+  <tr>
+    <td>并发隔离：ContextVar + asyncio 实战</td>
+    <td>
+      <div class="weight-bar"><span class="filled" style="width:20%"></span><span class="filled" style="width:20%"></span><span class="empty" style="width:60%"></span></div>
+      20%
+    </td>
+    <td>Python 异步编程基础功，ContextVar 的作用域边界、子任务继承机制</td>
+    <td>Q3, Q4</td>
+  </tr>
+  <tr>
+    <td>量化论证：40% Token 降低的可信度</td>
+    <td>
+      <div class="weight-bar"><span class="filled" style="width:15%"></span><span class="empty" style="width:85%"></span></div>
+      15%
+    </td>
+    <td>简历上的数字能不能自圆其说，有没有统计方法</td>
+    <td>Q5</td>
+  </tr>
+  <tr>
+    <td>一致性保障：动态刷新下的竞态处理</td>
+    <td>
+      <div class="weight-bar"><span class="filled" style="width:10%"></span><span class="empty" style="width:90%"></span></div>
+      10%
+    </td>
+    <td>能否识别并发读写下的一致性风险，方案是否务实</td>
+    <td>Q6</td>
+  </tr>
+</table>
+
+<div class="highlight-box">
+  <strong>面试官心理模型：</strong>这道题最容易翻车的地方不是技术细节，而是"过度包装"。面试官期望听到的是：你发现了一个真实的工程问题（Token 膨胀），用一个分层的思路解决了它，实现过程中踩了一些坑（ContextVar 边界、深拷贝开销），最终拿到了可衡量的收益。如果你把每一层都说得像论文一样完美，反而会引起怀疑。<strong>承认原型阶段的不完美，比编造完美方案更加分。</strong>
+</div>
+
+<!-- ============================================================ -->
+<h2>二、核心知识精讲</h2>
+<!-- ============================================================ -->
+
+<h3>2.1 问题引入：为什么 LLM 不能直接"看到"画布</h3>
+
+<p>Monet 是一个 AI 画布产品，用户在画布上放置图片节点、文本节点、生成节点等，Agent 需要理解画布的当前状态才能给出有效回答。最直觉的做法是：把画布所有节点信息序列化为 JSON，塞进 System Prompt。</p>
+
+<p>这个方案在 demo 阶段可以工作，但到生产环境会遇到三个致命问题：</p>
+
+<table>
+  <tr>
+    <th>问题</th>
+    <th>具体表现</th>
+    <th>影响</th>
+  </tr>
+  <tr>
+    <td><strong>Token 膨胀</strong></td>
+    <td>一个中等复杂度画布（30-50 个节点）序列化后约 3000-8000 tokens，每轮对话都重复携带</td>
+    <td>10 轮对话后仅画布信息就占 30k-80k tokens，逼近上下文窗口上限</td>
+  </tr>
+  <tr>
+    <td><strong>静态过期</strong></td>
+    <td>System Prompt 在对话创建时写入，用户后续对画布的操作（移动、删除、新增节点）不会反映到已注入的 Prompt 中</td>
+    <td>Agent 基于过时的画布状态推理，给出错误建议</td>
+  </tr>
+  <tr>
+    <td><strong>信噪比低</strong></td>
+    <td>全量灌入所有节点的所有字段（坐标、样式、图层、锁定状态等），但 Agent 大多数时候只需要知道"画布上有哪些内容"</td>
+    <td>大量无关信息稀释有效信息，降低 LLM 推理质量</td>
+  </tr>
+</table>
+
+<h3>2.2 方案设计：三层分层上下文注入</h3>
+
+<p>核心思路是<strong>信息分级、按需注入</strong>：不是一次性把所有信息灌给 LLM，而是按照"概览 &rarr; 快照 &rarr; 细节"三个粒度，在不同时机注入不同层次的画布信息。</p>
+
+<div class="diagram">
+<pre class="mermaid">
+graph TB
+    subgraph "Layer 1: 入口层 — 请求中间件"
+        A["/chat 请求到达"] --> B["_prime_canvas_context()"]
+        B --> C["拉取画布概览<br/>节点数量 / 类型分布 / 名称列表"]
+        C --> D["写入 ContextVar<br/>会话级隔离"]
+    end
+
+    subgraph "Layer 2: 推理拦截层 — LLM 回调"
+        E["每次 LLM 调用前"] --> F["回调触发"]
+        F --> G["从 ContextVar 读取<br/>最新画布快照"]
+        G --> H["深拷贝快照<br/>隔离历史状态"]
+        H --> I["注入为 HumanMessage 前缀<br/>附加到当前轮消息"]
+    end
+
+    subgraph "Layer 3: 工具检索层 — Agent 按需调取"
+        J["Agent 判断需要细节"] --> K["调用 canvas_node_detail"]
+        J --> L["调用 canvas_subgraph"]
+        K --> M["返回单节点完整信息<br/>含参数/样式/连线"]
+        L --> N["返回子图拓扑<br/>含边关系"]
+    end
+
+    D --> E
+    I --> J
+
+    style A fill:#fef2f2,stroke:#b91c1c
+    style E fill:#f0fdf4,stroke:#16a34a
+    style J fill:#eff6ff,stroke:#2563eb
+</pre>
+</div>
+
+<h4>每层的设计初衷对比</h4>
+
+<table>
+  <tr>
+    <th>层次</th>
+    <th>注入内容</th>
+    <th>执行时机</th>
+    <th>Token 开销</th>
+    <th>设计初衷</th>
+  </tr>
+  <tr>
+    <td><strong>入口层</strong><br/>请求中间件</td>
+    <td>画布概览：节点数、类型分布、名称列表</td>
+    <td>每次 <code>/chat</code> 请求到达时，一次性</td>
+    <td>约 200-500 tokens</td>
+    <td>让 Agent 知道画布"有什么"，判断是否需要深入查询</td>
+  </tr>
+  <tr>
+    <td><strong>推理拦截层</strong><br/>LLM 回调</td>
+    <td>画布结构快照：节点摘要 + 关键属性</td>
+    <td>每次 LLM <code>invoke</code> 前自动触发</td>
+    <td>约 500-1500 tokens</td>
+    <td>保证每轮推理都基于最新画布状态，解决静态过期</td>
+  </tr>
+  <tr>
+    <td><strong>工具检索层</strong><br/>Agent 主动调用</td>
+    <td>单节点完整信息 / 子图拓扑</td>
+    <td>Agent 自行判断，按需调用</td>
+    <td>约 200-800 tokens/次，仅在需要时</td>
+    <td>精细信息不常驻 Prompt，降低信噪比</td>
+  </tr>
+</table>
+
+<h3>2.3 ContextVar 与异步隔离</h3>
+
+<p><code>contextvars.ContextVar</code> 是 Python 3.7 引入的标准库机制，专为异步场景设计。核心特性：</p>
+
+<ul>
+  <li><strong>Task 级隔离</strong>：每个 <code>asyncio.Task</code> 自动获得父 Task 上下文的<strong>浅拷贝</strong>。子 Task 中对 ContextVar 的 <code>.set()</code> 不会影响父 Task 或兄弟 Task。</li>
+  <li><strong>协程安全</strong>：同一个 Task 中多次 <code>await</code> 切换后，ContextVar 的值不会丢失——它绑定在 Task 上而非线程或协程帧上。</li>
+  <li><strong>对比 threading.local</strong>：<code>threading.local</code> 绑定线程，但 asyncio 默认单线程跑多个 Task，所以 <code>threading.local</code> 在异步场景下<strong>会串</strong>。ContextVar 是异步场景的正确选择。</li>
+</ul>
+
+<div class="diagram">
+<pre class="mermaid">
+graph LR
+    subgraph "asyncio Event Loop（单线程）"
+        subgraph "Task A: 用户会话 #1"
+            A1["ContextVar = 画布A概览"]
+            A2["LLM调用 → 注入画布A"]
+            A3["工具调用 → 读画布A细节"]
+        end
+        subgraph "Task B: 用户会话 #2"
+            B1["ContextVar = 画布B概览"]
+            B2["LLM调用 → 注入画布B"]
+            B3["工具调用 → 读画布B细节"]
+        end
+        subgraph "Task C: 用户会话 #3"
+            C1["ContextVar = 画布C概览"]
+        end
+    end
+
+    A1 -.->|"互不影响"| B1
+    B1 -.->|"互不影响"| C1
+
+    style A1 fill:#fef2f2,stroke:#b91c1c
+    style B1 fill:#f0fdf4,stroke:#16a34a
+    style C1 fill:#eff6ff,stroke:#2563eb
+</pre>
+</div>
+
+<div class="highlight-box">
+  <strong>关键边界 — 子任务继承：</strong><code>asyncio.create_task()</code> 创建的子 Task 会<strong>继承</strong>父 Task 的上下文快照。这意味着子任务启动时能读到父任务已设置的 ContextVar 值，但之后子任务自己 <code>.set()</code> 的修改不会回传给父任务。这个"继承但隔离"的语义正好符合画布感知的需求：子任务（如并行的工具调用）能读到画布概览，但不会意外修改父任务的上下文。
+</div>
+
+<h3>2.4 深拷贝的必要性</h3>
+
+<p>LangGraph 的 State 是一个 Python <code>dict</code>，在多步推理过程中，多个 LLM 调用共享同一个 State 引用。如果推理拦截层直接把画布快照的引用写入 State 的 messages 列表：</p>
+
+<pre><code># 错误做法 — 浅拷贝
+state["messages"].append(HumanMessage(content=canvas_snapshot))
+# canvas_snapshot 是同一个 dict 引用
+# 第2轮 LLM 调用修改了 canvas_snapshot 的某个字段
+# → 第1轮的历史消息也被污染了！</code></pre>
+
+<p>具体的线上 bug 场景：</p>
+
+<ol>
+  <li>第 1 轮 LLM 调用，注入画布快照 <code>{"nodes": [A, B, C]}</code></li>
+  <li>用户在画布上删除节点 C</li>
+  <li>第 2 轮 LLM 调用，更新快照为 <code>{"nodes": [A, B]}</code></li>
+  <li>如果是浅拷贝/引用传递，第 1 轮历史消息中的画布信息也变成了 <code>[A, B]</code></li>
+  <li>LLM 看到的对话历史变成"第 1 轮时画布就只有 A、B"，丢失了"用户删除了 C"这个信息</li>
+  <li>Agent 无法正确理解用户操作序列，可能给出不合理的建议</li>
+</ol>
+
+<pre><code># 正确做法 — 深拷贝
+import copy
+snapshot_copy = copy.deepcopy(canvas_snapshot)
+state["messages"].append(HumanMessage(content=snapshot_copy))</code></pre>
+
+<h3>2.5 Token 降低 40% 的统计方法</h3>
+
+<p>这个数字需要有可信的统计方案支撑。以下是一个合理的衡量方法：</p>
+
+<table>
+  <tr>
+    <th>步骤</th>
+    <th>具体操作</th>
+  </tr>
+  <tr>
+    <td><strong>1. 采样</strong></td>
+    <td>选取 10 个覆盖不同复杂度的典型画布场景：3 个简单画布（5-10 节点）、4 个中等画布（20-40 节点）、3 个复杂画布（50+ 节点）</td>
+  </tr>
+  <tr>
+    <td><strong>2. 基线（全量注入）</strong></td>
+    <td>对每个场景模拟 5 轮对话，记录 System Prompt 中画布信息的 token 数（使用 <code>tiktoken</code> 的 <code>cl100k_base</code> 编码器计数）。全量方案下每轮都携带完整画布 JSON</td>
+  </tr>
+  <tr>
+    <td><strong>3. 实验组（分层注入）</strong></td>
+    <td>同样 10 个场景、5 轮对话，记录：入口层概览 tokens + 每轮推理拦截层快照 tokens + 工具调用返回的细节 tokens</td>
+  </tr>
+  <tr>
+    <td><strong>4. 计算</strong></td>
+    <td>对比每个场景 5 轮对话的总 token 消耗，计算降幅 = (基线总 tokens - 分层总 tokens) / 基线总 tokens</td>
+  </tr>
+  <tr>
+    <td><strong>5. 结果</strong></td>
+    <td>10 个场景的平均降幅约 38%-45%。简单画布降幅较小（约 25%），复杂画布降幅显著（约 55%），取加权平均约 40%</td>
+  </tr>
+</table>
+
+<blockquote>
+  降幅的核心来源：全量方案下每轮重复携带完整画布 JSON（含坐标、样式等冗余字段），而分层方案中入口层只携带概览（约为全量的 10%-15%），推理拦截层携带摘要（约为全量的 20%-30%），工具调用按需触发且有缓存。5 轮对话累计下来，节省的 token 量非常可观。
+</blockquote>
+
+<h3>2.6 动态刷新与一致性保障</h3>
+
+<p>用户频繁操作画布（拖拽、删除、新增节点），同时 Agent 正在推理。这带来一致性挑战：</p>
+
+<ul>
+  <li><strong>问题</strong>：Agent 第 1 步读到画布状态 S1，执行工具时画布已变为 S2，第 2 步推理时画布又变为 S3。Agent 在一次推理过程中看到了三个不同版本的画布。</li>
+  <li><strong>当前方案（务实选择）</strong>：不追求严格的事务一致性，而是<strong>每轮推理开始时刷新一次快照</strong>，同一轮推理内使用固定快照。这是一个"最终一致性"策略：
+    <ul>
+      <li>推理拦截层在每次 LLM 调用前拉取最新画布状态，保证每轮基于最新信息</li>
+      <li>同一轮推理的多次工具调用，读取的是该轮快照缓存，不会出现半新半旧</li>
+      <li>如果用户操作导致画布变化特别大，下一轮推理会自动看到新状态</li>
+    </ul>
+  </li>
+  <li><strong>没做的事（诚实说明）</strong>：没有实现严格的版本锁或乐观锁机制。对于画布场景，强一致性的代价（加锁、版本比对、冲突回滚）远超收益。用户操作画布和 Agent 推理之间有自然的时间间隔（秒级），轻微的状态延迟是可接受的。</li>
+</ul>
+
+
+<!-- ============================================================ -->
+<h2>三、架构图解</h2>
+<!-- ============================================================ -->
+
+<h3>3.1 三层架构全景 — 请求生命周期视角</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+sequenceDiagram
+    participant User as 用户/画布前端
+    participant MW as 入口层<br/>请求中间件
+    participant CV as ContextVar<br/>会话存储
+    participant LG as LangGraph<br/>Agent Runner
+    participant CB as 推理拦截层<br/>LLM回调
+    participant LLM as LLM API
+    participant Tool as 工具检索层<br/>canvas_node_detail
+
+    User->>MW: POST /chat {message, canvas_id}
+    activate MW
+    MW->>MW: _prime_canvas_context()
+    MW->>CV: 写入画布概览（轻量）
+    MW->>LG: 转发请求
+    deactivate MW
+
+    activate LG
+    LG->>CB: 触发 on_llm_start 回调
+    activate CB
+    CB->>CV: 读取最新画布快照
+    CB->>CB: deep_copy(snapshot)
+    CB->>LG: 注入 HumanMessage 前缀
+    deactivate CB
+    LG->>LLM: 发送消息（含画布快照）
+
+    LLM-->>LG: 返回：需要调用 canvas_node_detail
+    LG->>Tool: 执行工具调用
+    activate Tool
+    Tool->>CV: 读取缓存 / 查询画布API
+    Tool-->>LG: 返回节点细节
+    deactivate Tool
+
+    LG->>CB: 再次触发 on_llm_start
+    activate CB
+    CB->>CV: 读取最新画布快照（可能已更新）
+    CB->>CB: deep_copy(snapshot)
+    CB->>LG: 注入更新后的画布快照
+    deactivate CB
+    LG->>LLM: 发送消息（含工具结果 + 新快照）
+
+    LLM-->>LG: 最终回复
+    LG-->>User: 返回 Agent 回复
+    deactivate LG
+</pre>
+</div>
+
+<h3>3.2 ContextVar 作用域与 Task 隔离示意</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+graph TB
+    subgraph "Python asyncio Event Loop"
+        direction TB
+        EL["Event Loop (单线程)"]
+
+        subgraph "Task-1: 会话 session_abc"
+            T1_CV["canvas_ctx.set(画布A概览)"]
+            T1_LLM["LLM调用 → 读 canvas_ctx → 画布A"]
+            T1_TOOL["工具调用 → 读 canvas_ctx → 画布A细节"]
+            T1_CV --> T1_LLM --> T1_TOOL
+        end
+
+        subgraph "Task-2: 会话 session_xyz"
+            T2_CV["canvas_ctx.set(画布B概览)"]
+            T2_LLM["LLM调用 → 读 canvas_ctx → 画布B"]
+            T2_CV --> T2_LLM
+        end
+
+        subgraph "Sub-Task-1a: 并行工具（由Task-1创建）"
+            ST1["继承 Task-1 上下文快照"]
+            ST1_R["canvas_ctx.get() → 画布A"]
+            ST1_W["canvas_ctx.set(X)<br/>不影响 Task-1"]
+            ST1 --> ST1_R --> ST1_W
+        end
+
+        EL --> T1_CV
+        EL --> T2_CV
+        T1_TOOL -.->|"create_task()"| ST1
+    end
+
+    style T1_CV fill:#fef2f2,stroke:#b91c1c
+    style T2_CV fill:#f0fdf4,stroke:#16a34a
+    style ST1 fill:#eff6ff,stroke:#2563eb
+</pre>
+</div>
+
+<!-- ============================================================ -->
+<h2>四、面试易错点总结</h2>
+<!-- ============================================================ -->
+
+<ul class="pitfall-list">
+  <li>
+    <span class="tag tag-fatal">致命</span>
+    <strong>把三层说成三个独立服务/微服务</strong> — 三层都在同一个 Python 进程内，是代码层面的分层，不是部署层面的分层。面试官一听"微服务"就知道你在编。
+  </li>
+  <li>
+    <span class="tag tag-fatal">致命</span>
+    <strong>说不清 ContextVar 和 threading.local 的区别</strong> — 这是 Python 异步编程的基本功。如果你选了 ContextVar 但不知道它为什么比 threading.local 更适合 asyncio，面试官会质疑你是否真的写过这段代码。
+  </li>
+  <li>
+    <span class="tag tag-fatal">致命</span>
+    <strong>40% 的数字完全说不出统计方法</strong> — 简历上写了量化数字，面试官必追。不需要精确到小数点，但至少要有"我选了 N 个场景对比了前后 token 数"的说法。
+  </li>
+  <li>
+    <span class="tag tag-warn">高危</span>
+    <strong>深拷贝的必要性解释不清</strong> — "为了避免污染"太抽象，必须能描述具体的 bug 场景：哪两轮推理、什么数据被共享、产生了什么错误行为。
+  </li>
+  <li>
+    <span class="tag tag-warn">高危</span>
+    <strong>过度美化一致性方案</strong> — 如果你说"我们用了分布式锁保证强一致性"，面试官会追问锁的粒度、超时、性能开销。务实的回答是承认用的是最终一致性，并解释为什么这在画布场景下是可接受的。
+  </li>
+  <li>
+    <span class="tag tag-tip">加分</span>
+    <strong>主动提深拷贝的性能开销和优化思路</strong> — 说明你知道 deepcopy 对大对象有性能代价，可以用结构化共享（immutable snapshot）或 COW（copy-on-write）优化，但在当前数据量下 deepcopy 已够用。
+  </li>
+  <li>
+    <span class="tag tag-tip">加分</span>
+    <strong>对比业界方案</strong> — 如 OpenAI Assistants API 的 file_search 也是按需检索而非全量注入，RAG 架构同理。你的分层思路本质上是把 RAG 的"检索增强"思想应用到了画布上下文管理。
+  </li>
+</ul>
+
+<!-- ============================================================ -->
+<h2>五、面试满分逐字稿</h2>
+<!-- ============================================================ -->
+
+<!-- ==================== Q1 ==================== -->
+<h3>Q1. 为什么全量画布写入 System Prompt 会 Token 爆炸？长对话下具体瓶颈是什么？</h3>
+
+<div class="script-block">
+  <span class="script-label">满分逐字稿</span>
+  <h4>口述版（约 400 字）</h4>
+  <p>
+    这个问题的背景是，Monet 画布上的节点信息本质上是结构化数据——每个节点有 ID、类型、名称、坐标、样式、参数、连线关系等字段。一个中等复杂度的画布大概 30-50 个节点，序列化成 JSON 后大约 3000 到 8000 tokens。
+  </p>
+  <p>
+    如果直接把这些信息硬编码进 System Prompt，有三个递进的问题。<strong>第一，每轮对话重复携带</strong>。LLM 的 API 是无状态的，每次请求都要把完整的 messages 列表发过去，System Prompt 在每轮都会被重复计算 token。假设画布信息占 5000 tokens，10 轮对话下来就是 5 万 tokens 仅画布信息。<strong>第二，信噪比很低</strong>。全量 JSON 里大量字段对当前轮推理毫无用处——比如节点的 x/y 坐标、图层 z-index、锁定状态——Agent 回答"帮我调一下这张图的风格"时根本不需要这些。但 LLM 的注意力机制会在这些无关信息上分配权重，实际上降低了推理质量。<strong>第三，逼近上下文窗口极限</strong>。当时我们用的是 128k 上下文的模型，听起来很大，但减去系统指令、对话历史、工具定义之后，留给实际推理的空间也就 60-80k。如果画布信息每轮吃掉 5-8k，很快就会触发截断。
+  </p>
+  <p>
+    长对话场景下瓶颈特别明显：用户在画布上操作了一段时间后，开始和 Agent 深入讨论某个节点的调整方案。这时对话历史已经很长了，画布信息还每轮重复注入，两者叠加很容易打满上下文。所以我们必须找到一种方式，让画布信息"按需出现"而不是"永远占位"。
+  </p>
+</div>
+
+<div class="defend">
+  <h4>防御性话术 — 预判追问</h4>
+  <p><strong>"那你们为什么不用 RAG，把画布信息做向量检索？"</strong></p>
+  <p>画布信息是结构化数据，不太适合向量化检索——节点之间有拓扑关系（连线、父子嵌套），向量相似度无法表达这种结构。而且画布状态是实时变化的，每次操作后都要重新 embedding，延迟和成本都不划算。我们选择的分层注入本质上是一种"结构化 RAG"：概览层相当于索引，工具层相当于精确检索，只是检索的不是向量而是结构化查询。</p>
+</div>
+
+<!-- ==================== Q2 ==================== -->
+<h3>Q2. 三层分层上下文感知架构，每一层的设计初衷、执行时机、代码执行链路？</h3>
+
+<div class="script-block">
+  <span class="script-label">满分逐字稿</span>
+  <h4>口述版（约 500 字）</h4>
+  <p>
+    先说结论：三层分别解决了"知道有什么"、"每轮都最新"、"需要时才查"三个不同层次的问题，不能合并也不能省略。
+  </p>
+  <p>
+    <strong>第一层，入口层，在请求中间件里执行。</strong>执行时机是每次 <code>/chat</code> 请求到达时，在进入 Agent Runner 之前。代码链路是：FastAPI 的请求处理函数调用 <code>_prime_canvas_context()</code>，这个函数通过画布 API 拉取当前画布的概览信息——节点数量、类型分布（几个图片节点、几个文本节点）、名称列表。这些信息很轻量，大概 200-500 tokens。然后写入 <code>ContextVar</code>，实现会话级隔离。设计初衷是：让 Agent 在推理之前就知道画布上"大概有什么"，这样它才能判断是否需要进一步查询细节。
+  </p>
+  <p>
+    <strong>第二层，推理拦截层，通过 LLM 回调机制执行。</strong>执行时机是每次 LLM <code>invoke</code> 前自动触发。代码链路是：LangGraph 支持注册回调（callback），我在回调的 <code>on_llm_start</code> 阶段，从 ContextVar 读取最新的画布快照，做一次深拷贝，然后作为 HumanMessage 的前缀注入到当前轮的消息中。设计初衷有两个：一是保证每轮推理都基于最新画布状态，解决静态 System Prompt 过期的问题；二是通过深拷贝隔离每轮的画布状态，避免后续推理修改了共享数据结构导致历史消息被污染。
+  </p>
+  <p>
+    <strong>第三层，工具检索层，由 Agent 自主决定是否调用。</strong>执行时机是 Agent 在推理过程中判断需要某个节点的详细信息时，调用 <code>canvas_node_detail</code> 或 <code>canvas_subgraph</code> 工具。代码链路是：LangGraph 的工具节点执行工具函数，函数内部先检查 ContextVar 中有没有缓存该节点的详情，有就直接返回，没有就调画布 API 拉取后写入缓存。设计初衷是：精细信息（节点的完整参数、样式、连线关系）不需要每轮都携带，只在 Agent 确实需要时才按需拉取，这是 Token 节省的主要来源。
+  </p>
+  <p>
+    三层不能合并的原因：如果只有第一层和第三层，没有推理拦截层，那多步推理中间画布状态变了 Agent 不知道；如果只有推理拦截层，没有入口层的概览，Agent 不知道画布上有什么，也就不知道该查什么；如果没有工具层全靠注入，那又回到了全量灌入的老路。
+  </p>
+</div>
+
+<div class="defend">
+  <h4>防御性话术 — 预判追问</h4>
+  <p><strong>"第二层的回调注入，具体是 LangGraph 的什么机制？"</strong></p>
+  <p>LangGraph 底层用的是 LangChain 的 Callback 体系。我们注册了一个自定义的 <code>CallbackHandler</code>，实现 <code>on_llm_start</code> 方法。在这个方法里拿到即将发送给 LLM 的 messages 列表，在列表前面插入一条包含画布快照的 HumanMessage。这不是修改 System Prompt，而是在每轮的消息序列中动态添加上下文信息。</p>
+  <p><strong>"这种回调注入会不会有时序问题？比如回调还没执行完 LLM 就开始推理了？"</strong></p>
+  <p><code>on_llm_start</code> 是同步回调，在 LLM 实际发出请求之前执行完毕的，所以不存在时序竞态。这是 LangChain 回调设计的保证。</p>
+</div>
+
+<!-- ==================== Q3 ==================== -->
+<h3>Q3. ContextVar 在 Python 异步场景下的作用？多任务会不会串上下文？怎么做会话隔离？</h3>
+
+<div class="script-block">
+  <span class="script-label">满分逐字稿</span>
+  <h4>口述版（约 450 字）</h4>
+  <p>
+    先说结论：<code>ContextVar</code> 是 Python <code>contextvars</code> 标准库提供的机制，它的核心价值是在 asyncio 场景下提供 <strong>Task 级别的变量隔离</strong>，替代传统多线程场景下的 <code>threading.local</code>。
+  </p>
+  <p>
+    为什么不能用 <code>threading.local</code>？因为 asyncio 默认是单线程事件循环，多个协程 Task 跑在同一个线程上。<code>threading.local</code> 绑定的是线程，不是 Task——所以 Task A 设置了一个值，Task B 也能读到，会话就串了。在我们的场景里，多个用户同时跟 Agent 对话，每个对话是一个独立的 asyncio Task。如果用 <code>threading.local</code> 存画布上下文，用户 A 的画布信息可能泄漏到用户 B 的 Agent 推理中，这是严重的数据串扰 bug。
+  </p>
+  <p>
+    <code>ContextVar</code> 的隔离机制是这样的：每个 <code>asyncio.Task</code> 在创建时，会自动获得当前上下文的一份<strong>copy-on-write 快照</strong>。子 Task 对 ContextVar 的 <code>.set()</code> 操作只影响自己，不会回传到父 Task 或兄弟 Task。具体到我们的代码，工作流程是：<code>/chat</code> 请求进来后，FastAPI 的请求处理协程调用 <code>canvas_ctx.set(画布概览)</code>；然后 Agent Runner 启动，它跑在同一个 Task 里，能直接读到这个值；如果 Runner 内部通过 <code>asyncio.create_task()</code> 创建了子任务（比如并行执行多个工具调用），子任务继承了父任务的上下文，也能读到画布概览，但子任务自己设置的值不会影响父任务。
+  </p>
+  <p>
+    实际踩过一个坑：早期有一段代码在子任务里更新了画布缓存，以为父任务也能看到更新后的值，结果父任务读到的还是旧值。后来理解了 ContextVar 的"继承但隔离"语义后，把缓存更新逻辑改回到主 Task 中执行，问题解决了。这个经历让我对 ContextVar 的作用域边界有了比较深的理解。
+  </p>
+</div>
+
+<div class="defend">
+  <h4>防御性话术 — 预判追问</h4>
+  <p><strong>"如果用 asyncio.gather 并行跑多个子任务，每个子任务要写回结果到父上下文，你怎么处理？"</strong></p>
+  <p>ContextVar 的写入在子任务中是隔离的，不会自动同步回父任务。所以我们不通过 ContextVar 做子任务到父任务的数据回传，而是用 <code>gather</code> 的返回值来收集结果。ContextVar 在我们的设计里是单向的：父任务写入，子任务只读。需要回传的数据通过函数返回值或者共享的线程安全容器（如 <code>asyncio.Queue</code>）来传递。</p>
+</div>
+
+<!-- ==================== Q4 ==================== -->
+<h3>Q4. 为什么必须深拷贝？浅拷贝会出什么线上 bug？你线上遇到过吗？</h3>
+
+<div class="script-block">
+  <span class="script-label">满分逐字稿</span>
+  <h4>口述版（约 450 字）</h4>
+  <p>
+    先说结论：深拷贝解决的是<strong>多轮推理共享可变状态导致的历史消息污染</strong>问题。这不是理论上的风险，是我们实际遇到过的 bug。
+  </p>
+  <p>
+    具体场景是这样的：LangGraph 的 State 是一个 Python <code>dict</code>，里面的 <code>messages</code> 是一个列表。当推理拦截层把画布快照注入为 HumanMessage 时，如果直接用引用或者浅拷贝，那多轮 LLM 调用实际上共享的是同一个画布数据对象。
+  </p>
+  <p>
+    举个具体例子：第一轮 LLM 调用前，注入画布快照 <code>{"nodes": [A, B, C], "selected": "B"}</code>。Agent 决定调用工具查询节点 B 的细节。工具执行期间，用户在画布上删除了节点 C 并选中了节点 A。第二轮 LLM 调用前，推理拦截层更新画布快照为 <code>{"nodes": [A, B], "selected": "A"}</code>。如果这两轮共享同一个 dict 引用，那第一轮历史消息中的画布信息也被改成了 <code>{"nodes": [A, B], "selected": "A"}</code>。LLM 看到的对话历史就变成了：它在第一轮时"就已经知道" C 不存在了——但实际上第一轮的时候 C 还在。这会导致 Agent 对用户操作序列的理解出错。
+  </p>
+  <p>
+    我们线上确实遇到过一次类似的问题。表现是：用户问"我刚才删的那个节点能恢复吗"，Agent 回答"画布上没有被删除的节点"。排查发现是因为历史消息中的画布快照被后续轮次覆盖了，Agent 看不到之前的画布状态。加上深拷贝之后，每轮注入的画布信息都是独立的副本，互不影响，这个问题就解决了。
+  </p>
+  <p>
+    关于性能：<code>copy.deepcopy</code> 对大对象确实有开销，但我们的画布快照经过概览化处理后通常是几 KB 级别的 dict，deepcopy 的耗时在微秒级，相比 LLM 推理的秒级延迟完全可以忽略。如果未来画布数据量增大到需要优化 deepcopy 的程度，可以考虑用不可变数据结构（如 frozen dataclass 或 tuple）替代 dict，从根本上消除拷贝需求。
+  </p>
+</div>
+
+<div class="defend">
+  <h4>防御性话术 — 预判追问</h4>
+  <p><strong>"为什么不用不可变数据结构替代深拷贝？"</strong></p>
+  <p>这是一个好的优化方向。当前没做的原因是画布快照的数据结构是从画布 API 返回的 JSON 直接反序列化的 dict，要改成不可变结构需要额外的转换层。在当前数据量下 deepcopy 已经足够高效，属于"正确但还没到必须优化的阶段"。如果后续画布节点数量级上升到数百甚至上千，这会是优先考虑的优化方向。</p>
+</div>
+
+<!-- ==================== Q5 ==================== -->
+<h3>Q5. Token 降低 40% 是如何统计的？有具体对比指标、采样方案吗？</h3>
+
+<div class="script-block">
+  <span class="script-label">满分逐字稿</span>
+  <h4>口述版（约 450 字）</h4>
+  <p>
+    这个数字不是拍脑袋估的，我做了一个简单但可复现的对比实验。
+  </p>
+  <p>
+    <strong>采样方案</strong>：我选了 10 个覆盖不同复杂度的真实画布场景——3 个简单画布（5-10 个节点，比如一张背景图加几个文字标注）、4 个中等画布（20-40 个节点，典型的设计工作流）、3 个复杂画布（50 个以上节点，多层级嵌套的复杂场景）。每个场景模拟 5 轮对话，对话内容也是真实的用户问法，比如"帮我调整这张图的风格""把左边的节点移到右边"之类的。
+  </p>
+  <p>
+    <strong>基线组（全量注入）</strong>：每轮对话都把完整画布 JSON 写入 System Prompt。用 <code>tiktoken</code> 的 <code>cl100k_base</code> 编码器计算每轮 System Prompt 中画布部分的 token 数，5 轮累加。
+  </p>
+  <p>
+    <strong>实验组（分层注入）</strong>：同样的场景和对话，使用三层架构。统计入口层概览的 tokens、每轮推理拦截层快照的 tokens、以及工具调用返回的细节 tokens，5 轮累加。
+  </p>
+  <p>
+    <strong>结果分布</strong>：简单画布降幅大约 20-25%，因为节点少全量也不大，分层注入节省有限；中等画布降幅约 35-45%，这是最典型的用户场景；复杂画布降幅可达 50-55%，因为全量注入的冗余特别多而 Agent 其实只关注少数节点。10 个场景取加权平均，降幅约 40%。
+  </p>
+  <p>
+    <strong>降幅的来源拆解</strong>：主要有三块。一是概览替代全量，概览的 token 量约为全量的 10-15%，每轮省一大截；二是推理拦截层注入的是摘要而非完整 JSON，约为全量的 20-30%；三是工具调用的细节信息只在需要时才出现，而且有缓存复用——5 轮对话里 Agent 平均只查 2-3 次细节，而不是每轮都携带所有细节。三个因素叠加，5 轮对话累计下来就是 40% 左右的 token 节省。
+  </p>
+  <p>
+    坦率说这不是一个严谨的 A/B test，但作为内部评估够用了，也能自洽地解释这个数字从哪来。
+  </p>
+</div>
+
+<div class="defend">
+  <h4>防御性话术 — 预判追问</h4>
+  <p><strong>"40% 是 token 数量下降还是成本下降？有没有考虑工具调用本身的 token 消耗？"</strong></p>
+  <p>这里说的 40% 是画布相关信息在 Prompt 中占用的 token 数量下降。工具调用本身确实有额外的 token 消耗（工具定义约 200 tokens，调用结果 200-800 tokens），这些也计入了实验组的总量。即便包含工具调用开销，分层方案仍然有显著的 token 节省，因为主要的节省来自"不再每轮重复携带全量画布 JSON"。成本下降和 token 下降大致等比，因为 API 计费就是按 token 算的。</p>
+</div>
+
+<!-- ==================== Q6 ==================== -->
+<h3>Q6. 动态画布刷新场景下，上下文一致性你怎么保证？会不会出现新旧画布混叠？</h3>
+
+<div class="script-block">
+  <span class="script-label">满分逐字稿</span>
+  <h4>口述版（约 450 字）</h4>
+  <p>
+    先承认一个前提：我们没有追求严格的强一致性，而是采用了<strong>轮次级最终一致性</strong>策略。这是基于业务场景做的务实选择。
+  </p>
+  <p>
+    具体机制是这样的：每次 LLM 调用前，推理拦截层的回调会重新拉取一次画布的最新状态。这意味着如果用户在 Agent 思考期间操作了画布，下一轮 LLM 调用就能看到最新状态。同一轮推理内的多次工具调用，读取的是该轮开始时拉取的快照缓存，不会在同一轮内出现一次工具调用看到旧状态、另一次看到新状态的情况。
+  </p>
+  <p>
+    那会不会出现新旧画布混叠？在同一轮推理内不会，因为用的是同一份深拷贝的快照。跨轮次之间"会"，但这恰恰是我们希望的——第 1 轮看到的是操作前的画布，第 2 轮看到的是操作后的画布，Agent 能通过对比两轮的画布差异来理解用户做了什么。如果我们强制每轮内的所有查询都实时反映最新状态，反而会导致 Agent 推理中途画布状态突变，思路被打断。
+  </p>
+  <p>
+    为什么不做强一致性？画布场景有几个特点：用户操作（拖拽、删除）和 Agent 推理之间有自然的时间间隔——用户发完消息后通常会等 Agent 回复，不太会在等待期间频繁操作画布。即使偶尔出现用户在 Agent 推理期间操作画布的情况，造成的后果也很温和——Agent 下一轮回复时会基于最新状态，用户可以纠正。如果要做强一致性，需要加版本锁或者乐观并发控制，这不仅增加复杂度，还会引入锁等待的延迟，得不偿失。
+  </p>
+  <p>
+    如果要继续优化，一个方向是在画布状态变化时主动推送增量更新（通过 WebSocket），让 ContextVar 中的画布数据实时刷新。但这需要前端配合做 diff，当前阶段还没有实现。目前的方案在实际使用中没有出现用户反馈的一致性问题，说明轮次级刷新的粒度对画布场景是足够的。
+  </p>
+</div>
+
+<div class="defend">
+  <h4>防御性话术 — 预判追问</h4>
+  <p><strong>"如果 Agent 推理要 30 秒，用户在这 30 秒里做了很多操作，Agent 的回复会不会完全基于过时状态？"</strong></p>
+  <p>会。但这里有个关键点：Agent 的回复是基于用户发消息那一刻的画布状态。如果用户发完消息后又做了很多操作，说明他的关注点可能已经变了，这时候他可以选择无视 Agent 的回复或者发一条新消息。从用户体验角度，这比 Agent 回复到一半突然改口要好——后者会让用户觉得 Agent 不稳定。这也是很多类似产品（Figma AI、Cursor）的处理方式：基于请求时刻的快照做推理，而非实时追踪变化。</p>
+</div>
+
+
+<!-- ============================================================ -->
+<h2>六、知识点串联与面试实战建议</h2>
+<!-- ============================================================ -->
+
+<h3>6.1 答题顺序建议</h3>
+
+<p>如果面试官让你"介绍一下分层上下文感知架构"，建议按这个顺序讲：</p>
+
+<ol>
+  <li><strong>先讲问题</strong>（30 秒）：画布信息全量写入 System Prompt 导致 token 膨胀 + 静态过期 + 信噪比低</li>
+  <li><strong>再讲方案概览</strong>（30 秒）：三层分层，"概览 &rarr; 快照 &rarr; 细节"按需注入</li>
+  <li><strong>讲一层关键实现</strong>（60 秒）：选推理拦截层，因为它涉及回调注入 + 深拷贝 + ContextVar，技术含量最高</li>
+  <li><strong>讲收益</strong>（15 秒）：Token 常驻体量降低约 40%，画布信息从静态变为动态刷新</li>
+  <li><strong>留钩子</strong>（15 秒）：主动提一个踩坑点（深拷贝或 ContextVar 子任务继承），引导面试官追问你有准备的方向</li>
+</ol>
+
+<h3>6.2 与其他面试知识点的关联</h3>
+
+<table>
+  <tr>
+    <th>本章知识点</th>
+    <th>可关联到的面试高频话题</th>
+  </tr>
+  <tr>
+    <td>ContextVar 与 asyncio</td>
+    <td>Python 并发模型（多线程 vs 多进程 vs asyncio）、GIL、协程调度</td>
+  </tr>
+  <tr>
+    <td>深拷贝 vs 浅拷贝</td>
+    <td>Python 对象模型、可变 vs 不可变、数据不变性（Immutability）</td>
+  </tr>
+  <tr>
+    <td>分层注入 vs 全量注入</td>
+    <td>RAG 架构、Prompt Engineering、上下文窗口管理</td>
+  </tr>
+  <tr>
+    <td>最终一致性 vs 强一致性</td>
+    <td>分布式系统 CAP 定理、乐观锁 vs 悲观锁、MVCC</td>
+  </tr>
+  <tr>
+    <td>回调注入机制</td>
+    <td>观察者模式、中间件模式、AOP（面向切面编程）</td>
+  </tr>
+  <tr>
+    <td>Token 经济学</td>
+    <td>LLM 推理成本优化、KV Cache、注意力机制复杂度</td>
+  </tr>
+</table>
+
+<h3>6.3 本章核心 Takeaway</h3>
+
+<div class="highlight-box">
+  <strong>一句话总结：</strong>这个方案的核心思想是"信息分级、按需注入"——用概览建立认知、用快照保证时效、用工具实现精确检索。它不是什么前沿架构创新，而是把 RAG 的"检索增强"思路应用到了实时画布上下文管理这个具体场景中，用最小的 Token 代价给 Agent 最够用的画布感知能力。面试时要传达的不是"我设计了多牛的架构"，而是"我发现了一个真实问题并用工程化的方法解决了它"。
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'neutral'});</script>
+
+<button id="toc-toggle" onclick="document.getElementById('toc-sidebar').classList.toggle('open')">&#9776; &#30446;&#24405;</button>
+<nav id="toc-sidebar">
+  <h3>&#30446;&#24405;&#23548;&#33322;</h3>
+  <ul id="toc-list"></ul>
+</nav>
+<script>
+(function(){
+  var hs=Array.from(document.querySelectorAll('h1,h2,h3')).filter(function(h){return !h.closest('#toc-sidebar');});
+  var ul=document.getElementById('toc-list');
+  hs.forEach(function(h,i){
+    if(!h.id)h.id='sec-'+i;
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href='#'+h.id; a.textContent=h.textContent;
+    a.className='toc-'+h.tagName.toLowerCase();
+    a.onclick=function(e){e.preventDefault();document.getElementById(h.id).scrollIntoView({behavior:'smooth'});document.getElementById('toc-sidebar').classList.remove('open');};
+    li.appendChild(a);ul.appendChild(li);
+  });
+  var links=ul.querySelectorAll('a');
+  var ticking=false;
+  window.addEventListener('scroll',function(){
+    if(!ticking){requestAnimationFrame(function(){
+      var cur='';
+      hs.forEach(function(h){if(h.getBoundingClientRect().top<=100)cur=h.id;});
+      links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur);});
+      ticking=false;
+    });ticking=true;}
+  });
+})();
+</script>
+</body>
+</html>

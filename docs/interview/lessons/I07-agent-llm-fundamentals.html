@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I07 - Agent/LLM 八股必考专题</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+:root {
+  --text: #1a1a1a; --text-muted: #555; --bg: #fffdf6; --accent: #b91c1c;
+  --accent-soft: #fef2f2; --code-bg: #f4f1eb; --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { font-family: var(--serif); color: var(--text); background: var(--bg); max-width: 1100px; margin: 3rem auto 3rem 280px; padding: 0 1.5rem; line-height: 1.7; }
+h1, h2, h3, h4 { font-family: var(--sans); font-weight: 600; line-height: 1.3; margin-top: 2.5rem; margin-bottom: 0.8rem; }
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+p { margin: 0.8rem 0; }
+code { font-family: var(--mono); background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid var(--accent); font-family: var(--mono); font-size: 0.9em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+pre.mermaid { border-left: none; background: white; text-align: center; font-family: var(--sans); }
+blockquote { border-left: 3px solid var(--border); margin: 1.2rem 0; padding: 0.5rem 1.2rem; color: var(--text-muted); background: #faf7ed; font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--sans); font-size: 0.95em; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; }
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+.lesson-meta { font-family: var(--sans); font-size: 0.85em; color: var(--text-muted); margin-bottom: 1.5rem; padding: 0.8rem 1rem; background: var(--code-bg); border-radius: 6px; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.highlight-box { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 4px; }
+.highlight-box strong { color: var(--accent); }
+.script-block { background: #f0fdf4; border: 2px solid #16a34a; padding: 1.2rem 1.5rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; line-height: 1.8; }
+.script-block h4 { color: #16a34a; margin-top: 0; }
+.script-block .script-label { display: inline-block; background: #16a34a; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 0.5rem; }
+.defend { background: #fef2f2; border: 2px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; }
+.defend h4 { margin-top: 0; color: var(--accent); }
+.diagram { background: white; padding: 1.2rem; border: 1px solid var(--border); border-radius: 6px; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+#toc-sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; overflow-y: auto; background: #faf8f0; border-right: 1px solid var(--border); padding: 1.5rem 1rem; font-family: var(--sans); font-size: 0.85em; z-index: 100; transition: transform 0.3s; }
+#toc-sidebar h3 { font-size: 0.95em; color: var(--accent); margin: 0 0 0.8rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+#toc-sidebar ul { list-style: none; padding: 0; margin: 0; }
+#toc-sidebar li { margin: 0.15rem 0; }
+#toc-sidebar a { color: var(--text-muted); text-decoration: none; display: block; padding: 0.2rem 0.5rem; border-radius: 3px; line-height: 1.4; transition: all 0.15s; border-left: 3px solid transparent; }
+#toc-sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+#toc-sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-left-color: var(--accent); }
+#toc-sidebar .toc-h2 { padding-left: 0.5rem; }
+#toc-sidebar .toc-h3 { padding-left: 1.2rem; font-size: 0.9em; color: #888; }
+#toc-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.9em; }
+@media (max-width: 1100px) {
+  #toc-sidebar { transform: translateX(-100%); }
+  #toc-sidebar.open { transform: translateX(0); }
+  #toc-toggle { display: block; }
+  body { margin-left: 0 !important; max-width: none !important; }
+}
+</style>
+</head>
+<body>
+
+<h1>I07 — Agent/LLM 八股必考专题</h1>
+
+<div class="lesson-meta">
+  <span><strong>定位</strong> AI Agent 岗位核心八股</span>
+  <span><strong>覆盖题数</strong> 10 题</span>
+  <span><strong>难度</strong> ★★★★★</span>
+  <span><strong>时长</strong> ~60 分钟</span>
+</div>
+
+<h2>一、课程概述</h2>
+
+<p>这是 Agent 应用岗面试的<strong>纯理论八股环节</strong>，10 道题覆盖 LangGraph 原理、记忆体系、RAG、Token 优化、工具调用、流式输出、幻觉、HITL、多 Agent、异步工程。面试官通过这些题判断你是"用过框架"还是"真正理解 Agent 系统设计"。</p>
+
+<div class="highlight-box">
+<strong>核心风险</strong>：严厉评价指出用户"缺少记忆系统（长时记忆、向量记忆、RAG 结合），简历完全空白"。Q2（记忆体系）和 Q3（RAG）必须展示理论理解和扩展思路，即使项目没做也不能说"不了解"。
+</div>
+
+<h2>二、核心知识精讲</h2>
+
+<h3>2.1 Agent 核心循环</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    User["用户输入"] --> LLM["LLM 推理"]
+    LLM --> Decision{"需要工具？"}
+    Decision -->|"是"| Tool["执行工具"]
+    Tool --> Observe["观察结果"]
+    Observe --> LLM
+    Decision -->|"否"| Response["输出回答"]
+</pre>
+</div>
+
+<p>这就是 ReAct（Reasoning + Acting）循环：LLM 推理 → 决定是否调用工具 → 执行工具 → 观察结果 → 继续推理。LangGraph 把这个循环建模为状态机：LLM 节点和 Tool 节点是两个状态，条件路由根据 LLM 输出决定走哪条边。</p>
+
+<h3>2.2 Agent 记忆体系全景</h3>
+
+<table>
+<tr><th>记忆类型</th><th>存储位置</th><th>生命周期</th><th>用途</th><th>实现方案</th></tr>
+<tr><td>短时记忆</td><td>State.messages</td><td>单次对话</td><td>当前对话上下文</td><td>LangGraph State 中的消息列表</td></tr>
+<tr><td>工作记忆</td><td>State + ContextVar</td><td>单次请求</td><td>画布状态、工具结果缓存</td><td>ContextVar 注入（我在项目中实现的）</td></tr>
+<tr><td>长时记忆</td><td>向量数据库</td><td>跨会话持久</td><td>用户偏好、历史摘要</td><td>ChromaDB/Pinecone + Embedding</td></tr>
+<tr><td>外部记忆</td><td>RAG 知识库</td><td>静态/半静态</td><td>领域知识检索</td><td>向量检索 + 重排序</td></tr>
+</table>
+
+<h3>2.3 RAG + Agent 架构</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    Q["用户问题"] --> Agent["Agent 推理"]
+    Agent --> NeedRAG{"需要检索？"}
+    NeedRAG -->|"是"| Retrieve["向量检索<br/>（Embedding → ANN）"]
+    NeedRAG -->|"否"| Direct["直接回答"]
+    Retrieve --> Rerank["重排序<br/>（Cross-Encoder）"]
+    Rerank --> Inject["注入 Context"]
+    Inject --> LLM["LLM 基于检索结果生成"]
+    LLM --> Response["输出回答"]
+</pre>
+</div>
+
+<h3>2.4 多 Agent 协作架构</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TD
+    subgraph Supervisor["Supervisor 模式"]
+        S["管理者 Agent"] --> A1["子 Agent 1<br/>（代码生成）"]
+        S --> A2["子 Agent 2<br/>（代码审查）"]
+        S --> A3["子 Agent 3<br/>（测试执行）"]
+    end
+
+    subgraph Swarm["Swarm 模式"]
+        P1["Agent A"] <-->|"消息传递"| P2["Agent B"]
+        P2 <-->|"消息传递"| P3["Agent C"]
+        P1 <-->|"消息传递"| P3
+    end
+</pre>
+</div>
+
+<h2>三、面试易错点</h2>
+
+<div class="highlight-box">
+<strong>错误 1</strong>：把 LangGraph 的 State 说成"全局变量"。State 不是全局变量，而是每次节点执行时传入的不可变快照（通过 Reducer 合并更新），节点不能直接修改 State，只能返回更新字典。
+</div>
+
+<div class="highlight-box">
+<strong>错误 2</strong>：被问记忆体系时只会说"用向量数据库存"。要讲清楚完整链路：Embedding 编码 → 向量存储 → 检索召回 → 重排序 → 注入 Prompt → LLM 生成。
+</div>
+
+<div class="highlight-box">
+<strong>错误 3</strong>：RAG 的常见误区是"检索到就灌入"。正确做法是：检索后需要重排序（Cross-Encoder）过滤噪声，chunk 粒度要合理（太大→噪声多，太小→丢上下文），还需要评估检索召回率。
+</div>
+
+<div class="highlight-box">
+<strong>错误 4</strong>：说"Agent 不会死循环"。LLM 是概率模型，完全可能在两个工具之间来回调用形成死循环。必须设置 recursion_limit（LangGraph 默认 25），并实现工具调用去重检测。
+</div>
+
+<h2>四、满分逐字稿</h2>
+
+<h3>Q1：LangGraph 状态机、节点、边、路由机制</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>LangGraph 的核心模型是"状态机驱动的 Agent 执行框架"。</strong></p>
+<p>它有四个核心概念：State、Node、Edge、Router。State 是一个 TypedDict 或 Pydantic 模型，定义了 Agent 运行过程中需要维护的所有状态数据——最典型的就是 messages 列表。每个 State 字段可以指定一个 Reducer 函数，定义多次更新时的合并策略，比如 messages 字段用 add_messages Reducer，新消息追加到列表末尾而不是覆盖。</p>
+<p>Node 是状态机的节点，本质就是一个 Python 函数，接收当前 State 作为输入，返回一个 dict 表示要更新的字段。比如 LLM 节点调用大模型生成回答并返回 {"messages": [ai_message]}，Tool 节点执行工具并返回 {"messages": [tool_message]}。</p>
+<p>Edge 定义节点之间的跳转关系。普通 Edge 是无条件跳转（A→B），Conditional Edge 是条件路由——一个路由函数根据当前 State 决定下一个节点是谁。经典用法是：LLM 节点后接一个条件路由，检查 LLM 输出是否包含 tool_calls，有则跳转到 Tool 节点，没有则跳转到 END。</p>
+<p>底层执行引擎本质是一个 while 循环：初始化 State → 从 START 节点开始 → 执行节点函数 → 通过路由选择下一节点 → 如果不是 END 就继续 → 到 END 就返回最终 State。每次节点执行完，Checkpointer 自动序列化 State 做持久化，这就是断点恢复的基础。</p>
+<p>在我的项目里，我在这个基础上做了三个扩展：一是分层上下文注入——在 LLM 节点执行前通过回调动态注入画布状态；二是 HITL 审批——在 Tool 节点中对高危工具调用 interrupt() 暂停执行；三是 SSE 流式输出——通过 astream_events 捕获 LLM 节点的流式 Token 并实时推送。</p>
+</div>
+
+<h3>Q2：Agent 记忆体系</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>Agent 记忆体系可以分为四层：短时记忆、工作记忆、长时记忆、外部记忆。</strong></p>
+<p><strong>短时记忆</strong>就是当前对话的消息列表，存在 LangGraph State 的 messages 字段里。每轮对话结束后如果不做持久化就会丢失。在我的项目中通过 SQLite Checkpointer 做了持久化，支持断点恢复。</p>
+<p><strong>工作记忆</strong>是请求级的临时上下文。在我的项目中就是画布感知——通过 ContextVar 缓存当前画布状态，Agent 在一次请求处理过程中可以随时读取，但不跨请求保留。这属于我在简历中提到的"分层上下文感知"。</p>
+<p><strong>长时记忆</strong>是跨会话的持久化记忆。坦诚说<strong>我的项目没有实现长时记忆</strong>，因为 Monet 画布的业务场景是任务驱动的——用户每次打开画布都是新任务，不太需要记住"上周你喜欢什么风格"。但如果要做，我的方案是：对话结束后，用 LLM 对对话内容生成摘要，通过 Embedding 模型转为向量存入 ChromaDB 或 Pinecone；下次新会话开始时，用用户画像和当前意图做向量检索，召回相关历史摘要注入到 System Prompt。需要注意记忆的时效性——要给每条记忆加时间戳和衰减权重，避免过时记忆干扰当前决策。</p>
+<p><strong>外部记忆</strong>就是 RAG——Agent 通过检索工具查询知识库。这不是 Agent 自己的记忆，而是外部世界的知识。在 Monet 场景下，如果要做的话可以检索美术风格库、历史生成案例等。</p>
+</div>
+
+<h3>Q3：RAG + Agent 架构与误区</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>RAG + Agent 的核心是让 Agent 自主决定何时需要检索，而不是每次都检索。</strong></p>
+<p>架构上，RAG 检索器作为 Agent 的一个工具注册到工具列表中。Agent 推理时如果判断需要外部知识，就调用检索工具；如果问题简单不需要检索，直接回答。这比"先检索再生成"的 Naive RAG 多了一层智能判断。</p>
+<p>完整链路是：用户问题 → Agent 推理 → 决定检索 → Embedding 编码查询 → 向量数据库 ANN 检索 → Top-K 候选 → Cross-Encoder 重排序 → 注入 Context → LLM 基于检索结果生成回答。</p>
+<p>常见误区有四个：第一，<strong>检索全量灌入</strong>——检索到 10 条结果全塞进 Prompt，Token 浪费且噪声多，应该经过重排序只取 Top-3。第二，<strong>不做重排序</strong>——向量检索是语义近似匹配，召回结果可能语义相近但不相关，Cross-Encoder 重排序能显著提高精度。第三，<strong>chunk 粒度不当</strong>——切太大（整篇文档）噪声多，切太小（单句）丢上下文，通常 300-500 token 加 50 token 重叠是较好的起点。第四，<strong>忽略检索评估</strong>——上线前必须评估检索召回率和准确率，用人工标注的 query-document 对做离线评测，否则不知道 RAG 到底有没有在帮忙。</p>
+</div>
+
+<h3>Q4：LLM 上下文窗口限制与 Token 优化</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>Token 优化的核心原则是"只在需要的时候给需要的信息"。</strong></p>
+<p>我在项目中实践的方案是<strong>分层上下文注入</strong>：入口层只注入轻量画布概览（约 200 Token），推理层动态刷新，工具层按需查询细节。相比把全量画布信息（可能 2000+ Token）写死在 System Prompt，常驻 Token 降低了约 40%。</p>
+<p>通用的 Token 优化方案还包括：第一，<strong>历史消息摘要压缩</strong>——对话超过 N 轮后，用 LLM 对早期消息生成摘要替代原文，从几千 Token 压缩到几百。第二，<strong>滑动窗口</strong>——只保留最近 K 轮对话，更早的消息丢弃或摘要化。第三，<strong>工具结果截断</strong>——工具返回的大量数据（如长 JSON）做摘要或只保留关键字段，避免撑爆上下文。第四，<strong>RAG 按需检索</strong>——不是所有轮次都需要检索，Agent 自主判断何时检索。</p>
+<p>还有一个工程优化：<strong>Prompt 模板缓存</strong>。System Prompt 中的静态部分（工具描述、角色设定）在多轮对话中不变，可以利用 LLM API 的 Prompt Caching（如 Anthropic 的 cache_control）减少重复计算的 Token 费用。</p>
+</div>
+
+<h3>Q5：Agent 工具调用失败、递归、死循环</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>这是 Agent 工程中最常见的稳定性问题，我总结为三层防御。</strong></p>
+<p>第一层，<strong>递归深度限制</strong>。LangGraph 有 recursion_limit 参数（默认 25），超过后强制停止。在我的项目中设置为 15——画布操作不需要太多轮工具调用，15 轮足够，再多说明 Agent 可能在兜圈子。</p>
+<p>第二层，<strong>工具调用重试与 Fallback</strong>。工具执行失败时不是直接报错给用户，而是把错误信息作为 ToolMessage 返回给 LLM，让 LLM 自己判断是重试、换参数还是放弃。同时限制同一工具的连续调用次数——如果同一个工具连续失败 3 次，强制跳过并告知用户。</p>
+<p>第三层，<strong>死循环检测</strong>。监控最近 N 次工具调用序列，如果出现 A→B→A→B 的循环模式，主动打断并注入一条"你似乎在重复操作，请换一种方式"的系统消息，引导 LLM 跳出循环。</p>
+<p>在实际项目中遇到的一个案例是：Agent 试图在画布上创建节点，创建失败后反复重试相同参数。根因是画布上已经有同名节点，创建报冲突，但 LLM 不知道该换名字。解决方案是在工具的错误返回中明确说明"节点名已存在，请使用其他名称"，给 LLM 足够的信息做决策。</p>
+</div>
+
+<h3>Q6：流式输出原理与 SSE 断线重连</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>流式输出的核心是把 LLM 生成的 Token 逐个或逐批推送给前端，而不是等全部生成完再返回。</strong></p>
+<p>实现原理：LLM API 返回 Streaming Response（SSE 或 WebSocket），每生成一个 Token 就发送一个 chunk。在 LangGraph 中通过 astream_events 接口获取流式事件，我的适配器层将这些事件映射为标准化 SSE 帧推送给前端。</p>
+<p>SSE 断线重连方案：SSE 协议原生支持断线重连。每个 SSE 事件带有递增的 id 字段，前端断连后重新请求时会在 Header 中携带 Last-Event-ID。服务端收到后从该 ID 之后开始重新推送。但在实际 Agent 场景中这比较复杂——因为 LLM 推理是实时的，不能"回放"已经生成的 Token。所以我的做法是：断线重连时，如果 Agent 仍在执行，从当前进度继续推送；如果 Agent 已经执行完毕，推送一个完成帧包含最终结果。中间可能丢失的 Token 通过前端轮询一次完整消息来补齐。</p>
+<p>我在项目中还做了心跳保活：每 15 秒发送一个空 comment 帧（: heartbeat），防止中间代理（Nginx、CDN）因为长时间无数据而断开连接。</p>
+</div>
+
+<h3>Q7：大模型幻觉成因与规避</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>幻觉的根本原因是 LLM 是概率语言模型，它生成"统计上合理"的文本，而不是"事实上正确"的文本。</strong></p>
+<p>从我在讯飞做多模态微调的经验看，幻觉有三类：第一，<strong>事实性幻觉</strong>——模型编造不存在的事实（如虚构论文、错误数据）。第二，<strong>推理性幻觉</strong>——推理链条看似合理但中间有逻辑跳跃。这也是我们做长 CoT 微调要解决的核心问题——通过慢思考让模型显式展示推理步骤，减少逻辑断层。第三，<strong>指令性幻觉</strong>——模型不遵循指令约束，比如让它只基于提供的信息回答，它仍然会补充训练数据中的内容。</p>
+<p>工程规避手段：第一，<strong>RAG 提供事实基础</strong>——让模型基于检索到的真实文档生成回答，而不是纯靠"记忆"。第二，<strong>工具调用验证</strong>——Agent 声称执行了某操作，通过工具返回值验证是否真的执行成功。第三，<strong>输出校验层</strong>——对 Agent 的关键输出做格式校验和语义校验，比如检查生成的参数是否在合法范围内。第四，<strong>HITL 审批</strong>——高危操作人工确认，这是我在 Monet 项目中实现的。第五，<strong>Prompt 约束</strong>——在 System Prompt 中明确"如果不确定，请说不知道，不要编造"。</p>
+</div>
+
+<h3>Q8：HITL 适用场景与落地痛点</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>HITL 适用于"Agent 有能力执行但人类需要控制风险"的场景。</strong></p>
+<p>典型场景包括：高危操作确认（删除文件、发送消息、金融交易）、不确定性决策审批（模型信心度低时请求人工判断）、合规审核（内容生成后人工审核才能发布）。在我的 Monet 项目中，HITL 主要用于画布写入操作——Agent 可以自动查询画布（只读），但创建节点、删除节点、修改连线等写入操作必须经过用户确认。</p>
+<p>落地痛点有三个：第一，<strong>审批延迟影响体验</strong>——用户可能几分钟不回应，Agent 一直挂起。我的项目目前没有做超时释放，这是一个技术债，改进方案是设置 5 分钟超时，超时后自动取消操作并通知用户。第二，<strong>审批粒度的 tradeoff</strong>——太细（每个工具调用都审批）体验很差，太粗（只审批最终结果）风险没控住。需要根据业务场景合理划分。第三，<strong>Agent 输出侧缺少校验</strong>——我的项目只做了工具调用侧的 HITL，没有做 Agent 文本输出的校验和对齐。如果 Agent 在对话中给出了错误建议但没调用工具，目前无法拦截。改进方向是增加输出校验层，对 Agent 的关键回复做事实性检查。</p>
+</div>
+
+<h3>Q9：多 Agent 协作架构</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>多 Agent 协作主要有三种模式：Supervisor、Swarm 和分层架构。</strong></p>
+<p>Supervisor 模式：一个管理者 Agent 负责任务拆分和分发，多个专业子 Agent 各负责一个领域。管理者收到用户请求后，分析需要哪些子 Agent 参与，按序或并行调度，最后汇总结果。优点是控制流清晰，缺点是管理者 Agent 是单点瓶颈。</p>
+<p>Swarm 模式：所有 Agent 对等，通过消息传递协作。每个 Agent 有 handoff 能力，可以把任务转交给更合适的 Agent。优点是灵活，缺点是调试困难、容易出现死锁或无限转交。</p>
+<p>分层架构：多级 Supervisor——顶层管理者管理几个中层管理者，中层管理者各管理一组执行 Agent。适合大型复杂任务。</p>
+<p>在我的 Monet 项目中虽然没有实现多 Agent，但五层架构本身就是一种"分布式协作"思想——Agent 画布侧和调度平台侧就是两个"专业 Agent"，通过 HTTP API 协作。如果要扩展为多 Agent，我会用 Supervisor 模式：一个画布管理 Agent 协调多个专业 Agent（图像生成 Agent、视频生成 Agent、3D 生成 Agent），每个专业 Agent 负责与对应的调度链路交互。</p>
+</div>
+
+<h3>Q10：异步 LLM 调用最佳实践</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>异步 LLM 调用的核心挑战是：LLM 调用慢（秒级）、并发多、资源有限。</strong></p>
+<p>最佳实践包括：第一，<strong>asyncio.Semaphore 控并发</strong>——限制同时进行的 LLM 调用数量。比如 LLM API 限制 10 QPS，就设置 Semaphore(10)，超出的请求自动排队等待。在我的项目中虽然单 Agent 是串行调用 LLM 的（一轮推理完才进下一轮），但多个用户的 Agent 会话是并发的，需要控制总并发数。</p>
+<p>第二，<strong>超时控制</strong>——LLM 调用设置合理的超时时间（比如 60 秒），避免一个慢请求拖住整个事件循环。用 asyncio.wait_for 包装 LLM 调用，超时后取消并返回错误。</p>
+<p>第三，<strong>避免同步阻塞</strong>——这是我在项目中踩过的坑。Python 的一些库（比如旧版 requests）是同步的，在 asyncio 事件循环中直接调用会阻塞整个线程。必须用 aiohttp 替代 requests，或者用 asyncio.to_thread 包装同步调用到线程池。</p>
+<p>第四，<strong>流式输出减少感知延迟</strong>——即使总生成时间没变，流式输出让用户在第一个 Token 生成后就能看到内容，感知延迟从"等全部生成完"变成"等第一个 Token"，通常从 10+ 秒降到 1-2 秒。</p>
+<p>第五，<strong>错误重试与降级</strong>——LLM API 可能返回 429（限流）或 500（服务异常），需要配合指数退避重试。如果主力模型不可用，可以降级到更快但能力稍弱的模型（比如从 GPT-4 降到 GPT-3.5）保证服务可用。</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral', securityLevel: 'loose'});</script>
+
+<button id="toc-toggle" onclick="document.getElementById('toc-sidebar').classList.toggle('open')">&#9776; 目录</button>
+<nav id="toc-sidebar">
+  <h3>目录导航</h3>
+  <ul id="toc-list"></ul>
+</nav>
+<script>
+(function(){
+  var hs=Array.from(document.querySelectorAll('h1,h2,h3')).filter(function(h){return !h.closest('#toc-sidebar');});
+  var ul=document.getElementById('toc-list');
+  hs.forEach(function(h,i){
+    if(!h.id)h.id='sec-'+i;
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href='#'+h.id; a.textContent=h.textContent;
+    a.className='toc-'+h.tagName.toLowerCase();
+    a.onclick=function(e){e.preventDefault();document.getElementById(h.id).scrollIntoView({behavior:'smooth'});document.getElementById('toc-sidebar').classList.remove('open');};
+    li.appendChild(a);ul.appendChild(li);
+  });
+  var links=ul.querySelectorAll('a');
+  var ticking=false;
+  window.addEventListener('scroll',function(){
+    if(!ticking){requestAnimationFrame(function(){
+      var cur='';
+      hs.forEach(function(h){if(h.getBoundingClientRect().top<=100)cur=h.id;});
+      links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur);});
+      ticking=false;
+    });ticking=true;}
+  });
+})();
+</script>
+
+</body>
+</html>

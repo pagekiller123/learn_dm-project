@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>I05 — 分布式优先级调度与 Go 工程</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+
+:root {
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --bg: #fffdf6;
+  --accent: #b91c1c;
+  --accent-soft: #fef2f2;
+  --code-bg: #f4f1eb;
+  --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+
+body {
+  font-family: var(--serif);
+  color: var(--text);
+  background: var(--bg);
+  max-width: 1100px;
+  margin: 3rem auto 3rem 280px;
+  padding: 0 1.5rem;
+  line-height: 1.7;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--sans);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 0.8rem;
+}
+
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+
+p { margin: 0.8rem 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+a:hover { background: var(--accent-soft); }
+
+code {
+  font-family: var(--mono);
+  background: var(--code-bg);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 1rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  border-left: 3px solid var(--accent);
+  font-family: var(--mono);
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+pre code { background: none; padding: 0; }
+
+pre.mermaid {
+  border-left: none;
+  background: white;
+  text-align: center;
+  font-family: var(--sans);
+}
+
+blockquote {
+  border-left: 3px solid var(--border);
+  margin: 1.2rem 0;
+  padding: 0.5rem 1.2rem;
+  color: var(--text-muted);
+  background: #faf7ed;
+  font-style: italic;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+th, td {
+  border: 1px solid var(--border);
+  padding: 0.6rem 0.9rem;
+  text-align: left;
+  vertical-align: top;
+}
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+
+.lesson-meta {
+  font-family: var(--sans);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+  padding: 0.8rem 1rem;
+  background: var(--code-bg);
+  border-radius: 6px;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+.lesson-meta strong { color: var(--text); font-weight: 600; }
+
+.highlight-box {
+  background: var(--accent-soft);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 4px;
+}
+.highlight-box strong { color: var(--accent); }
+
+.script-block {
+  background: #f0fdf4;
+  border: 2px solid #16a34a;
+  padding: 1.2rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+  line-height: 1.8;
+}
+.script-block h4 { color: #16a34a; margin-top: 0; }
+.script-block .script-label {
+  display: inline-block;
+  background: #16a34a;
+  color: white;
+  padding: 2px 10px;
+  border-radius: 4px;
+  font-size: 0.8em;
+  margin-bottom: 0.5rem;
+}
+
+.defend {
+  background: #fef2f2;
+  border: 2px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  font-family: var(--sans);
+  font-size: 0.95em;
+}
+.defend h4 { margin-top: 0; color: var(--accent); }
+
+.diagram {
+  background: white;
+  padding: 1.2rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 1.5rem 0;
+  text-align: center;
+  overflow-x: auto;
+}
+  
+/* Sidebar TOC */
+#toc-sidebar {
+  position: fixed; top: 0; left: 0; width: 260px; height: 100vh;
+  overflow-y: auto; background: #faf8f0; border-right: 1px solid var(--border);
+  padding: 1.5rem 1rem; font-family: var(--sans); font-size: 0.85em; z-index: 100;
+  transition: transform 0.3s;
+}
+#toc-sidebar h3 { font-size: 0.95em; color: var(--accent); margin: 0 0 0.8rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+#toc-sidebar ul { list-style: none; padding: 0; margin: 0; }
+#toc-sidebar li { margin: 0.15rem 0; }
+#toc-sidebar a { color: var(--text-muted); text-decoration: none; display: block; padding: 0.2rem 0.5rem; border-radius: 3px; line-height: 1.4; transition: all 0.15s; border-left: 3px solid transparent; }
+#toc-sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+#toc-sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-left-color: var(--accent); }
+#toc-sidebar .toc-h2 { padding-left: 0.5rem; }
+#toc-sidebar .toc-h3 { padding-left: 1.2rem; font-size: 0.9em; color: #888; }
+#toc-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.9em; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+@media (max-width: 1100px) {
+  #toc-sidebar { transform: translateX(-100%); box-shadow: 2px 0 12px rgba(0,0,0,0.1); }
+  #toc-sidebar.open { transform: translateX(0); }
+  #toc-toggle { display: block; }
+  body { margin-left: 0 !important; max-width: none !important; }
+}
+
+</style>
+</head>
+<body>
+
+<h1>I05 — 分布式优先级调度与 Go 工程</h1>
+
+<div class="lesson-meta">
+  <span><strong>系列</strong> 面试课程</span>
+  <span><strong>难度</strong> 中高</span>
+  <span><strong>面试题数</strong> 8 题</span>
+  <span><strong>关键词</strong> Redis ZSet / 无锁抢占 / 加权轮询 / etcd Watch / Go atomic / MongoDB</span>
+</div>
+
+<!-- ====================================================================== -->
+<h2>一、课程概述</h2>
+
+<p>本章覆盖分布式 AI 任务调度平台中最常被追问的两个方向：<strong>分布式调度核心机制</strong>（Redis ZSet 优先级队列、无锁乐观抢占、加权轮询防饥饿、etcd 并发管控）和 <strong>Go 工程实践</strong>（并发安全、Redis 原子性、MongoDB 选型）。共计 8 道高频面试题，每题配有满分逐字稿。</p>
+
+<div class="highlight-box">
+  <strong>面试官视角：</strong>这一章的核心考察点不是"你用了什么技术"，而是"你为什么这样选、有没有想过替代方案、边界情况怎么处理"。能讲清 Redis ZSet 消费竞争的原子性本质、加权轮询的数学模型、etcd Watch 的断连恢复策略，才是区分度所在。
+</div>
+
+<p>全章知识脉络：</p>
+
+<table>
+  <thead>
+    <tr><th>模块</th><th>核心问题</th><th>关键技术</th><th>对应面试题</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>优先级队列</td><td>多优先级任务如何排序+并发消费</td><td>Redis ZSet, score 编码</td><td>Q1</td></tr>
+    <tr><td>无锁抢占</td><td>多消费者竞争消费如何不重复</td><td>ZRANGEBYSCORE + ZREM 原子性, Lua 脚本</td><td>Q2, Q6, Q7</td></tr>
+    <tr><td>防饥饿调度</td><td>低优先级任务不被永久压制</td><td>加权轮询 + 降序兜底</td><td>Q3</td></tr>
+    <tr><td>并发管控</td><td>单用户不占满集群算力</td><td>etcd Watch + sync/atomic</td><td>Q4, Q5</td></tr>
+    <tr><td>存储选型</td><td>异构任务参数的持久化</td><td>MongoDB Schema-free</td><td>Q8</td></tr>
+  </tbody>
+</table>
+
+<!-- ====================================================================== -->
+<h2>二、核心知识精讲</h2>
+
+<!-- 2.1 Redis ZSet 原理 -->
+<h3>2.1 Redis ZSet 做优先级队列的原理</h3>
+
+<p>Redis Sorted Set（ZSet）底层由 <strong>ziplist</strong>（元素少时）或 <strong>skiplist + hashtable</strong>（元素多时）实现。每个成员关联一个 <code>score</code>（float64），集合按 score 自动排序。核心特性：</p>
+
+<ul>
+  <li><code>ZADD</code> 插入/更新：O(log N)</li>
+  <li><code>ZRANGEBYSCORE</code> 按分数范围取成员：O(log N + M)</li>
+  <li><code>ZREM</code> 删除指定成员：O(log N)，且为<strong>原子操作</strong>——这是无锁抢占的基础</li>
+</ul>
+
+<h4>Score 编码设计</h4>
+
+<p>我们将 score 设计为 <code>优先级权重 * 10^13 + 时间戳</code>（毫秒级）。这样：</p>
+<ul>
+  <li>优先级高的 score 更小（高优先级权重值更低），排在 ZSet 前面，优先被消费</li>
+  <li>同优先级内，时间戳更小的任务排前面，实现 FIFO</li>
+</ul>
+
+<pre><code>// score 编码示例
+score = priority_weight * 1e13 + timestamp_ms
+
+// priority=1 (高优先级), 提交时间 1700000000000
+score = 1 * 1e13 + 1700000000000 = 11700000000000
+
+// priority=5 (低优先级), 提交时间 1699999999000
+score = 5 * 1e13 + 1699999999000 = 51699999999000
+
+// 高优先级 score 更小，排在前面，即使提交时间更晚</code></pre>
+
+<h4>为什么不用 RabbitMQ / Kafka</h4>
+
+<table>
+  <thead>
+    <tr><th>维度</th><th>Redis ZSet</th><th>RabbitMQ</th><th>Kafka</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>优先级支持</td><td>原生连续优先级（score 任意浮点数）</td><td>离散优先级队列（最多 255 级，需预建）</td><td>无原生优先级，需多 topic 模拟</td></tr>
+    <tr><td>消费模型</td><td>拉模式 + 原子竞争</td><td>推模式 + ACK</td><td>拉模式 + offset 提交</td></tr>
+    <tr><td>运维复杂度</td><td>平台已有 Redis 集群</td><td>需额外部署 Erlang 运行时</td><td>需 ZooKeeper/KRaft 集群</td></tr>
+    <tr><td>适用场景</td><td>中等吞吐 + 灵活优先级</td><td>高可靠消息传递</td><td>超高吞吐流式处理</td></tr>
+  </tbody>
+</table>
+
+<blockquote>AI 任务调度场景的特点：任务量级中等（非百万 QPS），但优先级需要灵活排序，且平台已有 Redis 基础设施。ZSet 是最匹配的选择。</blockquote>
+
+
+<!-- 2.2 无锁乐观抢占 -->
+<h3>2.2 ZRange + ZRem 无锁乐观抢占</h3>
+
+<p>"无锁"不是说完全没有同步机制，而是<strong>不需要显式的分布式锁</strong>（如 RedLock）。核心思路是利用 Redis 单线程执行模型和 <code>ZREM</code> 的原子性：</p>
+
+<ol>
+  <li>多个消费者同时执行 <code>ZRANGEBYSCORE queue -inf +inf LIMIT 0 1</code> 获取候选任务 ID</li>
+  <li>多个消费者可能拿到同一个任务 ID</li>
+  <li>所有消费者对该任务 ID 执行 <code>ZREM queue taskId</code></li>
+  <li>由于 Redis 单线程，只有一个 ZREM 返回 <code>1</code>（删除成功），其他返回 <code>0</code></li>
+  <li>返回 1 的消费者获得任务所有权，返回 0 的消费者跳过，重新拉取</li>
+</ol>
+
+<div class="diagram">
+  <pre class="mermaid">
+sequenceDiagram
+    participant C1 as Consumer 1
+    participant C2 as Consumer 2
+    participant C3 as Consumer 3
+    participant R as Redis (单线程)
+
+    Note over R: ZSet queue: {task-A: 1.0, task-B: 2.0, task-C: 3.0}
+
+    par 并发拉取
+        C1->>R: ZRANGEBYSCORE queue -inf +inf LIMIT 0 1
+        C2->>R: ZRANGEBYSCORE queue -inf +inf LIMIT 0 1
+        C3->>R: ZRANGEBYSCORE queue -inf +inf LIMIT 0 1
+    end
+
+    R-->>C1: ["task-A"]
+    R-->>C2: ["task-A"]
+    R-->>C3: ["task-A"]
+
+    Note over C1,C3: 三个消费者都拿到 task-A
+
+    par 竞争删除（Redis 串行执行）
+        C1->>R: ZREM queue task-A
+        C2->>R: ZREM queue task-A
+        C3->>R: ZREM queue task-A
+    end
+
+    R-->>C1: 1 (删除成功，获得所有权)
+    R-->>C2: 0 (已被删除，跳过)
+    R-->>C3: 0 (已被删除，跳过)
+
+    C1->>C1: 处理 task-A
+    C2->>C2: 重新拉取下一个任务
+    C3->>C3: 重新拉取下一个任务
+  </pre>
+</div>
+
+<h4>Lua 脚本封装：更安全的原子操作</h4>
+
+<p>上述两步（ZRANGE + ZREM）虽然在逻辑上是安全的，但存在一个效率问题：多个消费者可能反复拉到同一个任务然后 ZREM 失败。用 Lua 脚本将两步合并为一个原子操作可以进一步优化：</p>
+
+<pre><code>-- Lua 脚本：原子地取出并删除一个最高优先级任务
+local tasks = redis.call('ZRANGEBYSCORE', KEYS[1], '-inf', '+inf', 'LIMIT', 0, 1)
+if #tasks == 0 then
+    return nil
+end
+local task = tasks[1]
+local removed = redis.call('ZREM', KEYS[1], task)
+if removed == 1 then
+    return task    -- 抢占成功
+else
+    return nil     -- 被其他消费者抢走
+end</code></pre>
+
+<p>Lua 脚本在 Redis 中以原子方式执行（单线程，脚本执行期间不会被其他命令打断），因此 ZRANGE 和 ZREM 之间不会有其他消费者插入。</p>
+
+<div class="highlight-box">
+  <strong>为什么不用分布式锁？</strong>分布式锁（如 RedLock）引入额外的锁竞争、超时、续租等复杂性。而 ZREM 天然具有"谁删成功谁拥有"的语义，本质上是一种<strong>乐观并发控制</strong>——先做操作，通过返回值判断是否成功，失败则重试。这比悲观锁的性能更好，实现更简单。
+</div>
+
+
+<!-- 2.3 加权轮询调度 -->
+<h3>2.3 加权轮询 + 降序兜底防饥饿</h3>
+
+<p>纯优先级调度的致命问题：高优先级任务持续涌入时，低优先级任务永远轮不到执行——即<strong>任务饥饿</strong>。解决方案是加权轮询（Weighted Round-Robin）。</p>
+
+<h4>算法模型</h4>
+
+<ol>
+  <li><strong>配额分配</strong>：每轮调度周期分配固定的调度槽位，高优先级占 70%，低优先级占 30%</li>
+  <li><strong>配额内消费</strong>：先从高优先级队列消费，每消费一个任务扣减一个配额</li>
+  <li><strong>配额耗尽切换</strong>：高优先级配额用完后，切换到低优先级队列消费</li>
+  <li><strong>降序兜底</strong>：当某一级配额耗尽且该级队列为空时，剩余配额可被其他级别借用</li>
+</ol>
+
+<pre><code>// 加权轮询调度伪代码
+func (s *Scheduler) weightedRoundRobin() {
+    totalSlots := 10                     // 每轮 10 个调度槽位
+    highQuota  := totalSlots * 70 / 100  // 高优先级 7 个
+    lowQuota   := totalSlots - highQuota // 低优先级 3 个
+
+    consumed := 0
+
+    // 阶段一：消费高优先级队列
+    for consumed < highQuota {
+        task := popFromQueue("high_priority")
+        if task == nil { break }
+        dispatch(task)
+        consumed++
+    }
+
+    // 阶段二：消费低优先级队列（保底 + 借用剩余配额）
+    remaining := totalSlots - consumed
+    for i := 0; i < remaining; i++ {
+        task := popFromQueue("low_priority")
+        if task == nil { break }
+        dispatch(task)
+    }
+
+    // 降序兜底：如果低优先级也空了，高优先级可继续消费剩余槽位
+    // （反之亦然）
+}</code></pre>
+
+<div class="diagram">
+  <pre class="mermaid">
+flowchart TD
+    A([调度周期开始]) --> B[初始化配额<br/>高优先级: 7 槽<br/>低优先级: 3 槽]
+    B --> C{高优先级队列<br/>有任务?}
+    C -->|是| D[消费高优先级任务<br/>高配额 -1]
+    D --> E{高配额<br/>耗尽?}
+    E -->|否| C
+    E -->|是| F{低优先级队列<br/>有任务?}
+    C -->|否| F
+    F -->|是| G[消费低优先级任务<br/>低配额 -1]
+    G --> H{总槽位<br/>用完?}
+    H -->|否| F
+    H -->|是| I([本轮调度结束])
+    F -->|否| J{高优先级队列<br/>仍有任务?}
+    J -->|是| K[降序兜底<br/>用剩余槽位消费高优先级]
+    J -->|否| I
+    K --> I
+
+    style A fill:#f0fdf4,stroke:#16a34a
+    style I fill:#f0fdf4,stroke:#16a34a
+    style D fill:#fef2f2,stroke:#b91c1c
+    style G fill:#eff6ff,stroke:#2563eb
+    style K fill:#fefce8,stroke:#ca8a04
+  </pre>
+</div>
+
+<h4>25% 吞吐量提升的来源</h4>
+
+<p>提升并非来自单个环节，而是多个优化的叠加效果：</p>
+<ul>
+  <li><strong>减少空轮询</strong>：原先无配额机制时，调度器在高优先级队列反复轮询，低优先级队列几乎不被触及。加权轮询使两个队列都被有效利用，减少了空转</li>
+  <li><strong>降低重试开销</strong>：饥饿导致用户重复提交低优先级任务，产生大量重复入队和去重开销。饥饿问题解决后，重复提交率下降</li>
+  <li><strong>资源利用率提升</strong>：Worker 因为只收到高优先级任务导致负载不均（某些特定类型的 Worker 空闲），配额机制让任务分布更均匀</li>
+</ul>
+
+
+<!-- 2.4 etcd 并发管控 -->
+<h3>2.4 etcd Watch + 内存原子计数器做用户并发管控</h3>
+
+<p>问题场景：某些用户（特别是自动化脚本用户）短时间内提交大量任务，独占集群算力，导致其他用户的任务排队时间过长。</p>
+
+<h4>架构设计</h4>
+
+<div class="diagram">
+  <pre class="mermaid">
+flowchart LR
+    subgraph etcd集群
+        KV[(用户并发配置<br/>/config/concurrency/user-A: 5<br/>/config/concurrency/user-B: 10)]
+    end
+
+    subgraph Scheduler实例1
+        W1[etcd Watcher]
+        M1[内存配置缓存<br/>map: userId → limit]
+        AC1["atomic.Int32 计数器<br/>map: userId → running"]
+    end
+
+    subgraph Scheduler实例2
+        W2[etcd Watcher]
+        M2[内存配置缓存]
+        AC2[atomic.Int32 计数器]
+    end
+
+    KV -- Watch 事件推送 --> W1
+    KV -- Watch 事件推送 --> W2
+    W1 --> M1
+    W2 --> M2
+
+    style KV fill:#fef2f2,stroke:#b91c1c
+    style AC1 fill:#f0fdf4,stroke:#16a34a
+    style AC2 fill:#f0fdf4,stroke:#16a34a
+  </pre>
+</div>
+
+<h4>数据流</h4>
+
+<ol>
+  <li><strong>配置存储</strong>：运维人员在 etcd 写入 <code>/config/concurrency/{userId}</code>，值为该用户允许的最大并行任务数</li>
+  <li><strong>Watch 监听</strong>：每个 Scheduler 实例启动时 Watch 该前缀，收到 PUT/DELETE 事件后更新内存中的配置缓存</li>
+  <li><strong>任务准入</strong>：任务入队时，用 <code>atomic.LoadInt32</code> 读取当前计数，与配置上限比较；未超限则 <code>atomic.AddInt32(&counter, 1)</code> 递增，超限则拒绝</li>
+  <li><strong>任务完成</strong>：任务结束回调中 <code>atomic.AddInt32(&counter, -1)</code> 递减</li>
+</ol>
+
+<h4>Go sync/atomic 为什么线程安全</h4>
+
+<p><code>sync/atomic</code> 包提供的操作（如 <code>LoadInt32</code>, <code>AddInt32</code>, <code>CompareAndSwapInt32</code>）在 CPU 指令层面是原子的，直接映射为 CPU 的 CAS（Compare-And-Swap）指令。在多 goroutine 并发场景下：</p>
+<ul>
+  <li>不需要 <code>sync.Mutex</code>，避免锁竞争和上下文切换开销</li>
+  <li><code>AddInt32</code> 返回新值，可用于即时判断是否超限</li>
+  <li>底层由 Go runtime 保证内存可见性（happens-before 语义）</li>
+</ul>
+
+<h4>etcd Watch 断连重试</h4>
+
+<pre><code>func watchConcurrencyConfig(cli *clientv3.Client, prefix string) {
+    for {
+        // Watch 返回一个 channel，阻塞读取事件
+        watchChan := cli.Watch(context.Background(), prefix,
+            clientv3.WithPrefix(),
+            clientv3.WithPrevKV(),
+        )
+
+        for resp := range watchChan {
+            if resp.Err() != nil {
+                // Watch channel 关闭或出错，跳出内层循环触发重建
+                log.Warnf("watch error: %v, reconnecting...", resp.Err())
+                break
+            }
+            for _, ev := range resp.Events {
+                updateConcurrencyLimit(ev) // 更新内存缓存
+            }
+        }
+
+        // 到这里说明 Watch 断开，短暂等待后重建
+        // etcd client-go 内部有自动重试，但外层兜底更安全
+        time.Sleep(time.Second)
+        reloadFullConfig(cli, prefix) // 重连后全量拉取一次，防止漏掉事件
+    }
+}</code></pre>
+
+<div class="highlight-box">
+  <strong>关键设计：全量拉取 + 增量 Watch。</strong>Watch 断连期间可能错过事件，重连后必须先做一次全量 GET，再开始 Watch。这是 etcd Watch 的标准模式，面试中提到这一点会加分。
+</div>
+
+
+<!-- 2.5 Go 工程实践 -->
+<h3>2.5 Go 工程实践要点</h3>
+
+<h4>并发安全层次</h4>
+
+<table>
+  <thead>
+    <tr><th>层级</th><th>机制</th><th>适用场景</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Redis 层</td><td>ZREM 原子性 / Lua 脚本</td><td>跨进程的任务抢占</td></tr>
+    <tr><td>进程内</td><td>sync/atomic</td><td>计数器、状态标记（读多写少）</td></tr>
+    <tr><td>进程内</td><td>sync.Mutex / sync.RWMutex</td><td>保护复杂数据结构（map、slice）</td></tr>
+    <tr><td>进程内</td><td>channel</td><td>goroutine 间通信、任务分发</td></tr>
+  </tbody>
+</table>
+
+<h4>Redis 批量操作的原子性</h4>
+
+<p>Redis 的 <code>MGET</code>、<code>MSET</code> 等批量命令本身是原子的，但 Pipeline 不是——Pipeline 只是批量发送命令减少 RTT，各命令之间可能被其他客户端的命令穿插。如果需要多步骤的原子操作，必须使用 <strong>Lua 脚本</strong>或 <strong>MULTI/EXEC 事务</strong>。</p>
+
+<h4>MongoDB 选型逻辑</h4>
+
+<p>AI 任务的参数字段高度异构：图像生成任务有 <code>width, height, prompt, negative_prompt, steps</code>；视频生成任务有 <code>fps, duration, motion_strength</code>；3D 任务有 <code>mesh_format, texture_resolution</code>。如果用 MySQL：</p>
+<ul>
+  <li>要么建一张"大宽表"，100+ 列大多数为 NULL，查询效率低</li>
+  <li>要么每种任务一张表，表数量爆炸，新增任务类型就要 DDL</li>
+  <li>要么用 JSON 字段，但失去 MySQL 的强 schema 优势</li>
+</ul>
+<p>MongoDB 的 Schema-free 特性天然适合这种场景：每个任务文档自描述字段，新增任务类型无需改表结构。加上 MongoDB 的水平扩展（sharding）能力，在任务量增长时更容易扩容。</p>
+
+
+<!-- ====================================================================== -->
+<h2>三、面试易错点</h2>
+
+<div class="defend">
+  <h4>易错点 1：把"无锁"理解为"完全没有同步机制"</h4>
+  <p><strong>正解</strong>：无锁指的是不使用显式的分布式锁（如 RedLock），但 ZREM 本身的原子性就是一种同步机制——它利用 Redis 单线程模型实现了"乐观并发控制"。面试时说"无锁"要紧跟解释<em>用什么替代了锁</em>。</p>
+</div>
+
+<div class="defend">
+  <h4>易错点 2：把 Redis Pipeline 说成"原子操作"</h4>
+  <p><strong>正解</strong>：Pipeline 只减少了网络 RTT（客户端批量发送命令，服务端批量返回），但命令之间<strong>不保证原子性</strong>。真正的原子性要用 Lua 脚本（单线程执行，不被打断）或 MULTI/EXEC 事务（但事务内不能依赖中间结果做分支判断）。</p>
+</div>
+
+<div class="defend">
+  <h4>易错点 3：etcd Watch 断连后直接重新 Watch 而不做全量拉取</h4>
+  <p><strong>正解</strong>：断连期间可能错过事件（PUT / DELETE），如果直接续 Watch，内存状态会与 etcd 不一致。正确做法是<strong>先全量 GET 重建状态，再 Watch 增量更新</strong>。这是 etcd Watch 的标准模式。</p>
+</div>
+
+<div class="defend">
+  <h4>易错点 4：把 atomic.AddInt32 和 "先读后写"混淆</h4>
+  <p><strong>正解</strong>：<code>if atomic.LoadInt32(&c) < limit { atomic.AddInt32(&c, 1) }</code> 这段代码在高并发下<strong>不安全</strong>——Load 和 Add 之间可能被其他 goroutine 插入。正确做法是用 <code>CompareAndSwapInt32</code> 做 CAS 循环，或用 <code>AddInt32</code> 后检查返回值是否超限，超限则回退（<code>AddInt32(&c, -1)</code>）。</p>
+</div>
+
+<div class="defend">
+  <h4>易错点 5：说 MongoDB 比 MySQL "性能更好"</h4>
+  <p><strong>正解</strong>：MongoDB 的优势不在于绝对性能，而在于 <strong>Schema 灵活性</strong>和<strong>水平扩展能力</strong>。在固定 schema、复杂事务的场景下，MySQL 反而更合适。面试时要强调"场景适配"而非"绝对优劣"。</p>
+</div>
+
+
+<!-- ====================================================================== -->
+<h2>四、满分逐字稿</h2>
+
+<!-- Q1 -->
+<div class="script-block">
+  <span class="script-label">Q1 满分逐字稿</span>
+  <h4>为什么选用 Redis ZSet 做优先级队列？不用 RabbitMQ、Kafka？</h4>
+
+  <p>我们选 Redis ZSet 做优先级队列，核心原因有三个。</p>
+
+  <p><strong>第一，优先级表达能力。</strong>我们的 AI 任务有多个优先级等级，需要在同一个队列里按优先级连续排序。ZSet 的 score 是浮点数，可以编码为"优先级权重乘以 10 的 13 次方加上毫秒级时间戳"，这样既保证高优先级排前面，同优先级内又按 FIFO 排序。RabbitMQ 虽然支持优先级队列，但它是离散的，最多 255 级，而且需要在创建队列时预先声明，灵活性不够。Kafka 本身没有原生优先级概念，要么用多 topic 模拟，要么在消费端排序，都比较 hack。</p>
+
+  <p><strong>第二，消费模型匹配。</strong>我们的调度器是主动拉取模型——worker-scheduler 按轮次主动去队列取任务、分配给 worker。ZSet 的 ZRANGEBYSCORE 加 ZREM 天然支持这种"拉取-竞争-确认"的消费模式，而且 ZREM 的原子性让多个消费者竞争时不需要额外的分布式锁。RabbitMQ 是推模式，需要 consumer 注册回调和 ACK 机制，跟我们的调度模型不太匹配。</p>
+
+  <p><strong>第三，基础设施复用。</strong>平台本身已经有 Redis 集群用于缓存和会话管理，新增一个 ZSet 几乎零运维成本。如果上 RabbitMQ 或 Kafka，需要额外部署和维护一套消息中间件集群，对我们这个中等吞吐量的场景来说投入产出比不划算。我们的任务量级大概是每秒几十到几百个任务入队，远达不到需要 Kafka 百万级吞吐的程度。</p>
+
+  <p>当然 ZSet 也有局限性——它没有消息持久化保证（虽然 Redis 有 AOF/RDB，但不如 Kafka 的副本机制强）、没有死信队列、没有消费组的 offset 管理。这些我们通过 MongoDB 记录任务状态来补偿：任务入队同时写 MongoDB 做持久化，任务超时未完成由定时任务扫描 MongoDB 做补偿重投。</p>
+</div>
+
+<!-- Q2 -->
+<div class="script-block">
+  <span class="script-label">Q2 满分逐字稿</span>
+  <h4>ZRange + ZRem 无锁乐观抢占的执行流程？为什么不需要分布式锁？如何保证并发消费不重复？</h4>
+
+  <p>我来详细讲一下整个消费流程。</p>
+
+  <p><strong>第一步，候选拉取。</strong>消费者调用 <code>ZRANGEBYSCORE queue -inf +inf LIMIT 0 1</code>，从 ZSet 中取出 score 最小的一个任务 ID——也就是当前最高优先级的任务。这一步是只读操作，多个消费者可以同时执行，可能拿到同一个任务 ID。</p>
+
+  <p><strong>第二步，竞争删除。</strong>拿到任务 ID 后，消费者立即执行 <code>ZREM queue taskId</code>。这是关键：ZREM 是 Redis 的原子操作，在 Redis 单线程模型下，多个 ZREM 命令是串行执行的。第一个执行的 ZREM 返回 1 表示删除成功，后续对同一个 taskId 的 ZREM 返回 0 表示元素已不存在。</p>
+
+  <p><strong>第三步，所有权确认。</strong>消费者检查 ZREM 的返回值：返回 1 则获得该任务的所有权，开始执行；返回 0 则说明被其他消费者抢走了，回到第一步重新拉取。</p>
+
+  <p><strong>为什么不需要分布式锁？</strong>传统方案是先加分布式锁、再读取任务、再删除任务、最后释放锁。锁带来几个问题：一是锁本身的获取有竞争开销，在高并发下会成为瓶颈；二是锁超时和续租的复杂性，如果持锁的消费者挂了，需要等锁过期才能释放；三是 RedLock 实现本身有争议——Martin Kleppmann 和 Salvatore Sanfilippo 的那场著名辩论说的就是这个问题。而 ZREM 天然具有"谁删成功谁拥有"的语义，本质上是乐观并发控制，不存在锁超时和续租的问题。</p>
+
+  <p>在实际工程中，我们进一步用 Lua 脚本把 ZRANGEBYSCORE 和 ZREM 封装为一个原子操作。这样的好处是减少了"多个消费者拉到同一个任务后竞争失败"的概率——Lua 脚本在 Redis 中原子执行，取出和删除之间不会被其他命令穿插，第一个执行 Lua 脚本的消费者必然抢到任务。这让空转率从大约 30% 降到了接近 0。</p>
+
+  <p>至于"会不会漏消费"——不会。如果 ZREM 失败，消费者会立刻重新拉取下一个任务，ZSet 中其他任务不受影响。如果消费者在 ZREM 成功后崩溃了，这个任务确实会丢失在 ZSet 层面，但我们在 MongoDB 里有任务状态记录，定时任务会扫描状态为"已分配但超时未完成"的任务进行补偿重投。</p>
+</div>
+
+<!-- Q3 -->
+<div class="script-block">
+  <span class="script-label">Q3 满分逐字稿</span>
+  <h4>低优先级任务饥饿问题怎么解决？加权轮询 + 降序兜底的具体算法逻辑？</h4>
+
+  <p>任务饥饿是纯优先级调度的经典问题。在我们上线初期确实遇到过：高优先级任务持续涌入，低优先级任务在队列里积压了几个小时都没有被消费。用户投诉说"普通任务提交了半天没结果"。</p>
+
+  <p><strong>我们的解决方案是加权轮询调度加降序兜底。</strong></p>
+
+  <p>具体算法是这样的：每轮调度周期，我们按配置分配调度槽位。比如总共 10 个槽位，高优先级配额 70% 即 7 个，低优先级配额 30% 即 3 个。调度器先从高优先级队列消费，每消费一个任务，高优先级配额减 1，直到配额耗尽或者队列为空。然后切换到低优先级队列，用剩余的槽位消费低优先级任务。</p>
+
+  <p><strong>降序兜底机制</strong>是对配额制的补充：当高优先级配额用完后，如果高优先级队列还有剩余任务，它们不会占用低优先级的配额——低优先级的 3 个槽位是"保底的"。反过来，如果高优先级队列为空，它的剩余配额可以借给低优先级使用，这样不浪费算力。再反过来说，如果低优先级队列也空了，剩余槽位还可以回流给高优先级。这个"空了就让"的逻辑保证了算力不会因为某一级队列为空而闲置。</p>
+
+  <p>70/30 这个比例是根据业务实际调优的。我们统计了一段时间的任务分布：高优先级任务大约占总量的 60-70%，低优先级占 30-40%。70/30 的配额保证了在典型负载下两边都不会饥饿，同时给了高优先级任务合理的优先权。这个比例写在配置中心，可以根据业务变化动态调整，不需要改代码重新部署。</p>
+
+  <p><strong>效果方面</strong>，上线加权轮询后，低优先级任务的平均等待时间从原来的几十分钟降到了几分钟内，调度吞吐量整体提升了大约 25%。这个提升来自三个方面：一是减少了空轮询——原来调度器反复扫高优先级队列，现在按配额分配更均匀；二是减少了用户因饥饿而重复提交造成的重复入队开销；三是 Worker 的负载更均衡了，某些只处理低优先级任务类型的 Worker 从闲置变成了有活干。</p>
+</div>
+
+<!-- Q4 -->
+<div class="script-block">
+  <span class="script-label">Q4 满分逐字稿</span>
+  <h4>etcd Watch + 内存原子计数器做用户并发管控：原子计数器为什么线程安全？etcd Watch 断连重试怎么处理？</h4>
+
+  <p>我先讲架构，再分别讲原子计数器和 Watch 断连。</p>
+
+  <p><strong>整体架构</strong>：我们用 etcd 存储每个用户的最大并发任务数配置，key 是 <code>/config/concurrency/{userId}</code>，value 是数字。每个 Scheduler 实例启动时 Watch 这个前缀，收到变更事件后更新内存中的配置缓存。任务准入判断时，用 Go 的 <code>sync/atomic</code> 包维护每个用户当前正在运行的任务计数。</p>
+
+  <p><strong>为什么 atomic 计数器是线程安全的？</strong><code>sync/atomic</code> 包的操作直接映射为 CPU 的原子指令，比如 x86 上的 <code>LOCK XADD</code>。这个 <code>LOCK</code> 前缀保证指令执行期间独占缓存行，其他 CPU 核心不能同时修改同一个内存地址。具体使用上，我们在任务准入时调用 <code>atomic.AddInt32(&counter, 1)</code>，它返回新值，如果新值超过配置上限就立刻 <code>atomic.AddInt32(&counter, -1)</code> 回退并拒绝任务。在任务完成回调中调用 <code>atomic.AddInt32(&counter, -1)</code> 递减。这比用 Mutex 性能好很多，因为 atomic 操作没有锁竞争、没有 goroutine 挂起和唤醒的开销。</p>
+
+  <p>这里有个细节：为什么不用 <code>if Load < limit then Add</code>？因为 Load 和 Add 之间存在竞态——两个 goroutine 同时 Load 都看到 4，都小于 limit 5，都 Add，结果变成 6 超限了。正确做法是先 Add 再检查，超了就回退，这样的 CAS 语义才是安全的。</p>
+
+  <p><strong>etcd Watch 断连重试</strong>怎么处理？这是 etcd Watch 的标准问题。我们的做法是三层保障：第一层，etcd 的 Go client（clientv3）内部有自动重连和重试机制，大多数短暂的网络抖动它自己就处理了。第二层，我们在外层套了 for 循环，如果 Watch channel 关闭或返回错误，等待 1 秒后重建 Watch。第三层也是最关键的：重连后不直接续 Watch，而是先做一次全量 GET——用 <code>clientv3.Get</code> 加 <code>WithPrefix</code> 拉取所有配置，重建内存缓存，然后再开始 Watch。因为断连期间可能错过了配置变更事件，如果直接续 Watch，内存状态和 etcd 会不一致。</p>
+
+  <p>这个"全量拉取加增量 Watch"的模式其实是 Kubernetes Informer 的核心设计思路，我们只是在小规模场景下用了同样的方法。</p>
+</div>
+
+<!-- Q5 -->
+<div class="script-block">
+  <span class="script-label">Q5 满分逐字稿</span>
+  <h4>单用户并行任务限制，如果瞬间大量请求打进来，是限流、排队还是直接丢弃？策略是什么？</h4>
+
+  <p>我们采用的策略是<strong>排队为主，限流兜底</strong>，不会直接丢弃。</p>
+
+  <p>具体来说，并发管控发生在两个层面。<strong>第一层是准入限制</strong>：当用户当前正在运行的任务数达到上限（比如 5 个），新提交的任务不会被丢弃，而是正常入 Redis ZSet 队列排队，但不会被调度器分配给 Worker 执行。调度器在分配任务时会检查该用户的原子计数器，如果已满就跳过这个任务，去消费其他用户的任务。等该用户有任务完成、计数器递减后，下一轮调度就会取到这个排队中的任务。</p>
+
+  <p><strong>第二层是入队限流</strong>：如果用户瞬间提交了大量任务（比如脚本跑批），入队阶段有速率限制，防止短时间内把 Redis ZSet 撑满。这一层用的是标准的令牌桶限流——每个用户每秒最多入队 N 个任务，超过的请求返回 429 Too Many Requests，由客户端做退避重试。</p>
+
+  <p>为什么不直接丢弃？因为 AI 生成任务通常是用户主动发起的，每个任务对用户来说都有价值。直接丢弃用户体验很差——用户不知道任务丢了还是在排队。排队可以给用户一个明确的预期："你的任务在第 X 位，预计等待 Y 分钟"。只有在极端情况下（队列积压超过系统容量阈值），我们才会触发熔断拒绝新任务，但这属于系统级保护而非用户级管控。</p>
+
+  <p>从效果看，上线并发管控后，单用户独占算力的问题基本消除了。之前最严重的时候一个自动化脚本用户占了集群 40% 的算力，其他用户排队时间翻倍。限制后每个用户最多占用固定的并行槽位，整体的任务平均等待时间下降了明显。</p>
+</div>
+
+<!-- Q6 -->
+<div class="script-block">
+  <span class="script-label">Q6 满分逐字稿</span>
+  <h4>你 Go 开发过程中，分布式队列并发安全怎么保证？</h4>
+
+  <p>我从三个层面来讲我们的并发安全保障。</p>
+
+  <p><strong>第一层是 Redis 层面的跨进程并发安全。</strong>多个 Scheduler 实例同时消费同一个 Redis ZSet 队列，并发安全靠两个机制：一是 ZREM 的原子性——Redis 单线程模型保证同一时刻只有一个 ZREM 执行成功；二是 Lua 脚本封装——把 ZRANGEBYSCORE 和 ZREM 组合成一个原子脚本，消除两步之间的竞态窗口。实际上就是前面讲的无锁乐观抢占方案。</p>
+
+  <p><strong>第二层是进程内的 goroutine 并发安全。</strong>在单个 Scheduler 实例内，多个 goroutine 共享内存数据结构。我们按场景选择不同的同步原语：对于用户并发计数器这种简单的整数操作，用 <code>sync/atomic</code>，性能最好；对于任务状态 map 这种复杂数据结构的读写，用 <code>sync.RWMutex</code>，允许多读单写；对于 goroutine 间的任务分发，用 buffered channel 做解耦，生产者往 channel 写、消费者从 channel 读，channel 自身保证并发安全。</p>
+
+  <p><strong>第三层是业务层面的幂等保障。</strong>分布式环境下，网络抖动可能导致任务被重复投递或重复完成回调。我们在 MongoDB 中用任务 ID 做幂等键：任务状态更新用 <code>findOneAndUpdate</code> 加条件 <code>status: "running"</code>，只有当前状态匹配才更新。如果任务已经被标记为"完成"或"失败"，重复的完成回调不会产生副作用。</p>
+
+  <p>一个踩过的坑是：早期我们用 <code>sync.Map</code> 存任务状态缓存，以为它并发安全就万事大吉了。后来发现在"读取-判断-更新"这种复合操作上，<code>sync.Map</code> 的单次操作虽然安全，但多步组合依然有竞态。改成 <code>sync.RWMutex</code> 保护整个复合操作后问题才解决。这也让我深刻理解了"原子操作安全"和"业务逻辑安全"是两个层次的问题。</p>
+</div>
+
+<!-- Q7 -->
+<div class="script-block">
+  <span class="script-label">Q7 满分逐字稿</span>
+  <h4>Redis 批量操作有没有原子性问题？如何避免超卖、重复消费？</h4>
+
+  <p>这个问题很好，Redis 批量操作的原子性是一个容易踩坑的地方。</p>
+
+  <p><strong>首先要区分三种"批量"：</strong>第一种是 <code>MGET</code>、<code>MSET</code> 这样的多键命令，它们在 Redis 中是单条命令，原子执行；第二种是 Pipeline，它只是把多条命令打包发送减少网络 RTT，但服务端仍然是逐条执行的，<strong>不保证原子性</strong>——中间可能被其他客户端的命令穿插；第三种是 MULTI/EXEC 事务，它保证事务内的命令要么全部执行要么全不执行，但有个关键限制——事务内不能根据中间结果做分支判断，因为所有命令在 EXEC 时才一起执行。</p>
+
+  <p><strong>在我们的场景中避免超卖和重复消费的做法</strong>：任务从 ZSet 中取出并删除这个操作，我们用 Lua 脚本保证原子性。Lua 脚本在 Redis 中以单线程方式执行，脚本执行期间不会被其他命令打断，所以 ZRANGEBYSCORE 和 ZREM 之间不存在竞态。ZREM 返回 1 就是获得了所有权，返回 0 就是别人先抢到了，不存在超卖。</p>
+
+  <p>重复消费的防线有两道：第一道是 ZREM 的原子性——任务从 ZSet 中被删除后就不可能被第二个消费者取到；第二道是 MongoDB 中的任务状态机——任务从 "pending" 到 "running" 的状态转换用 <code>findOneAndUpdate</code> 加前置条件，只有状态为 "pending" 才能更新为 "running"。即使极端情况下 Redis 那层出问题（比如主从切换导致数据短暂不一致），MongoDB 这层也能兜住，不会重复执行。</p>
+
+  <p>还有一个实践经验：我们早期用 Pipeline 批量获取多个任务的信息，发现偶尔会有数据不一致的问题——A 命令读到了 B 命令还没来得及写的旧值。后来改成 Lua 脚本后问题消失了。所以我们的经验是：<strong>如果多个操作之间有逻辑依赖，必须用 Lua 脚本，Pipeline 不够用。</strong></p>
+</div>
+
+<!-- Q8 -->
+<div class="script-block">
+  <span class="script-label">Q8 满分逐字稿</span>
+  <h4>MongoDB 存储任务信息，为什么选 Mongo 不选 MySQL？任务字段频繁变更的场景优势是什么？</h4>
+
+  <p>我们选 MongoDB 存储任务信息，核心原因是 AI 任务的参数字段高度异构。</p>
+
+  <p><strong>具体来说</strong>，我们平台支持十几种不同类型的 AI 任务——图像生成、视频生成、3D 模型生成、语音合成等等。每种任务的参数完全不同：图像任务有 <code>width</code>、<code>height</code>、<code>prompt</code>、<code>negative_prompt</code>、<code>steps</code>、<code>cfg_scale</code> 这些字段；视频任务有 <code>fps</code>、<code>duration</code>、<code>motion_strength</code>、<code>camera_motion</code>；3D 任务有 <code>mesh_format</code>、<code>texture_resolution</code>、<code>poly_count</code>。而且随着我们接入新的 AI 供应商和新的模型能力，参数字段在频繁变化——平均每两周就会新增一种任务类型或者给现有类型加新参数。</p>
+
+  <p><strong>如果用 MySQL，有三个方案，都不理想。</strong>第一是"大宽表"方案，把所有可能的字段都建成列，一张表一百多列，大多数记录 90% 的列是 NULL，查询效率低，而且每次新增字段要做 ALTER TABLE，线上大表改结构风险很高。第二是"多表"方案，每种任务类型一张表，表的数量随任务类型增长，JOIN 查询复杂度高，新增任务类型要建新表还要改代码。第三是用 MySQL 的 JSON 字段来存可变参数，这其实是个折中，但失去了 MySQL 强 schema 的类型检查优势，而且 MySQL 的 JSON 查询性能不如 MongoDB 的 BSON。</p>
+
+  <p><strong>MongoDB 的 Schema-free 特性天然适合这个场景。</strong>每个任务文档自描述字段结构，图像任务的文档和视频任务的文档可以有完全不同的字段，存在同一个 collection 里。新增任务类型只需要在代码里定义新的参数结构体，直接写入 MongoDB，不需要任何 DDL 操作。而且 MongoDB 对嵌套文档和数组有很好的查询支持，任务参数可以自然地用嵌套结构表达。</p>
+
+  <p>另外一个考量是<strong>水平扩展</strong>。随着平台用户增长，任务量级从初期的日均几万增长到日均几十万。MongoDB 的 sharding 机制支持按 <code>userId</code> 或 <code>taskType</code> 做分片，水平扩展比较自然。MySQL 做分库分表需要中间件（比如 ShardingSphere），引入额外的复杂性。</p>
+
+  <p>当然 MongoDB 也有取舍——它不支持跨文档事务（4.0 以后支持但性能有损），所以我们的任务状态更新都是单文档操作，用 <code>findOneAndUpdate</code> 加条件保证原子性。涉及跨任务的统计查询，我们用聚合管道或者离线同步到分析数据库来做，不依赖 MongoDB 的事务。</p>
+</div>
+
+
+<!-- ====================================================================== -->
+<h2>五、知识点速查表</h2>
+
+<table>
+  <thead>
+    <tr><th>概念</th><th>一句话核心</th><th>面试关键词</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Redis ZSet 优先级队列</td><td>score 编码 = 优先级权重 * 10^13 + 时间戳，天然排序</td><td>score 编码、skiplist、O(log N)</td></tr>
+    <tr><td>无锁乐观抢占</td><td>ZREM 原子性 + 返回值判定所有权，无需分布式锁</td><td>CAS 语义、Redis 单线程、Lua 脚本</td></tr>
+    <tr><td>加权轮询</td><td>按配额比例分配调度槽位，配额耗尽切换队列</td><td>70/30 配额、降序兜底、防饥饿</td></tr>
+    <tr><td>etcd Watch</td><td>增量推送 + 断连后全量拉取重建状态</td><td>Informer 模式、List-Watch</td></tr>
+    <tr><td>sync/atomic</td><td>CPU CAS 指令级原子操作，无锁竞争开销</td><td>AddInt32、CAS 循环、happens-before</td></tr>
+    <tr><td>MongoDB Schema-free</td><td>异构文档自描述字段，无需 DDL</td><td>BSON、sharding、findOneAndUpdate</td></tr>
+    <tr><td>Pipeline vs Lua</td><td>Pipeline 不保证原子性，Lua 保证</td><td>RTT 优化 vs 原子性保证</td></tr>
+    <tr><td>幂等防护</td><td>ZREM 去重 + MongoDB 状态前置条件</td><td>双层防线、findOneAndUpdate 条件更新</td></tr>
+  </tbody>
+</table>
+
+<!-- ====================================================================== -->
+<h2>六、追问链路预判</h2>
+
+<div class="highlight-box">
+  <strong>面试官常见追问路径：</strong>
+
+  <p><strong>路径 A（深挖 Redis）：</strong>Q1 → Q2 → "Lua 脚本有什么限制？" → "如果 Redis 主从切换怎么办？" → "有没有消息丢失的可能？" → "如何做补偿？"</p>
+
+  <p><strong>路径 B（深挖调度算法）：</strong>Q3 → "70/30 比例怎么定的？" → "如果有三个优先级呢？" → "跟操作系统的多级反馈队列有什么异同？"</p>
+
+  <p><strong>路径 C（深挖 Go 并发）：</strong>Q6 → Q4 → "atomic 和 Mutex 怎么选？" → "用过 channel 做并发控制吗？" → "goroutine 泄漏怎么排查？"</p>
+
+  <p><strong>路径 D（深挖存储）：</strong>Q8 → Q7 → "MongoDB 的写关注级别了解吗？" → "任务数据量大了怎么归档？" → "有没有做过 MongoDB 性能调优？"</p>
+</div>
+
+<blockquote>
+  <strong>防御性提醒</strong>：所有逐字稿中的量化数据（25% 吞吐量提升、70/30 配额比例）都需要能自圆其说。如果面试官追问"25% 怎么测的"，回答："我们在测试环境用相同的任务负载，分别跑纯优先级调度和加权轮询调度，对比单位时间内完成的任务总量。提升主要来自三方面：减少空轮询、减少重复提交、Worker 负载均衡化。"如果追问更细的数据，可以诚实说"具体的 benchmark 数据我需要再查一下日志确认"。
+</blockquote>
+
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral'});</script>
+
+<button id="toc-toggle" onclick="document.getElementById('toc-sidebar').classList.toggle('open')">&#9776; &#30446;&#24405;</button>
+<nav id="toc-sidebar">
+  <h3>&#30446;&#24405;&#23548;&#33322;</h3>
+  <ul id="toc-list"></ul>
+</nav>
+<script>
+(function(){
+  var hs=Array.from(document.querySelectorAll('h1,h2,h3')).filter(function(h){return !h.closest('#toc-sidebar');});
+  var ul=document.getElementById('toc-list');
+  hs.forEach(function(h,i){
+    if(!h.id)h.id='sec-'+i;
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href='#'+h.id; a.textContent=h.textContent;
+    a.className='toc-'+h.tagName.toLowerCase();
+    a.onclick=function(e){e.preventDefault();document.getElementById(h.id).scrollIntoView({behavior:'smooth'});document.getElementById('toc-sidebar').classList.remove('open');};
+    li.appendChild(a);ul.appendChild(li);
+  });
+  var links=ul.querySelectorAll('a');
+  var ticking=false;
+  window.addEventListener('scroll',function(){
+    if(!ticking){requestAnimationFrame(function(){
+      var cur='';
+      hs.forEach(function(h){if(h.getBoundingClientRect().top<=100)cur=h.id;});
+      links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur);});
+      ticking=false;
+    });ticking=true;}
+  });
+})();
+</script>
+</body>
+</html>

@@ -3050,7 +3050,7 @@ flowchart TB
 <tbody>
 <tr><td>#1</td><td>System Prompt 末尾</td><td>System Prompt（Agent 行为定义）</td><td>所有请求相同，永不变</td></tr>
 <tr><td>#2</td><td>Tools 数组最后一个元素</td><td>7 个工具的 JSON Schema</td><td>所有请求相同，永不变</td></tr>
-<tr><td>#3</td><td>最后一条 user 消息之前的消息</td><td>对话历史（不含最新 user 消息）</td><td>多轮对话中，历史消息不变，只有最新 user 消息是新的</td></tr>
+<tr><td>#3</td><td>最后一条 user 消息之前的消息</td><td>对话历史（不含最新 user 消息）</td><td>同一轮 tool loop 中多次 API 调用时，"最后一条 user 消息"不变，后续调用全部命中缓存</td></tr>
 </tbody>
 </table>
 
@@ -3091,7 +3091,7 @@ def _get_request_payload(self, input_, stop=None, **kwargs):
 
 <div class="defend">
   <h4>🛡️ 面试防守：为什么只在 claude-* 模型上启用？</h4>
-  <p>因为 Prompt Caching 是 Claude 特有的功能，其他模型（如 GPT、Gemini）不支持 <code>cache_control</code> 字段。代码里通过 <code>model_name.startswith("claude-")</code> 判断，只对 Claude 模型注入标记，避免其他模型报错。</p>
+  <p><code>cache_control</code> 是 Claude API 特有的显式缓存标记方式。其他模型也有 Prompt Caching（如 OpenAI 自动缓存相同前缀、Gemini 有 Context Caching API），但它们不需要也不识别 <code>cache_control</code> 字段。代码里通过 <code>model_name.startswith("claude-")</code> 判断，只对 Claude 模型注入标记，避免其他模型因不识别该字段而报错。</p>
 </div>
 
 <div class="defend">
@@ -3101,7 +3101,7 @@ def _get_request_payload(self, input_, stop=None, **kwargs):
 
 <div class="defend">
   <h4>🛡️ 面试防守：断点 3 为什么标记"最后一条 user 消息之前"而不是"最后一条 assistant 消息"？</h4>
-  <p>因为用户可能连续发多条消息（比如先说"帮我画猫"，还没等回复又追加"要赛博朋克风格"）。如果标记在 assistant 消息上，连续 user 消息会打断缓存。标记在"最后一条 user 消息之前"，确保所有历史消息（包括可能的多条连续 user 消息）都被缓存，只有最新的那条 user 消息不缓存（因为它每轮都变）。</p>
+  <p>因为用户可能连续发多条消息（比如先说"帮我画猫"，还没等回复又追加"要赛博朋克风格"）。如果标记在最后一条 assistant 消息上，assistant 之后的所有连续 user 消息都不在缓存前缀里，白白多算 token。标记在"最后一条 user 消息之前"，能最大化缓存前缀长度——无论末尾有多少连续 user 消息，都只有最后一条不进缓存，其余全部命中缓存。</p>
 </div>
 
 <h2>十、可写进简历的亮点</h2>

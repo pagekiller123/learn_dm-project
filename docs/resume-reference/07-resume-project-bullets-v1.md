@@ -24,21 +24,21 @@
 **技术栈**：Python 3.13, FastAPI, LangGraph, DeepAgent, MCP, SSE, SQLite, Pytest
 **项目背景**：网易互娱 AI 美术平台客户端 Agent 服务，打包在桌面客户端中，通过 SSE 与画布 UI 交互，驱动图像/视频/3D 等 AI 创作能力，日均处理 XX 万请求。
 
-### Bullet 1 · Agent 本地执行 + Human-in-the-Loop 交互通道
+### Bullet 1 · SSE 流式响应协议设计
 
-基于 LangGraph interrupt 机制实现 Agent 本地 shell 执行和文件读写的 HITL 审批能力。设计 Confirmation / Choice 两类通用交互协议和 Allow / Needs-Approval / Deny 三级权限决策模型；SSE 层新增 interaction.request / interaction.resolved 事件对，前端收到请求后弹出审批弹窗，用户决策通过 POST /chat/{session_id}/resume 回传 Agent 继续执行。交互通道协议可扩展，后续新增"从多方案选一个"等交互类型无需改动 SSE 层。
+设计 Agent 到前端的 SSE 流式通信协议：抽象出流适配器基类（模板方法模式），提供事件 ID 自增、心跳保活、异常帧自动发送等通用能力；实现具体适配器将 LangGraph 内部事件翻译为 Message → Block 两层内容模型，支持 text / tool_use 等内容块类型及 delta 增量推送。前端只需监听标准化 SSE 事件即可渲染，底层 Agent 框架切换对前端完全透明。
 
-### Bullet 2 · MCP 协议接入与运行时工具管理
+### Bullet 2 · Agent 画布感知机制
 
-实现 Agent 对 MCP（Model Context Protocol）server 的接入能力，支持 stdio / HTTP / SSE / WebSocket 四种传输协议。开发运行时增删改查 API，支持用户在不重启 Agent 的情况下热加载新的 MCP server；将 MCP 工具自动注入 DeepAgent 的工具列表，与内置画布工具统一调度。解决了 SSE 工具调用关联串位和 MCP ToolMessage 内容序列化兼容问题。
+实现 Agent 对画布状态的实时感知，设计三层注入机制解决"LLM 不知道画布长什么样"的问题：第一层在请求入口自动拉取画布概览写入请求级缓存（contextvar）；第二层在每次 LLM 调用时拦截注入最新画布状态（深拷贝避免污染历史记录）；第三层提供按需查询工具，Agent 需要节点细节时主动调用，复用缓存避免重复请求。相比将画布信息硬编码在 System Prompt 中，该方案支持动态更新且不占用固定 token 窗口。
 
-### Bullet 3 · 声明式后处理调用框架
+### Bullet 3 · Human-in-the-Loop 权限审批
 
-重构后处理系统为声明式三层架构（接口层→定义层→执行层）：接口层暴露统一的 REST API，定义层通过 config + JSON Schema 描述每种后处理操作的参数和后端调用方式，执行层统一执行轮询与结果回填。新增后处理操作只需编写一份配置文件和参数 Schema，无需新写执行器代码。基于该框架接入 VR 全景图、多角度灯光、AI 扩图等 XX 种后处理能力。
+基于 LangGraph interrupt 机制实现本地执行的权限审批系统：定义权限引擎协议，将操作分为读操作（直接放行）和写操作/命令执行（需用户审批）两类；审批时 Agent 暂停并通过 SSE 推送审批请求事件，用户决策通过 REST API 回传后唤醒 Agent 继续执行。协议设计支持 Confirmation / Choice 等多种交互类型扩展，新增交互场景无需修改通信层。
 
-### Bullet 4 · 批量生成并发轮询与瞬时容错
+### Bullet 4 · 对话状态持久化与断点续跑
 
-解决批量生成场景下串行轮询效率低、网络抖动误判任务失败的问题。引入 TaskOutcome sum type（Succeeded / Failed / Aborted）统一任务终态表达，将串行轮询改为 asyncio 并发，单次网络超时不再直接判定失败而是进入瞬时容错重试。批量生成改为增量回显模式，每个子任务独立完成即写入画布，用户无需等待全部完成。
+基于 LangGraph Checkpointer 机制实现本地 SQLite 持久化，支持 Agent 对话的断点恢复：每次状态转换自动写入 checkpoint，客户端重启或断连后从最近检查点恢复上下文，无需云端同步；设计会话级任务取消机制，同一 session 新请求到来时自动取消旧任务并等待其安全退出，保证 checkpoint 状态一致性。
 
 ---
 
@@ -50,7 +50,7 @@
 
 ### Bullet 1 · Redis 任务队列与优先级调度
 
-参与任务调度核心链路开发：基于 Redis ZSet 实现优先级任务队列，以时间戳为 score 保证同优先级 FIFO，通过 ZRangeByScore + ZRem 实现乐观抢占式消费（类 CAS），避免分布式锁开销；实现 WeightedScheduler 加权轮询算法，按配额比例分配不同优先级任务的消费额度，配额耗尽后降序兜底保证低优先级不被饿死；基于 etcd Watch + 内存计数器实现用户级并发控制（ConcurrentManager），同一用户同时运行的任务数超过阈值时跳过该用户任务，避免单用户独占集群资源。
+参与任务调度核心链路开发：基于 Redis ZSet 实现优先级任务队列，以时间戳为 score 保证同优先级 FIFO，通过 ZRange + ZRem 实现乐观抢占式消费（类 CAS），避免分布式锁开销；实现 WeightedScheduler 加权轮询算法，按配额比例分配不同优先级任务的消费额度，配额耗尽后降序兜底保证低优先级不被饿死；基于 etcd Watch + 内存原子计数器实现用户级并发控制（ConcurrentManager），同一用户同时运行的任务数超过阈值时跳过该用户任务，避免单用户独占集群资源。
 
 ### Bullet 2 · 调度系统高可用设计
 
@@ -86,10 +86,10 @@
 
 | Bullet | 可能追问 | 准备方向 |
 |--------|---------|---------|
-| Monet-1 HITL | interrupt 怎么实现的？并发安全？ | LangGraph interrupt 机制 + SSE 单连接无竞态 |
-| Monet-2 MCP | MCP 和普通 Function Calling 区别？热加载怎么做？ | 协议标准化 + server 生命周期管理 |
-| Monet-3 声明式框架 | 为什么不用策略模式/工厂？配置怎么校验？ | config 足够表达语义 + JSON Schema 校验 |
-| Monet-4 容错 | 什么是"瞬时容错"？怎么判断临时故障？ | 重试次数 + 指数退避 + 终态判定 |
+| Monet-1 SSE 流式 | 为什么要三层？心跳怎么做？delta 怎么拼？ | AgentStreamAdapter 模板方法 + 心跳间隔 + block delta 拼接 |
+| Monet-2 画布感知 | 为什么注入在模型层不在 System Prompt？contextvar 线程安全？ | 动态变化不适合静态 prompt + contextvar 请求作用域隔离 |
+| Monet-3 HITL | interrupt 怎么实现？并发安全？超时？ | asyncio.Event + 单机单用户无竞态 + 超时 cleanup |
+| Monet-4 Checkpointer | checkpoint 什么时候写？怎么恢复？多轮冲突？ | 每次状态转换写入 + thread_id 定位 + in-flight cancel |
 | Scheduler-1 重试 | 为什么 max 12h？会不会堆积？ | PT 专用通道无超时压力 + 队列深度监控 |
 | Scheduler-2 队列调度 | ZSet vs List 怎么选？乐观抢占怎么保证不重复消费？ | ZSet 支持优先级 + ZRem 原子性 + 两轮扫描 |
 | Scheduler-3 高可用 | Leader 挂了怎么办？脑裂怎么防？ | LeaseLock 机制 + OnStoppedLeading 退出 + etcd Watch |

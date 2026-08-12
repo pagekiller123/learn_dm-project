@@ -268,6 +268,19 @@ graph TB
   <li><strong>对比 threading.local</strong>：<code>threading.local</code> 绑定线程，但 asyncio 默认单线程跑多个 Task，所以 <code>threading.local</code> 在异步场景下<strong>会串</strong>。ContextVar 是异步场景的正确选择。</li>
 </ul>
 
+<p><strong>项目中的 ContextVar 全景</strong>：画布上下文只是 ContextVar 在项目中的应用之一，整个项目共定义了 7 个 ContextVar，覆盖鉴权、追踪、日志等请求级上下文：</p>
+
+<table>
+  <tr><th>ContextVar</th><th>所在文件</th><th>存储内容</th><th>写入时机</th><th>消费者</th></tr>
+  <tr><td><code>_canvas_overview_text</code></td><td>canvas_context.py</td><td>画布概览 markdown 文本</td><td>/chat 入口</td><td>ChatAIGW（LLM 注入）</td></tr>
+  <tr><td><code>_canvas_detail</code></td><td>canvas_context.py</td><td>画布原始详情 dict</td><td>/chat 入口</td><td>canvas_subgraph 工具（复用缓存）</td></tr>
+  <tr><td><code>_current_auth_headers</code></td><td>canvas_client.py</td><td>请求鉴权 headers</td><td>请求中间件</td><td>画布 API 调用、存储服务调用</td></tr>
+  <tr><td><code>_current_storage_token</code></td><td>canvas_client.py</td><td>存储服务 token</td><td>请求中间件</td><td>文件上传/下载</td></tr>
+  <tr><td><code>_request_id_var</code></td><td>logging_context.py</td><td>请求唯一 ID</td><td>请求中间件</td><td>日志格式化（全链路追踪）</td></tr>
+  <tr><td><code>_span_context_header</code></td><td>tracing.py</td><td>OpenTelemetry span 上下文</td><td>请求中间件</td><td>后台子 Task 的 tracing 传播</td></tr>
+  <tr><td><code>_raw_generation_params</code></td><td>raw_generation_params_context.py</td><td>生成任务原始参数</td><td>/chat 入口</td><td>生成链路记录原始请求</td></tr>
+</table>
+
 <div class="diagram">
 <pre class="mermaid">
 graph LR
@@ -295,6 +308,21 @@ graph LR
     style C1 fill:#eff6ff,stroke:#2563eb
 </pre>
 </div>
+
+<p><strong>代码映射</strong>：项目中 ContextVar 的具体实现在 <code>canvas_context.py</code>，它定义了两个 ContextVar 并封装了读写函数：</p>
+
+<pre><code># src/monet/services/canvas_context.py
+
+_canvas_overview_text: ContextVar[str | None] = ContextVar("canvas_overview_text", default=None)
+_canvas_detail: ContextVar[dict | None] = ContextVar("canvas_detail", default=None)
+
+# 外部通过这些函数操作，本质就是 ContextVar.set() / .get()
+def set_canvas_overview_text(text): _canvas_overview_text.set(text)
+def get_canvas_overview_text():     return _canvas_overview_text.get()
+def set_canvas_detail(detail):      _canvas_detail.set(detail)
+def get_canvas_detail():            return _canvas_detail.get()</code></pre>
+
+<p>其中 <code>_canvas_overview_text</code> 存渲染好的 markdown 概览文本，供 LLM 调用时注入；<code>_canvas_detail</code> 存原始画布详情 dict，供工具查询时复用（避免同一次 /chat 请求内重复 HTTP 拉取）。课程里说的"ContextVar 做会话隔离"，落到代码就是这个文件。</p>
 
 <div class="highlight-box">
   <strong>关键边界 — 子任务继承：</strong><code>asyncio.create_task()</code> 创建的子 Task 会<strong>继承</strong>父 Task 的上下文快照。这意味着子任务启动时能读到父任务已设置的 ContextVar 值，但之后子任务自己 <code>.set()</code> 的修改不会回传给父任务。这个"继承但隔离"的语义正好符合画布感知的需求：子任务（如并行的工具调用）能读到画布概览，但不会意外修改父任务的上下文。
@@ -326,9 +354,11 @@ import copy
 snapshot_copy = copy.deepcopy(canvas_snapshot)
 state["messages"].append(HumanMessage(content=snapshot_copy))</code></pre>
 
-<h3>2.5 Token 降低 40% 的统计方法</h3>
+<h3>2.5 画布相关 Token 降低 40% 的统计方法</h3>
 
-<p>这个数字需要有可信的统计方案支撑。以下是一个合理的衡量方法：</p>
+<p>这个数字需要有可信的统计方案支撑。需要先明确<strong>两个前提</strong>：(1) 40% 指的是<strong>画布相关输入 Token 开销</strong>的降幅，不是整体请求 Token 的降幅——对话历史、工具定义等其他部分不在统计范围内；(2) 这是基于<strong>静态模拟测算</strong>，不是真实 Agent 运行的线上统计——真实运行中 Agent 可能频繁调用工具拉取节点详情，额外的工具入参和返回 payload 会吃掉一部分降幅。</p>
+
+<p><strong>为什么是静态测算而不是线上实验？</strong>因为分层上下文架构是在项目初期就确定的设计方案——我们从需求分析阶段就知道全量注入不可行（Token 爆炸 + 画布状态动态变化），所以直接采用了分层方案，线上从来没有跑过"全量注入"的版本。没有线上基线，就没法做真实的 A/B 对比。另外 Monet Agent 是随桌面客户端打包的本地服务，不像云端 Web 服务那样有现成的 Token 埋点和实验分流基础设施，专门搭一套只为验证一个指标，在内部工具项目中 ROI 不高。所以我选择了用 tiktoken 对同一批画布场景分别计算两种方案的 Token 数来做对比——虽然是静态模拟，但计算过程是确定可复现的。</p>
 
 <table>
   <tr>
@@ -353,7 +383,7 @@ state["messages"].append(HumanMessage(content=snapshot_copy))</code></pre>
   </tr>
   <tr>
     <td><strong>5. 结果</strong></td>
-    <td>10 个场景的平均降幅约 38%-45%。简单画布降幅较小（约 25%），复杂画布降幅显著（约 55%），取加权平均约 40%</td>
+    <td>10 个场景各自算出一个降幅。简单画布（3 个）平均降幅约 25%，中等画布（4 个）约 42%，复杂画布（3 个）约 53%。按预估线上画布复杂度分布加权（简单 20%、中等 50%、复杂 30%——这是经验估算，非日志统计），加权平均 = 25%×0.2 + 42%×0.5 + 53%×0.3 ≈ 42%，四舍五入取 40%。注意：这是画布相关输入 Token 的降幅，不是整体请求 Token 的降幅</td>
   </tr>
 </table>
 
@@ -374,7 +404,7 @@ state["messages"].append(HumanMessage(content=snapshot_copy))</code></pre>
       <li>如果用户操作导致画布变化特别大，下一轮推理会自动看到新状态</li>
     </ul>
   </li>
-  <li><strong>没做的事（诚实说明）</strong>：没有实现严格的版本锁或乐观锁机制。对于画布场景，强一致性的代价（加锁、版本比对、冲突回滚）远超收益。用户操作画布和 Agent 推理之间有自然的时间间隔（秒级），轻微的状态延迟是可接受的。</li>
+  <li><strong>没做的事（诚实说明）</strong>：没有实现乐观锁机制（即 Agent 读快照时记录版本号，写操作时校验版本是否一致，不一致则拒绝并重试）。原因是两方面：一方面用户和 Agent 天然是交替节奏——用户说一句话、Agent 推理几秒再操作，两者同时修改画布的冲突概率很低；另一方面即使偶尔冲突（Agent 基于稍旧快照创建了节点，位置或上下文略有偏差），后果只是视觉上不完美，用户手动调整即可，不会造成数据损坏。冲突概率低 + 后果轻微，所以加锁的工程成本不值得。</li>
 </ul>
 
 
@@ -442,22 +472,22 @@ graph TB
         EL["Event Loop (单线程)"]
 
         subgraph "Task-1: 会话 session_abc"
-            T1_CV["canvas_ctx.set(画布A概览)"]
-            T1_LLM["LLM调用 → 读 canvas_ctx → 画布A"]
-            T1_TOOL["工具调用 → 读 canvas_ctx → 画布A细节"]
+            T1_CV["入口层: set_canvas_overview_text(画布A概览)<br/>set_canvas_detail(画布A详情)"]
+            T1_LLM["LLM调用 → 读 get_canvas_overview_text() → 画布A"]
+            T1_TOOL["canvas_subgraph → 读 get_canvas_detail() → 复用缓存"]
             T1_CV --> T1_LLM --> T1_TOOL
         end
 
         subgraph "Task-2: 会话 session_xyz"
-            T2_CV["canvas_ctx.set(画布B概览)"]
-            T2_LLM["LLM调用 → 读 canvas_ctx → 画布B"]
+            T2_CV["入口层: set_canvas_overview_text(画布B概览)"]
+            T2_LLM["LLM调用 → 读 get_canvas_overview_text() → 画布B"]
             T2_CV --> T2_LLM
         end
 
-        subgraph "Sub-Task-1a: 并行工具（由Task-1创建）"
+        subgraph "Sub-Task（由Task-1创建）"
             ST1["继承 Task-1 上下文快照"]
-            ST1_R["canvas_ctx.get() → 画布A"]
-            ST1_W["canvas_ctx.set(X)<br/>不影响 Task-1"]
+            ST1_R["get_canvas_detail() → 画布A（继承来的）"]
+            ST1_W["即使 set(其他值)<br/>也不影响 Task-1"]
             ST1 --> ST1_R --> ST1_W
         end
 
@@ -575,10 +605,13 @@ graph TB
     先说结论：<code>ContextVar</code> 是 Python <code>contextvars</code> 标准库提供的机制，它的核心价值是在 asyncio 场景下提供 <strong>Task 级别的变量隔离</strong>，替代传统多线程场景下的 <code>threading.local</code>。
   </p>
   <p>
-    为什么不能用 <code>threading.local</code>？因为 asyncio 默认是单线程事件循环，多个协程 Task 跑在同一个线程上。<code>threading.local</code> 绑定的是线程，不是 Task——所以 Task A 设置了一个值，Task B 也能读到，会话就串了。在我们的场景里，多个用户同时跟 Agent 对话，每个对话是一个独立的 asyncio Task。如果用 <code>threading.local</code> 存画布上下文，用户 A 的画布信息可能泄漏到用户 B 的 Agent 推理中，这是严重的数据串扰 bug。
+    为什么不能用 <code>threading.local</code>？因为 asyncio 默认是单线程事件循环，多个协程 Task 跑在同一个线程上。<code>threading.local</code> 绑定的是线程，不是 Task——所以 Task A 设置了一个值，Task B 也能读到，会话就串了。在我们的场景里，虽然 Monet 是桌面端单用户服务，但同一个用户可能同时打开多个画布，每个画布会话是一个独立的 asyncio Task。如果用 <code>threading.local</code> 存画布上下文，画布 A 的节点信息可能泄漏到画布 B 的 Agent 推理中，导致 Agent 对着画布 B 说出画布 A 的内容，这是严重的数据串扰 bug。
   </p>
   <p>
-    <code>ContextVar</code> 的隔离机制是这样的：每个 <code>asyncio.Task</code> 在创建时，会自动获得当前上下文的一份<strong>copy-on-write 快照</strong>。子 Task 对 ContextVar 的 <code>.set()</code> 操作只影响自己，不会回传到父 Task 或兄弟 Task。具体到我们的代码，工作流程是：<code>/chat</code> 请求进来后，FastAPI 的请求处理协程调用 <code>canvas_ctx.set(画布概览)</code>；然后 Agent Runner 启动，它跑在同一个 Task 里，能直接读到这个值；如果 Runner 内部通过 <code>asyncio.create_task()</code> 创建了子任务（比如并行执行多个工具调用），子任务继承了父任务的上下文，也能读到画布概览，但子任务自己设置的值不会影响父任务。
+    <code>ContextVar</code> 的隔离机制是这样的：每个 <code>asyncio.Task</code> 在创建时，会自动获得当前上下文的一份<strong>copy-on-write 快照</strong>。子 Task 对 ContextVar 的 <code>.set()</code> 操作只影响自己，不会回传到父 Task 或兄弟 Task。具体到我们的代码，隔离发生在<strong>请求级别</strong>：FastAPI 为每个 <code>/chat</code> 请求创建一个独立的 asyncio Task，请求处理协程调用 <code>set_canvas_overview_text(画布概览)</code>；然后 LangGraph 的 Agent 循环在同一个 Task 里执行，LLM 层（ChatAIGW）在每次推理前通过 <code>get_canvas_overview_text()</code> 读取概览并注入。如果用户同时打开了两个画布，两个 <code>/chat</code> 请求是两个独立的 Task，各自的 ContextVar 互不干扰——画布 A 的推理不会读到画布 B 的概览。
+  </p>
+  <p>
+    项目里也确实有子 Task 的场景——日志推送、埋点上报这些后台任务通过 <code>asyncio.create_task</code> 异步执行，它们需要读取请求上下文中的 tracing span 和 auth headers。ContextVar 的自动拷贝语义保证了这些后台 Task 能正确读到父 Task 的上下文，而不需要手动传参。
   </p>
   <p>
     实际踩过一个坑：早期有一段代码在子任务里更新了画布缓存，以为父任务也能看到更新后的值，结果父任务读到的还是旧值。后来理解了 ContextVar 的"继承但隔离"语义后，把缓存更新逻辑改回到主 Task 中执行，问题解决了。这个经历让我对 ContextVar 的作用域边界有了比较深的理解。
@@ -630,16 +663,19 @@ graph TB
     这个数字不是拍脑袋估的，我做了一个简单但可复现的对比实验。
   </p>
   <p>
-    <strong>采样方案</strong>：我选了 10 个覆盖不同复杂度的真实画布场景——3 个简单画布（5-10 个节点，比如一张背景图加几个文字标注）、4 个中等画布（20-40 个节点，典型的设计工作流）、3 个复杂画布（50 个以上节点，多层级嵌套的复杂场景）。每个场景模拟 5 轮对话，对话内容也是真实的用户问法，比如"帮我调整这张图的风格""把左边的节点移到右边"之类的。
+    先澄清一个口径：<strong>这个 40% 指的是画布相关输入 Token 开销的降幅</strong>，不是整体请求 Token。对话历史、工具定义等其他部分不在统计范围内。而且这是基于静态模拟测算——为什么不是线上实验？因为分层架构是项目初期就确定的设计方案，我们从需求分析阶段就判断全量注入不可行，线上从来没跑过全量注入的版本，没有线上基线就没法做 A/B 对比。加上 Monet 是本地桌面端服务，没有现成的 Token 埋点基础设施，所以我用 tiktoken 对同一批画布场景分别计算两种方案的 Token 消耗来做对比。
   </p>
   <p>
-    <strong>基线组（全量注入）</strong>：每轮对话都把完整画布 JSON 写入 System Prompt。用 <code>tiktoken</code> 的 <code>cl100k_base</code> 编码器计算每轮 System Prompt 中画布部分的 token 数，5 轮累加。
+    <strong>采样方案</strong>：我选了 10 个覆盖不同复杂度的真实画布场景——3 个简单画布（5-10 个节点，比如一张背景图加几个文字标注）、4 个中等画布（20-40 个节点，典型的设计工作流）、3 个复杂画布（50 个以上节点，多层级嵌套的复杂场景）。每个场景模拟 5 轮对话，对话内容也是真实的用户问法，比如"帮我调整这张图的风格""把左边的节点移到右边"之类的。样本量确实不大，但覆盖了简单到复杂的代表性场景。
   </p>
   <p>
-    <strong>实验组（分层注入）</strong>：同样的场景和对话，使用三层架构。统计入口层概览的 tokens、每轮推理拦截层快照的 tokens、以及工具调用返回的细节 tokens，5 轮累加。
+    <strong>基线组（全量注入）</strong>：每轮对话都把完整画布 JSON 写入 System Prompt。用 <code>tiktoken</code> 的 <code>cl100k_base</code> 编码器计算每轮画布部分的 token 数，5 轮累加。
   </p>
   <p>
-    <strong>结果分布</strong>：简单画布降幅大约 20-25%，因为节点少全量也不大，分层注入节省有限；中等画布降幅约 35-45%，这是最典型的用户场景；复杂画布降幅可达 50-55%，因为全量注入的冗余特别多而 Agent 其实只关注少数节点。10 个场景取加权平均，降幅约 40%。
+    <strong>实验组（分层注入）</strong>：同样的场景和对话，使用三层架构。统计入口层概览的 tokens、每轮推理拦截层快照的 tokens，5 轮累加。这里有一个局限——工具调用的触发频率是我预估的（5 轮里 Agent 平均查 2-3 次细节），不是真实 Agent 运行的统计。真实运行中如果 Agent 频繁调工具，工具入参和返回 payload 会产生额外 token 开销，会吃掉一部分降幅。
+  </p>
+  <p>
+    <strong>结果分布</strong>：简单画布（3 个场景）平均降幅约 25%，因为节点少全量也不大，分层注入节省有限；中等画布（4 个场景）平均降幅约 42%，这是最典型的用户场景；复杂画布（3 个场景）平均降幅约 53%，因为全量注入的冗余特别多而 Agent 其实只关注少数节点。按预估线上画布复杂度分布加权——简单占 20%、中等占 50%、复杂占 30%，这个权重是经验估算不是日志统计——算出来 25%×0.2 + 42%×0.5 + 53%×0.3 ≈ 42%，四舍五入取 40%。
   </p>
   <p>
     <strong>降幅的来源拆解</strong>：主要有三块。一是概览替代全量，概览的 token 量约为全量的 10-15%，每轮省一大截；二是推理拦截层注入的是摘要而非完整 JSON，约为全量的 20-30%；三是工具调用的细节信息只在需要时才出现，而且有缓存复用——5 轮对话里 Agent 平均只查 2-3 次细节，而不是每轮都携带所有细节。三个因素叠加，5 轮对话累计下来就是 40% 左右的 token 节省。
@@ -652,7 +688,7 @@ graph TB
 <div class="defend">
   <h4>防御性话术 — 预判追问</h4>
   <p><strong>"40% 是 token 数量下降还是成本下降？有没有考虑工具调用本身的 token 消耗？"</strong></p>
-  <p>这里说的 40% 是画布相关信息在 Prompt 中占用的 token 数量下降。工具调用本身确实有额外的 token 消耗（工具定义约 200 tokens，调用结果 200-800 tokens），这些也计入了实验组的总量。即便包含工具调用开销，分层方案仍然有显著的 token 节省，因为主要的节省来自"不再每轮重复携带全量画布 JSON"。成本下降和 token 下降大致等比，因为 API 计费就是按 token 算的。</p>
+  <p>这里说的 40% 是<strong>画布相关输入 Token</strong> 的降幅，不是整体请求 Token。对话历史、工具定义这些不在统计范围内。工具调用本身确实有额外的 token 消耗（工具定义约 200 tokens，调用结果 200-800 tokens），我在测算中预估了工具触发频率，但坦率说这部分是模拟的，真实 Agent 运行中如果频繁调用工具会吃掉一部分降幅。所以简历上我写的是"画布相关输入 Token 开销下降约 40%"，没有说整体 Token 降低 40%。</p>
 </div>
 
 <!-- ==================== Q6 ==================== -->

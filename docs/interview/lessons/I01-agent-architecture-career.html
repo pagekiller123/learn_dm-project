@@ -154,13 +154,18 @@ flowchart TB
 sequenceDiagram
     participant U as 用户（画布UI）
     participant A as Monet Agent<br/>（Python/LangGraph）
+    participant AIGW as AIGW 网关<br/>（aigw.netease.com）
+    participant LLM as GPT / Claude 等<br/>大模型
     participant GW as app-gateway<br/>（Go）
     participant S as worker-scheduler
     participant W as Worker + Sidecar
     participant P as 外部供应商
 
     U->>A: "帮我生成一张赛博朋克风格图"
-    A->>A: LLM 推理 → 选择 create_image 工具
+    A->>AIGW: ChatAIGW → /v1/chat/completions
+    AIGW->>LLM: 代理转发（统一鉴权 + 供应商路由）
+    LLM-->>AIGW: 返回推理结果（选择 create_image 工具）
+    AIGW-->>A: 流式/完整响应
     A->>GW: HTTP POST /api/task（带参数、画布ID）
     GW->>GW: 参数校验 + 权限检查
     GW->>GW: 写入 Redis ZSet（score=优先级+时间戳）
@@ -293,7 +298,7 @@ sequenceDiagram
 
 <p><strong>第二层是业务服务层</strong>，核心组件是 app-gateway。它负责三件事：<strong>任务入口接收、参数校验、入队</strong>。当 Agent 决定生成一张图片时，它调用 create_image 工具，这个工具实际上是向 app-gateway 发 HTTP POST 请求。Gateway 校验参数合法性、检查用户配额，然后把任务写入 Redis ZSet 队列，同时在 MongoDB 创建任务记录，返回 task_id。这一层还有其他业务服务处理用户管理、项目管理等非 AI 任务。</p>
 
-<p><strong>第三层是基础服务层</strong>，核心是 worker-scheduler。它做两件事：<strong>Leader 选举和任务分配</strong>。多个 scheduler 实例通过 etcd 做 Leader 选举，只有 Leader 负责消费 Redis 队列和分配任务。消费方式是 ZRange 获取最高优先级任务，然后 ZRem 原子删除实现无锁抢占。分配时根据 Worker 类型匹配和负载情况，把任务 gRPC 推送给对应的 Worker Sidecar。这一层还依赖 etcd 做服务注册发现和配置管理，Redis 做任务队列，MongoDB 做任务持久化。</p>
+<p><strong>第三层是基础服务层</strong>，核心是 worker-scheduler。它负责<strong>任务消费和分配</strong>。当前版本采用多 Pod 并行部署，多个 scheduler 实例同时消费 Redis 队列，通过 ZRange+ZRem 的原子操作天然去重（只有一个实例能 ZRem 成功），无需 Leader 选举。分配时根据 Worker 类型匹配和负载情况，把任务推送给对应的 Worker Sidecar。这一层还依赖 etcd 做服务注册发现和配置管理，Redis 做任务队列，MongoDB 做任务持久化。</p>
 
 <p><strong>第四层是 Worker 执行层</strong>，由 worker-sidecar 加各类 Worker 组成。Sidecar 是统一的任务执行框架，负责接收任务、调用具体 Worker、上报状态和结果。Worker 分 10 大类：图像、视频、3D、腾讯混元、火山引擎、语音、LLM、工具类、工作流、桌面软件。每类 Worker 封装了对应的 AI 能力调用逻辑。部署上用 K8s StatefulSet，因为 Worker 需要稳定的网络标识来和 scheduler 的注册信息对应，而且缩容时需要有序地从最大序号开始下掉空闲节点。</p>
 
@@ -308,7 +313,7 @@ sequenceDiagram
 <p>回答：Agent 画布侧我是主要开发者，三层上下文、SSE 协议、HITL 引擎都是我设计和实现的。调度侧我是"参与"角色，主要贡献在优先级队列的加权轮询调度算法和供应商容错降级模块，整体架构是团队 senior 设计的，我在理解架构的基础上负责具体模块的实现和优化。</p>
 
 <p><strong>追问2：这个架构有什么不足？</strong></p>
-<p>回答：目前有几个技术债。一是 scheduler 虽然做了 Leader 选举但只有单 Leader 消费队列，高峰期可能成为瓶颈，后续可以考虑分片消费。二是 Agent 侧的 Checkpointer 用的是本地 SQLite，多实例部署时状态不共享，生产环境应该换成 PostgreSQL 或 Redis 后端。三是 Agent 和调度平台之间目前是同步轮询获取结果，理想方案是基于 WebSocket 或消息队列做异步回调。</p>
+<p>回答：目前有几个技术债。一是旧版 scheduler 采用 K8s Lease Leader 选举做高可用，当前 worker-scheduler 虽然改成了多 Pod 并行消费，但 Autoscaler（自动扩缩容）模块仍用 Redis 分布式锁做串行化，高峰期锁竞争可能成为瓶颈，后续可以考虑分片或优化锁粒度。二是 Agent 侧的 Checkpointer 用的是本地 SQLite——因为 Monet Agent 是随桌面客户端打包的本地服务，SQLite 在单用户场景下完全够用；但局限是数据绑定在本机，用户换机器或重装后历史对话无法迁移，如果未来要做云端 Agent 服务则需要换成 PostgreSQL 等远程存储。三是 Agent 提交任务后通过 while 循环轮询（submit → poll → fetch_result）获取结果，每次 poll 是非阻塞的 HTTP GET 立即返回，但轮询本身会持续 sleep + 重试直到终态，理想方案是调度侧主动回调或推送通知，减少无效请求。</p>
 </div>
 
 <h2 id="s5">五、知识速查表</h2>
@@ -316,7 +321,7 @@ sequenceDiagram
 <table>
 <tr><th>概念</th><th>一句话解释</th></tr>
 <tr><td>app-gateway</td><td>任务入口网关：校验 → 入队 → 返回 task_id</td></tr>
-<tr><td>worker-scheduler</td><td>调度中心：Leader 选举 → 消费队列 → 分配任务</td></tr>
+<tr><td>worker-scheduler</td><td>调度中心：多 Pod 并行消费队列 → ZRem 原子去重 → 分配任务</td></tr>
 <tr><td>worker-sidecar</td><td>执行框架：接收任务 → 调用 Worker → 上报结果</td></tr>
 <tr><td>Redis ZSet</td><td>优先级队列：score = 优先级权重 + 时间戳</td></tr>
 <tr><td>etcd Lease</td><td>服务注册 + 心跳：TTL 90s，30s 续约</td></tr>

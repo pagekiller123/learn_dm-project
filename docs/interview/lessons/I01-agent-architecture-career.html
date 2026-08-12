@@ -164,7 +164,7 @@ sequenceDiagram
     U->>A: "帮我生成一张赛博朋克风格图"
     A->>AIGW: ChatAIGW → /v1/chat/completions
     AIGW->>LLM: 代理转发（统一鉴权 + 供应商路由）
-    LLM-->>AIGW: 返回推理结果（选择 create_image 工具）
+    LLM-->>AIGW: 返回推理结果（选择 generate_node 工具）
     AIGW-->>A: 流式/完整响应
     A->>GW: HTTP POST /api/task（带参数、画布ID）
     GW->>GW: 参数校验 + 权限检查
@@ -296,11 +296,11 @@ sequenceDiagram
 
 <p><strong>第一层是外部请求层</strong>，包括 Monet 桌面客户端和 DreamMaker 主站 Web 前端。Monet 客户端是 Electron 应用，内嵌了我做的 Agent 服务，用户在画布上对话，Agent 理解意图后调用工具。主站是 Web 端，提供更完整的项目管理和素材管理功能。两个入口都通过 HTTP 请求打到下一层。</p>
 
-<p><strong>第二层是业务服务层</strong>，核心组件是 app-gateway。它负责三件事：<strong>任务入口接收、参数校验、入队</strong>。当 Agent 决定生成一张图片时，它调用 create_image 工具，这个工具实际上是向 app-gateway 发 HTTP POST 请求。Gateway 校验参数合法性、检查用户配额，然后把任务写入 Redis ZSet 队列，同时在 MongoDB 创建任务记录，返回 task_id。这一层还有其他业务服务处理用户管理、项目管理等非 AI 任务。</p>
+<p><strong>第二层是业务服务层</strong>，核心组件是 app-gateway。它负责三件事：<strong>任务入口接收、参数校验、入队</strong>。当 Agent 决定生成一张图片时，它调用 generate_node 工具，这个工具实际上是向 app-gateway 发 HTTP POST 请求。Gateway 校验参数合法性、检查用户配额，然后把任务写入 Redis ZSet 队列，同时在 MongoDB 创建任务记录，返回 task_id。这一层还有其他业务服务处理用户管理、项目管理等非 AI 任务。</p>
 
 <p><strong>第三层是基础服务层</strong>，核心是 worker-scheduler。它负责<strong>任务消费和分配</strong>。当前版本采用多 Pod 并行部署，多个 scheduler 实例同时消费 Redis 队列，通过 ZRange+ZRem 的原子操作天然去重（只有一个实例能 ZRem 成功），无需 Leader 选举。分配时根据 Worker 类型匹配和负载情况，把任务推送给对应的 Worker Sidecar。这一层还依赖 etcd 做服务注册发现和配置管理，Redis 做任务队列，MongoDB 做任务持久化。</p>
 
-<p><strong>第四层是 Worker 执行层</strong>，由 worker-sidecar 加各类 Worker 组成。Sidecar 是统一的任务执行框架，负责接收任务、调用具体 Worker、上报状态和结果。Worker 分 10 大类：图像、视频、3D、腾讯混元、火山引擎、语音、LLM、工具类、工作流、桌面软件。每类 Worker 封装了对应的 AI 能力调用逻辑。部署上用 K8s StatefulSet，因为 Worker 需要稳定的网络标识来和 scheduler 的注册信息对应，而且缩容时需要有序地从最大序号开始下掉空闲节点。</p>
+<p><strong>第四层是 Worker 执行层</strong>，核心是 worker-sidecar。它是一个统一的任务执行进程，内部通过 <code>Worker</code> 接口做策略模式路由——每个 sidecar 实例启动时向 worker-scheduler 注册，拿到自己的 workerType（比如 kling、tripo、openai），然后在接收到任务时实例化对应的 Worker 实现。所有 Worker 实现（图像、视频、3D、腾讯混元、火山引擎、语音、LLM、工具类、工作流、桌面软件，共 10 大类）都编译在 sidecar 同一个二进制里，通过接口多态而非进程间通信来解耦。sidecar 框架统一负责任务拉取、进度上报、结果回写和 panic 恢复，具体的 AI 调用逻辑由各 Worker 实现封装。部署上用 K8s StatefulSet，因为 Worker 需要稳定的网络标识来和 scheduler 的注册信息对应，而且缩容时需要有序地从最大序号开始下掉空闲节点。</p>
 
 <p><strong>第五层是外部供应商层</strong>，包括 Stable Diffusion、腾讯混元、火山引擎、OpenAI 等。Worker 通过 HTTP/gRPC 调用这些外部 API。因为供应商接口不稳定，经常返回 429 限流，所以我在这一层设计了指数退避重试+备用供应商切换的容错降级策略。</p>
 
@@ -322,7 +322,7 @@ sequenceDiagram
 <tr><th>概念</th><th>一句话解释</th></tr>
 <tr><td>app-gateway</td><td>任务入口网关：校验 → 入队 → 返回 task_id</td></tr>
 <tr><td>worker-scheduler</td><td>调度中心：多 Pod 并行消费队列 → ZRem 原子去重 → 分配任务</td></tr>
-<tr><td>worker-sidecar</td><td>执行框架：接收任务 → 调用 Worker → 上报结果</td></tr>
+<tr><td>worker-sidecar</td><td>统一执行进程：内部通过 Worker 接口策略路由，负责任务拉取 → 实例化对应 Worker → 执行 → 进度/结果上报</td></tr>
 <tr><td>Redis ZSet</td><td>优先级队列：score = 优先级权重 + 时间戳</td></tr>
 <tr><td>etcd Lease</td><td>服务注册 + 心跳：TTL 90s，30s 续约</td></tr>
 <tr><td>StatefulSet</td><td>有状态部署：稳定网络标识 + 有序扩缩容</td></tr>

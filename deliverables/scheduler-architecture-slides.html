@@ -1,0 +1,717 @@
+<title>Scheduler Architecture</title>
+<style>
+:root {
+  --ground: #0F172A;
+  --surface: #1E293B;
+  --surface-border: #334155;
+  --primary: #38BDF8;
+  --accent: #F97316;
+  --tertiary: #A78BFA;
+  --text: #E2E8F0;
+  --muted: #94A3B8;
+  --dim: #475569;
+  --success: #22C55E;
+  --danger: #EF4444;
+  --sans: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+  --mono: "Cascadia Code", "Fira Code", Consolas, "SF Mono", monospace;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; background: var(--ground); color: var(--text); font-family: var(--sans); }
+body { display: flex; flex-direction: column; }
+
+.deck { flex: 1; position: relative; overflow: hidden; }
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  padding: 36px 48px 32px;
+  opacity: 0; transform: translateX(60px);
+  transition: opacity .4s ease, transform .4s ease;
+  pointer-events: none;
+  overflow-y: auto;
+  will-change: opacity, transform;
+}
+.slide.active { opacity: 1; transform: translateX(0); pointer-events: auto; }
+.slide.exit-left { opacity: 0; transform: translateX(-60px); }
+.slide.exit-right { opacity: 0; transform: translateX(60px); }
+
+.slide h1 {
+  font-size: 40px; font-weight: 700; line-height: 1.2;
+  margin-bottom: 8px; color: var(--text);
+}
+.slide h1 .hl { color: var(--primary); }
+.slide .sub { font-size: 20px; color: var(--muted); margin-bottom: 32px; }
+
+.slide h2 {
+  font-size: 20px; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--primary); margin-bottom: 16px;
+  display: flex; align-items: center; gap: 10px;
+}
+.slide h2::before {
+  content: ""; display: block; width: 5px; height: 28px;
+  background: var(--primary); border-radius: 3px; flex-shrink: 0;
+}
+
+.row { display: flex; gap: 16px; flex: 1; min-height: 0; }
+.col { flex: 1; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card {
+  background: var(--surface); border-radius: 10px; padding: 20px;
+  border: 1px solid transparent;
+}
+.card.bordered { border-color: var(--surface-border); }
+.card-title {
+  font-size: 22px; font-weight: 700; margin-bottom: 10px;
+}
+.card-title.blue { color: var(--primary); }
+.card-title.orange { color: var(--accent); }
+.card-title.purple { color: var(--tertiary); }
+.card-title.green { color: var(--success); }
+.card-title.red { color: var(--danger); }
+
+.tag {
+  display: inline-block; font-size: 13px; font-weight: 600;
+  letter-spacing: .03em; padding: 4px 12px; border-radius: 4px;
+  margin-bottom: 8px;
+}
+.tag.blue { background: rgba(56,189,248,.12); color: var(--primary); }
+.tag.orange { background: rgba(249,115,22,.12); color: var(--accent); }
+.tag.purple { background: rgba(167,139,250,.12); color: var(--tertiary); }
+
+.item { font-size: 18px; line-height: 1.65; color: var(--muted); }
+.item strong { color: var(--text); font-weight: 600; }
+.item code {
+  font-family: var(--mono); font-size: 15px;
+  background: rgba(56,189,248,.08); color: var(--primary);
+  padding: 2px 7px; border-radius: 4px;
+}
+.item .acc { color: var(--accent); font-weight: 600; }
+.sep { height: 1px; background: var(--surface-border); margin: 8px 0; }
+
+.layer {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--surface); border-radius: 8px; padding: 16px 24px;
+  border-left: 4px solid var(--dim);
+}
+.layer .num {
+  font-size: 16px; font-weight: 700; font-family: var(--mono);
+  min-width: 20px;
+}
+.layer .name { font-size: 18px; font-weight: 600; color: var(--text); flex: 1; }
+.layer .desc { font-size: 16px; color: var(--muted); flex: 1.2; }
+.layer.l1 { border-color: var(--primary); }
+.layer.l1 .num { color: var(--primary); }
+.layer.l2 { border-color: var(--tertiary); }
+.layer.l2 .num { color: var(--tertiary); }
+.layer.l3 { border-color: var(--accent); }
+.layer.l3 .num { color: var(--accent); }
+.layer.l4 { border-color: var(--primary); }
+.layer.l4 .num { color: var(--primary); }
+.layer.l5 { border-color: var(--dim); border-style: dashed; }
+.layer.l5 .num { color: var(--muted); }
+.layers { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+
+.arrow-down {
+  text-align: center; color: var(--dim); font-size: 16px; line-height: 1;
+  margin: 1px 0;
+}
+
+.phase {
+  flex: 1; background: var(--surface); border-radius: 10px;
+  padding: 20px; display: flex; flex-direction: column; gap: 8px;
+}
+.phase-title {
+  font-size: 18px; font-weight: 700; margin-bottom: 4px;
+  padding-bottom: 8px; border-bottom: 2px solid var(--surface-border);
+}
+.phase-step { font-size: 16px; color: var(--muted); padding-left: 8px; }
+.phase-step::before { content: "\2193 "; color: var(--dim); }
+.phase-step.result { color: var(--primary); }
+.phase-step.result::before { content: "\2192 "; color: var(--primary); }
+
+.state-pill {
+  display: inline-block; padding: 6px 18px; border-radius: 20px;
+  font-family: var(--mono); font-size: 15px; font-weight: 600;
+  border: 1.5px solid;
+}
+
+.pipeline-chain {
+  display: flex; align-items: center; gap: 0;
+  background: var(--surface); border-radius: 8px; padding: 16px 24px;
+  flex-wrap: wrap;
+}
+.pipeline-chain code {
+  font-family: var(--mono); font-size: 16px; padding: 4px 10px;
+  border-radius: 4px;
+}
+.pipeline-chain .arr { color: var(--dim); margin: 0 8px; font-size: 16px; }
+
+.iface-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.iface-item {
+  background: var(--surface); border-radius: 6px; padding: 10px 12px;
+  text-align: center;
+}
+.iface-item code {
+  font-family: var(--mono); font-size: 12px; color: var(--primary);
+  display: block; margin-bottom: 4px;
+}
+.iface-item span { font-size: 11px; color: var(--muted); }
+
+.cap-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+}
+.cap-card {
+  background: var(--surface); border-radius: 8px; padding: 20px;
+  text-align: center;
+}
+.cap-card code {
+  font-family: var(--mono); font-size: 20px; font-weight: 600;
+  display: block; margin-bottom: 6px;
+}
+.cap-card span { font-size: 15px; color: var(--muted); }
+
+.fault-chain {
+  display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+}
+.fault-step {
+  padding: 10px 18px; border-radius: 6px; font-size: 15px;
+  border: 1px solid; white-space: nowrap;
+}
+.fault-arr { color: var(--dim); margin: 0 8px; font-size: 18px; }
+
+.decision-row {
+  display: flex; align-items: stretch; gap: 0;
+  background: var(--surface); border-radius: 8px; overflow: hidden;
+}
+.decision-bar { width: 5px; flex-shrink: 0; }
+.decision-body { padding: 16px 24px; flex: 1; }
+.decision-body strong { font-size: 20px; display: block; margin-bottom: 4px; }
+.decision-body span { font-size: 16px; color: var(--muted); }
+
+.golden {
+  text-align: center; padding: 36px; border: 2px solid var(--accent);
+  border-radius: 14px; background: var(--surface); margin-top: auto;
+}
+.golden .line1 { font-size: 32px; font-weight: 700; color: var(--accent); }
+.golden .line2 { font-size: 32px; font-weight: 700; color: var(--primary); margin-top: 8px; }
+
+.bottom-bar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 0 24px; height: 40px; background: var(--surface);
+  border-top: 1px solid var(--surface-border); flex-shrink: 0;
+  user-select: none;
+}
+.progress-track {
+  flex: 1; height: 3px; background: var(--surface-border); border-radius: 2px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%; background: var(--primary); border-radius: 2px;
+  transition: width .3s ease;
+}
+.page-num { font-size: 13px; color: var(--muted); font-family: var(--mono); font-variant-numeric: tabular-nums; min-width: 56px; text-align: right; }
+.nav-hint { font-size: 12px; color: var(--dim); }
+
+.cover-slide { justify-content: center; padding-bottom: 80px; }
+.cover-slide h1 { font-size: 54px; margin-bottom: 4px; }
+.cover-slide .accent-bar { width: 100px; height: 4px; border-radius: 2px; background: var(--primary); margin-bottom: 24px; }
+.cover-slide .subtitle { font-size: 26px; color: var(--muted); margin-bottom: 40px; }
+.cover-slide .meta { font-size: 18px; color: var(--dim); }
+.cover-slide .meta::before { content: ""; display: inline-block; width: 48px; height: 3px; background: var(--accent); border-radius: 2px; vertical-align: middle; margin-right: 14px; }
+
+.callout {
+  background: var(--surface); border: 1px solid var(--accent);
+  border-radius: 8px; padding: 16px 20px; margin-top: 12px;
+}
+.callout strong { color: var(--accent); }
+.callout span { color: var(--text); font-size: 15px; }
+
+.tech-table { width: 100%; border-collapse: collapse; font-size: 16px; }
+.tech-table td {
+  padding: 10px 14px; border-bottom: 1px solid var(--surface-border);
+  vertical-align: middle;
+}
+.tech-table td:first-child {
+  font-family: var(--mono); color: var(--primary); font-weight: 600;
+  white-space: nowrap; width: 160px;
+}
+.tech-table td:last-child { color: var(--muted); }
+
+.scale-row { display: flex; gap: 12px; }
+.scale-card {
+  flex: 1; background: var(--surface); border-radius: 8px; padding: 16px;
+  border: 1px solid transparent;
+}
+.scale-card.green-b { border-color: var(--success); }
+.scale-card.red-b { border-color: var(--danger); }
+.scale-card .sc-title { font-size: 18px; font-weight: 700; text-align: center; margin-bottom: 8px; }
+</style>
+
+<div class="deck" id="deck">
+
+  <!-- P01 Cover -->
+  <section class="slide cover-slide active" data-i="0">
+    <div class="accent-bar"></div>
+    <h1>DreamMaker Scheduler<br><span class="hl">架构深度解析</span></h1>
+    <div class="subtitle">面向新人的系统入门</div>
+    <div class="meta">约 15 分钟 &middot; DreamMaker &mdash; 网易互娱 AI 美术平台</div>
+  </section>
+
+  <!-- P02 What is Scheduler -->
+  <section class="slide" data-i="1">
+    <h2>Scheduler 是什么？</h2>
+    <div class="row">
+      <div class="col" style="flex:1.1">
+        <div class="card">
+          <div class="tag orange">核心使命</div>
+          <div class="item" style="font-size:17px"><strong>把 AI 生成任务（文生图、图生视频、3D 等）从用户提交到 GPU Worker 执行，全流程调度</strong></div>
+        </div>
+        <div class="card" style="flex:1">
+          <div class="tag blue">一句话架构</div>
+          <div class="item">Scheduler = <code>Go 微服务集群</code> + <code>Redis 任务队列</code> + <code>MongoDB 记录中心</code> + <code>etcd 注册中心</code> + <code>K8s 服务发现</code> + <code>dmfr 框架</code></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="flex:1">
+          <div class="tag blue">技术栈速览</div>
+          <table class="tech-table">
+            <tr><td>Go + dmfr</td><td>微服务框架，统一 HTTP / 日志 / 错误码</td></tr>
+            <tr><td>Redis (ZSet)</td><td>任务队列 + 乐观抢占 + 状态缓存</td></tr>
+            <tr><td>MongoDB</td><td>任务记录中心（AppRecord）</td></tr>
+            <tr><td>etcd</td><td>Worker/Task 运行态注册</td></tr>
+            <tr><td>Kafka</td><td>任务结果通知下游（监控 / 统计）</td></tr>
+            <tr><td>K8s + Istio</td><td>服务发现、流量路由、统一鉴权</td></tr>
+            <tr><td>Hertz / Fiber</td><td>HTTP 框架（新 Hertz / 老 Fiber）</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- P03 Five Layers -->
+  <section class="slide" data-i="2">
+    <h2>五层架构总览</h2>
+    <div class="layers">
+      <div class="layer l1"><span class="num">1</span><span class="name">外部请求层</span><span class="desc">前端 / Monet 客户端 / 内部工具 &rarr; 组装请求、携带鉴权</span></div>
+      <div class="arrow-down">&darr;</div>
+      <div class="layer l2"><span class="num">2</span><span class="name">业务服务层</span><span class="desc">api-outer / app-gateway / 2d / story-board &rarr; 参数校验、鉴权、入队</span></div>
+      <div class="arrow-down">&darr;</div>
+      <div class="layer l3"><span class="num">3</span><span class="name">基础设施层</span><span class="desc">worker-scheduler &rarr; 拉队列、分配任务、回写结果、Autoscaler</span></div>
+      <div class="arrow-down">&darr;</div>
+      <div class="layer l4"><span class="num">4</span><span class="name">Worker 执行层</span><span class="desc">worker-sidecar + Workers &rarr; 执行推理、上报结果</span></div>
+      <div class="arrow-down">&darr;</div>
+      <div class="layer l5"><span class="num">5</span><span class="name">外部供应商层</span><span class="desc">ComfyUI / SD-WebUI / 火山 / Kling / Runway / Sora &rarr; 实际 AI 推理</span></div>
+    </div>
+    <div class="callout"><strong>核心原则：</strong><span>每层只做自己的事，不越界</span></div>
+  </section>
+
+  <!-- P04 Three Components -->
+  <section class="slide" data-i="3">
+    <h2>三大核心组件</h2>
+    <div class="row" style="flex:1">
+      <div class="col">
+        <div class="card" style="flex:1;border-top:3px solid var(--primary)">
+          <div class="card-title blue">app-gateway</div>
+          <div class="tag blue">任务入口</div>
+          <div class="item"><strong>1</strong> 权限校验 CheckAppAccess</div>
+          <div class="item"><strong>2</strong> 参数映射 + 组件解析</div>
+          <div class="item"><strong>3</strong> Mongo 写 AppRecord</div>
+          <div class="item"><strong>4</strong> Redis 入队 + 返回 task_id</div>
+          <div class="sep"></div>
+          <div class="item"><span class="acc">为什么不能绕过？</span></div>
+          <div class="item">安全（唯一鉴权入口）<br>可观测（必须创建 AppRecord）<br>一致性（状态机依赖初始状态）</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="flex:1;border-top:3px solid var(--accent)">
+          <div class="card-title orange">worker-scheduler</div>
+          <div class="tag orange">调度核心</div>
+          <div class="item"><strong>多 Pod 并行</strong>，无 Leader 选举</div>
+          <div class="item">Redis 拉任务 &rarr; Mongo 加载 &rarr; etcd 注册 &rarr; 下发</div>
+          <div class="sep"></div>
+          <div class="item"><span class="acc">Worker Pull 模型</span></div>
+          <div class="item">Worker 主动上报"我空闲了"<br>天然背压，Worker 不被打爆</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="flex:1;border-top:3px solid var(--tertiary)">
+          <div class="card-title purple">worker-sidecar</div>
+          <div class="tag purple">异构适配器</div>
+          <div class="item"><strong>Adapter Pattern</strong><br>将调度逻辑与推理后端解耦</div>
+          <div class="sep"></div>
+          <div class="item">新增 AI 能力：<br><code style="color:var(--primary)">scheduler 代码不需要改</code></div>
+          <div class="item">只需：<br>1. sidecar 新增 worker 实现<br>2. action 层处理参数映射</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- P05 Three Storages -->
+  <section class="slide" data-i="4">
+    <h2>为什么需要三套存储？</h2>
+    <div class="row" style="flex:1">
+      <div class="col">
+        <div class="card" style="flex:1;border-top:3px solid var(--primary)">
+          <div class="card-title blue" style="font-family:var(--mono);font-size:22px">Redis</div>
+          <div class="item" style="font-size:16px"><strong>短生命周期"待消费"队列</strong></div>
+          <div class="sep"></div>
+          <div class="item">ZSet 排序（score = 时间戳）</div>
+          <div class="item">不同优先级不同 Redis key</div>
+          <div class="item">亚秒响应 /status 轮询</div>
+          <div class="item">分布式锁</div>
+          <div style="margin-top:auto;padding-top:12px"><div class="tag blue">10W+ QPS &middot; 微秒延迟</div></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="flex:1;border-top:3px solid var(--accent)">
+          <div class="card-title orange" style="font-family:var(--mono);font-size:22px">MongoDB</div>
+          <div class="item" style="font-size:16px"><strong>长生命周期"任务记录中心"</strong></div>
+          <div class="sep"></div>
+          <div class="item">任务参数、状态、结果全量存储</div>
+          <div class="item">AppRecord：查询、审计、计费</div>
+          <div class="item">AppTaskMsg：完整任务消息</div>
+          <div style="margin-top:auto;padding-top:12px"><div class="tag orange">持久化 &middot; 灵活查询</div></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="flex:1;border-top:3px solid var(--tertiary)">
+          <div class="card-title purple" style="font-family:var(--mono);font-size:22px">etcd</div>
+          <div class="item" style="font-size:16px"><strong>运行态"强一致注册中心"</strong></div>
+          <div class="sep"></div>
+          <div class="item">Lease：TTL 自动过期清理</div>
+          <div class="item">Watch：实时感知 Worker 上下线</div>
+          <div class="item">Txn：乐观锁防并发覆盖</div>
+          <div class="item">Raft 强一致</div>
+          <div style="margin-top:auto;padding-top:12px"><div class="tag purple">强一致 &middot; 自动清理</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="callout"><strong>核心原则：</strong><span>不同语义用不同存储，不要强求一套搞定 &mdash; 经典分布式系统取舍</span></div>
+  </section>
+
+  <!-- P06 Task Lifecycle -->
+  <section class="slide" data-i="5">
+    <h2>任务完整生命周期</h2>
+    <div class="row" style="flex:1">
+      <div class="phase" style="border-top:3px solid var(--primary)">
+        <div class="phase-title" style="color:var(--primary)">提交阶段</div>
+        <div class="phase-step">Client 发起请求</div>
+        <div class="phase-step">api-outer（JWT 鉴权）</div>
+        <div class="phase-step">app-gateway（权限 + 映射）</div>
+        <div class="phase-step">Mongo 写 AppRecord</div>
+        <div class="phase-step">Redis ZAdd 入队</div>
+        <div class="phase-step result">返回 task_id（立即）</div>
+      </div>
+      <div class="phase" style="border-top:3px solid var(--accent)">
+        <div class="phase-title" style="color:var(--accent)">调度阶段</div>
+        <div class="phase-step">Worker 上报"我空闲了"</div>
+        <div class="phase-step">WeightedScheduler 选优先级</div>
+        <div class="phase-step">ZRange 扫描候选</div>
+        <div class="phase-step">ZRem 原子抢占</div>
+        <div class="phase-step">Mongo 加载 + etcd 注册</div>
+        <div class="phase-step result">下发 JobReportData</div>
+      </div>
+      <div class="phase" style="border-top:3px solid var(--tertiary)">
+        <div class="phase-title" style="color:var(--tertiary)">执行与回写</div>
+        <div class="phase-step">Worker 执行推理</div>
+        <div class="phase-step">上报 progress / result</div>
+        <div class="phase-step">AfterCall + MapCallResponse</div>
+        <div class="phase-step">Mongo 写 Success</div>
+        <div class="phase-step">Kafka 通知下游</div>
+        <div class="phase-step result">etcd 删除 running 注册</div>
+      </div>
+    </div>
+    <div class="card bordered" style="margin-top:12px">
+      <div class="item"><span class="acc">设计要点：</span> 提交和执行<strong>完全异步</strong> &mdash; Worker Pull 天然背压 &mdash; 结果回写复用 app-gateway/action 包</div>
+    </div>
+  </section>
+
+  <!-- P07 State Machine & Action -->
+  <section class="slide" data-i="6">
+    <h2>任务状态机与 Action 编排</h2>
+    <div class="row">
+      <div class="col">
+        <div class="card" style="flex:1">
+          <div class="card-title blue">6 种任务状态</div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:16px 0">
+            <span class="state-pill" style="border-color:var(--muted);color:var(--muted)">waiting</span>
+            <span style="color:var(--dim)">&rarr;</span>
+            <span class="state-pill" style="border-color:var(--primary);color:var(--primary)">queued</span>
+            <span style="color:var(--dim)">&rarr;</span>
+            <span class="state-pill" style="border-color:var(--accent);color:var(--accent)">running</span>
+            <span style="color:var(--dim)">&rarr;</span>
+            <span class="state-pill" style="border-color:var(--success);color:var(--success)">success</span>
+          </div>
+          <div style="display:flex;gap:12px;margin-left:230px">
+            <span class="state-pill" style="border-color:var(--danger);color:var(--danger)">failed</span>
+            <span class="state-pill" style="border-color:var(--muted);color:var(--muted)">stopped</span>
+          </div>
+          <div class="item" style="margin-top:16px">每次状态流转后 <code>SetCache()</code> 更新 Redis，<code>/status</code> 亚秒响应</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="flex:1">
+          <div class="card-title orange">Action 编排模式</div>
+          <div class="item"><strong>Template Method + Strategy</strong></div>
+          <div class="sep"></div>
+          <div class="item"><code style="color:var(--primary)">Base</code> &mdash; 公共实现 Add/Run/Success/Failed</div>
+          <div class="item"><code style="color:var(--accent)">commonAction</code> &mdash; ZSet 队列，大多数直接复用</div>
+          <div class="item"><code style="color:var(--tertiary)">专用 action</code> &mdash; 仅差异大时才单独写</div>
+          <div class="sep"></div>
+          <div class="item">Go 类型断言实现接口隔离（能力检测）</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <div class="item" style="color:var(--tertiary);font-weight:600;margin-bottom:8px">编排链路</div>
+      <div class="pipeline-chain">
+        <code style="color:var(--primary)">BeforeProduce</code><span class="arr">&rarr;</span>
+        <code style="color:var(--accent)">Produce</code><span class="arr">&rarr;</span>
+        <code style="color:var(--primary)">Consume</code><span class="arr">&rarr;</span>
+        <code style="color:var(--accent)">BeforeCall</code><span class="arr">&rarr;</span>
+        <code style="color:var(--primary)">GenerateTask</code><span class="arr">&rarr;</span>
+        <code style="color:var(--accent)">AfterCall</code>
+      </div>
+    </div>
+  </section>
+
+  <!-- P08 Redis ZSet -->
+  <section class="slide" data-i="7">
+    <h2>Redis ZSet 队列与乐观抢占</h2>
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <div class="card-title blue">ZSet 设计亮点</div>
+          <div class="item">score = 毫秒时间戳 &rarr; 同优先级内 FIFO</div>
+          <div class="item">member = <code>user::taskID</code> &mdash; 完整数据在 Mongo</div>
+          <div class="item">ZRem 返回 &ge; 1 = 抢到了（<span class="acc">原子操作，无需 Lua</span>）</div>
+          <div class="item">多个 scheduler 同时 ZRange 没关系 &mdash; 谁先 ZRem 谁赢</div>
+        </div>
+        <div class="card">
+          <div class="card-title orange">多队列 Key</div>
+          <div class="item"><code>apps_pending_task::{priority}::{source}::{taskMode}::{cluster}::{env}</code></div>
+          <div class="item" style="font-size:15px;color:var(--dim)">priority=0 时省略 priority 段（向后兼容 5 段格式）</div>
+          <div class="sep"></div>
+          <div class="item">隔离不同 cluster &middot; 独立限流 &middot; 支持优先级调度 &middot; 小队列 ZRange 更快</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="flex:1">
+          <div class="card-title purple">两轮扫描策略</div>
+          <div class="item"><strong style="color:var(--primary)">第一轮 &mdash; 公平性</strong></div>
+          <div class="item">ZRange(0, 255) 批量扫描<br>逐个检查 GetUser() &mdash; 该用户有任务在跑？<br>有冲突 &rarr; 跳过，加入 queueJob<br>无冲突 &rarr; grabJob() 尝试 ZRem</div>
+          <div class="sep"></div>
+          <div class="item"><strong style="color:var(--accent)">第二轮 &mdash; 吞吐量</strong></div>
+          <div class="item">第一轮没抢到 &rarr; 遍历 queueJob<br>消费冲突任务，不让 Worker 空闲</div>
+          <div class="sep"></div>
+          <div class="callout" style="margin:0"><strong>经典的 公平性 vs 吞吐量 权衡</strong></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- P09 Priority & Concurrency -->
+  <section class="slide" data-i="8">
+    <h2>优先级调度与并发控制</h2>
+    <div class="row">
+      <div class="col">
+        <div class="card" style="flex:1">
+          <div class="card-title blue">WeightedScheduler 加权轮转</div>
+          <div style="display:flex;gap:8px;margin:12px 0">
+            <div class="tag blue">pri:2 w:5</div>
+            <div class="tag orange">pri:1 w:3</div>
+            <div class="tag" style="background:rgba(148,163,184,.12);color:var(--muted)">pri:0 w:2</div>
+          </div>
+          <div class="item">每 10 次消费中：高 <strong>5</strong> 次 / 中 <strong>3</strong> 次 / 低 <strong>2</strong> 次</div>
+          <div class="sep"></div>
+          <div class="item"><span class="acc">防饥饿机制</span></div>
+          <div class="item">配额耗尽 &rarr; 重置 &rarr; 每轮至少消费 1 次</div>
+          <div class="item">高优先级队列为空 &rarr; 低优先级立即有机会（降序兜底）</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card" style="flex:1">
+          <div class="card-title orange">用户并发控制</div>
+          <div class="item"><code>ConcurrentManager</code></div>
+          <div class="item">两个维度：taskMap（任务）+ userMap（用户）</div>
+          <div class="sep"></div>
+          <div class="item"><strong style="color:var(--primary)">CAS 原子操作</strong> &mdash; 乐观、无阻塞</div>
+          <div class="item">低竞争场景比 Mutex 性能更好</div>
+          <div class="sep"></div>
+          <div class="item"><span class="acc">etcd Watch 驱动同步</span></div>
+          <div class="item">新任务 &rarr; Watch Put &rarr; 所有 Pod +1<br>任务完成 &rarr; Watch Delete &rarr; 所有 Pod -1</div>
+          <div class="item">最终一致：毫秒级延迟，对实际场景可接受</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- P10 etcd & Fault Detection -->
+  <section class="slide" data-i="9">
+    <h2>etcd 注册、心跳与故障检测</h2>
+    <div class="cap-grid" style="margin-bottom:16px">
+      <div class="cap-card"><code style="color:var(--primary)">Put/Get/Delete</code><span>基本读写删</span></div>
+      <div class="cap-card"><code style="color:var(--accent)">Watch</code><span>监听变化，实时推送</span></div>
+      <div class="cap-card"><code style="color:var(--tertiary)">Lease</code><span>TTL 自动过期清理</span></div>
+      <div class="cap-card"><code style="color:var(--success)">Txn</code><span>乐观锁事务</span></div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <div class="card-title blue">Key 格式 &amp; 心跳</div>
+          <div class="item"><code>/worker/{env}/{podName}</code> &mdash; Worker 注册</div>
+          <div class="item"><code>/task/{env}/{taskID}</code> &mdash; Task 运行注册</div>
+          <div class="sep"></div>
+          <div class="item">Sidecar 每 <strong>30s</strong> 心跳 &rarr; Scheduler UpdateWorker（Txn 写回）</div>
+          <div class="item">Grant 每 300s 重新创建 Lease &middot; TTL = 7200s</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="card-title red">故障检测链路</div>
+          <div class="fault-chain">
+            <span class="fault-step" style="border-color:var(--danger);color:var(--danger)">Worker 崩溃</span>
+            <span class="fault-arr">&rarr;</span>
+            <span class="fault-step" style="border-color:var(--dim);color:var(--muted)">心跳停止</span>
+            <span class="fault-arr">&rarr;</span>
+            <span class="fault-step" style="border-color:var(--tertiary);color:var(--tertiary)">Lease 过期</span>
+            <span class="fault-arr">&rarr;</span>
+            <span class="fault-step" style="border-color:var(--accent);color:var(--accent)">Watch Delete</span>
+            <span class="fault-arr">&rarr;</span>
+            <span class="fault-step" style="border-color:var(--success);color:var(--success)">缓存清理 + 计数恢复</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- P11 Worker Lifecycle & Autoscaler -->
+  <section class="slide" data-i="10">
+    <h2>Worker 生命周期与 Autoscaler</h2>
+    <div class="row">
+      <div class="col">
+        <div class="card">
+          <div class="card-title blue">Worker 状态机</div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0">
+            <span class="state-pill" style="border-color:var(--muted);color:var(--muted)">pending</span>
+            <span style="color:var(--dim)">&rarr;</span>
+            <span class="state-pill" style="border-color:var(--success);color:var(--success)">running</span>
+            <span style="color:var(--dim)">&rarr;</span>
+            <span class="state-pill" style="border-color:var(--accent);color:var(--accent)">terminating</span>
+            <span style="color:var(--dim)">&rarr;</span>
+            <span class="state-pill" style="border-color:var(--danger);color:var(--danger)">terminated</span>
+          </div>
+          <div class="item" style="margin-top:4px"><span class="state-pill" style="border-color:var(--tertiary);color:var(--tertiary);font-size:12px">recovering</span> &mdash; 推理进程重启中</div>
+          <div class="sep"></div>
+          <div class="item">terminated / terminating <strong>不参与任务分配</strong></div>
+        </div>
+        <div class="card">
+          <div class="card-title orange">优雅关闭（两阶段）</div>
+          <div class="item"><strong>1.</strong> K8s 发送 SIGTERM</div>
+          <div class="item"><strong>2.</strong> 停止接收新任务</div>
+          <div class="item"><strong>3.</strong> 上报 <code>shutdown</code> &rarr; <span class="acc">status=terminating</span></div>
+          <div class="item"><strong>4.</strong> 等待已有任务完成（最长 10 分钟）</div>
+          <div class="item"><strong>5.</strong> 上报 <code>exit</code> &rarr; <span class="acc">status=terminated</span></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="card">
+          <div class="card-title purple">自定义 Autoscaler vs HPA</div>
+          <div class="item">HPA 看 CPU / Memory &rarr; <strong>看不到 GPU 任务队列长度</strong></div>
+          <div class="item">自定义 Autoscaler <strong>直接读 MongoDB 队列长度</strong>决策</div>
+          <div class="item">30s 定时 + Redis 分布式锁</div>
+        </div>
+        <div class="scale-row">
+          <div class="scale-card green-b">
+            <div class="sc-title" style="color:var(--success)">扩容</div>
+            <div class="item">Worker = 0 &rarr; 必须扩<br>Worker &le; 队列/2 &rarr; 扩<br>唤醒 terminated Worker</div>
+          </div>
+          <div class="scale-card red-b">
+            <div class="sc-title" style="color:var(--danger)">缩容</div>
+            <div class="item">Running > MinWorker<br>Worker 当前不忙<br>空闲 > IdleTime</div>
+          </div>
+        </div>
+        <div class="callout" style="margin-top:8px"><strong>安全检查：</strong><span>有 pending / terminating Worker 时跳过 &rarr; 防雪球</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- P12 Summary -->
+  <section class="slide" data-i="11">
+    <h2>关键设计决策总结</h2>
+    <div style="display:flex;flex-direction:column;gap:10px;flex:1">
+      <div class="decision-row"><div class="decision-bar" style="background:var(--primary)"></div><div class="decision-body"><strong style="color:var(--primary)">三套存储各司其职</strong><span>Redis 吞吐（队列+缓存） &middot; MongoDB 持久（记录+审计） &middot; etcd 一致性（注册+Watch）</span></div></div>
+      <div class="decision-row"><div class="decision-bar" style="background:var(--accent)"></div><div class="decision-body"><strong style="color:var(--accent)">Worker Pull 模型</strong><span>Worker 主动上报空闲 &rarr; 天然背压 &rarr; Worker 不会被打爆</span></div></div>
+      <div class="decision-row"><div class="decision-bar" style="background:var(--tertiary)"></div><div class="decision-body"><strong style="color:var(--tertiary)">多 Pod 并行 + 乐观抢占</strong><span>etcd Watch 同步状态 + Redis ZRem 竞争任务 &rarr; 无需 Leader 选举</span></div></div>
+      <div class="decision-row"><div class="decision-bar" style="background:var(--success)"></div><div class="decision-body"><strong style="color:var(--success)">两轮扫描</strong><span>第一轮公平性优先（跳过冲突用户） &middot; 第二轮吞吐量兜底（不让 Worker 空闲）</span></div></div>
+      <div class="decision-row"><div class="decision-bar" style="background:var(--primary)"></div><div class="decision-body"><strong style="color:var(--primary)">先加载再 Watch</strong><span>启动时从 etcd 全量加载建立基线 &rarr; 然后 Watch 增量更新 &rarr; 最终一致性</span></div></div>
+    </div>
+    <div class="golden">
+      <div class="line1">不同语义用不同存储</div>
+      <div class="line2">不同场景用不同策略</div>
+    </div>
+  </section>
+</div>
+
+<div class="bottom-bar">
+  <span class="nav-hint">&larr; &rarr; 翻页</span>
+  <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
+  <span class="page-num" id="pageNum">1 / 12</span>
+</div>
+
+<script>
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+let cur = 0;
+
+function go(i) {
+  if (i < 0 || i >= total || i === cur) return;
+  const forward = i > cur;
+  const old = slides[cur];
+  old.classList.remove('active');
+  old.classList.add(forward ? 'exit-left' : 'exit-right');
+
+  slides.forEach((s, idx) => {
+    if (idx !== cur && idx !== i) {
+      s.classList.remove('active', 'exit-left', 'exit-right');
+    }
+  });
+
+  const next = slides[i];
+  next.classList.remove('exit-left', 'exit-right');
+  next.style.transition = 'none';
+  next.style.transform = forward ? 'translateX(60px)' : 'translateX(-60px)';
+  next.style.opacity = '0';
+  next.offsetHeight;
+  next.style.transition = '';
+  next.style.transform = '';
+  next.style.opacity = '';
+  next.classList.add('active');
+
+  cur = i;
+  document.getElementById('progress').style.width = ((cur + 1) / total * 100) + '%';
+  document.getElementById('pageNum').textContent = (cur + 1) + ' / ' + total;
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(cur + 1); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); go(cur - 1); }
+  if (e.key === 'Home') { e.preventDefault(); go(0); }
+  if (e.key === 'End') { e.preventDefault(); go(total - 1); }
+});
+
+document.querySelector('.deck').addEventListener('click', e => {
+  const x = e.clientX / window.innerWidth;
+  x > 0.5 ? go(cur + 1) : go(cur - 1);
+});
+
+let touchX = 0;
+document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchX;
+  if (Math.abs(dx) > 50) dx < 0 ? go(cur + 1) : go(cur - 1);
+});
+
+document.getElementById('progress').style.width = (1 / total * 100) + '%';
+</script>

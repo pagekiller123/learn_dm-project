@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="content">
+  <rect width="1280" height="720" fill="#0F172A" />
+  <g id="header" data-pptx-bounds="11,40,564,54">
+    <rect x="48" y="48" width="6" height="36" rx="3" fill="#38BDF8" />
+    <text x="68" y="80" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="36" font-weight="700" fill="#E2E8F0">Redis ZSet 队列与乐观抢占</text>
+  </g>
+  <g id="zset-design" data-pptx-bounds="4,99,667,231">
+    <text x="48" y="130" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#38BDF8">ZSet 设计亮点</text>
+    <rect x="48" y="145" width="580" height="170" rx="8" fill="#1E293B" />
+    <text x="80" y="180" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">score = 毫秒时间戳 → 同优先级内 FIFO</text>
+    <text x="80" y="210" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">member = </text>
+    <text x="170" y="210" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#38BDF8">user::taskID</text>
+    <text x="340" y="210" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">完整数据在 Mongo（关注点分离）</text>
+    <text x="80" y="240" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">ZRem 返回 ≥ 1 = 抢到了（</text>
+    <text x="314" y="240" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#F97316">原子操作，无需 Lua</text>
+    <text x="492" y="240" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">）</text>
+    <text x="80" y="275" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">多 scheduler 同时 ZRange 没关系 — 谁先 ZRem 谁赢</text>
+  </g>
+  <g id="multi-queue" data-pptx-bounds="617,99,658,231">
+    <text x="660" y="130" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#F97316">多队列 Key 结构</text>
+    <rect x="660" y="145" width="572" height="170" rx="8" fill="#1E293B" />
+    <text x="690" y="178" font-family="Fira Code, SF Mono, monospace" font-size="12" fill="#38BDF8">apps_pending_task::</text>
+    <text x="690" y="200" font-family="Fira Code, SF Mono, monospace" font-size="12" fill="#F97316">  {priority}::{source}::{taskMode}::{cluster}::{env}</text>
+    <rect x="690" y="215" width="520" height="2" fill="#334155" />
+    <text x="690" y="245" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">隔离：不同 cluster Worker 只消费自己的队列</text>
+    <text x="690" y="270" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">限流：不同 source/taskMode 独立消费规则</text>
+    <text x="690" y="295" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">性能：小队列 ZRange 扫描范围更小</text>
+  </g>
+  <g id="two-round" data-pptx-bounds="4,326,667,358">
+    <text x="48" y="365" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#A78BFA">两轮扫描策略</text>
+    <rect x="48" y="380" width="580" height="280" rx="8" fill="#1E293B" />
+    <text x="80" y="415" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" font-weight="600" fill="#38BDF8">第一轮 — 公平性</text>
+    <text x="80" y="445" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">ZRange(0, 255) 批量扫描</text>
+    <text x="80" y="470" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">逐个检查 GetUser() — 该用户是否有任务在跑？</text>
+    <text x="80" y="495" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">有冲突 → 跳过，加入 queueJob</text>
+    <text x="80" y="520" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#38BDF8">无冲突 → grabJob() 尝试 ZRem 抢占</text>
+    <rect x="80" y="540" width="520" height="2" fill="#334155" />
+    <text x="80" y="570" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" font-weight="600" fill="#F97316">第二轮 — 吞吐量</text>
+    <text x="80" y="600" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">第一轮没抢到 → 遍历 queueJob</text>
+    <text x="80" y="625" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">消费冲突任务，不让 Worker 空闲</text>
+  </g>
+  <g id="tradeoff-box" data-pptx-bounds="617,359,658,322">
+    <rect x="660" y="380" width="572" height="280" rx="8" fill="#1E293B" stroke="#F97316" stroke-width="1" />
+    <text x="946" y="430" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="18" font-weight="700" fill="#F97316" text-anchor="middle">公平性 vs 吞吐量</text>
+    <text x="946" y="480" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#E2E8F0" text-anchor="middle">经典的分布式调度权衡</text>
+    <rect x="710" y="510" width="460" height="2" fill="#334155" />
+    <text x="946" y="550" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8" text-anchor="middle">第一轮优先给没有运行中任务的用户</text>
+    <text x="946" y="580" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8" text-anchor="middle">防止高频用户独占 Worker</text>
+    <text x="946" y="620" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8" text-anchor="middle">第二轮兜底保证 Worker 不空闲</text>
+  </g>
+  <g id="page-number" data-pptx-bounds="1216,676,23,23">
+    <text x="1232" y="692" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569" text-anchor="end">08</text>
+  </g>
+</svg>

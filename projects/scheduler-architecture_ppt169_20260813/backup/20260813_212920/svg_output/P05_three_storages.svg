@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="content">
+  <rect width="1280" height="720" fill="#0F172A" />
+  <g id="header" data-pptx-bounds="20,40,437,54">
+    <rect x="48" y="48" width="6" height="36" rx="3" fill="#38BDF8" />
+    <text x="68" y="80" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="36" font-weight="700" fill="#E2E8F0">为什么需要三套存储？</text>
+  </g>
+  <g id="redis-card" data-pptx-bounds="20,88,437,483">
+    <rect x="48" y="120" width="380" height="420" rx="10" fill="#1E293B" />
+    <rect x="48" y="120" width="380" height="50" rx="10" fill="#38BDF8" opacity="0.12" />
+    <text x="238" y="152" font-family="Fira Code, SF Mono, monospace" font-size="22" font-weight="700" fill="#38BDF8" text-anchor="middle">Redis</text>
+    <text x="238" y="195" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#E2E8F0" text-anchor="middle">短生命周期"待消费"队列</text>
+    <rect x="72" y="215" width="332" height="2" fill="#334155" />
+    <text x="84" y="250" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">ZSet 排序（score = 时间戳）</text>
+    <text x="84" y="280" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">不同优先级不同 Redis key</text>
+    <text x="84" y="310" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">亚秒响应 /status 轮询</text>
+    <text x="84" y="340" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">分布式锁</text>
+    <rect x="72" y="370" width="332" height="40" rx="6" fill="#0F172A" />
+    <text x="238" y="396" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#38BDF8" text-anchor="middle">10W+ QPS · 微秒延迟</text>
+  </g>
+  <g id="mongo-card" data-pptx-bounds="422,88,437,483">
+    <rect x="450" y="120" width="380" height="420" rx="10" fill="#1E293B" />
+    <rect x="450" y="120" width="380" height="50" rx="10" fill="#F97316" opacity="0.12" />
+    <text x="640" y="152" font-family="Fira Code, SF Mono, monospace" font-size="22" font-weight="700" fill="#F97316" text-anchor="middle">MongoDB</text>
+    <text x="640" y="195" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#E2E8F0" text-anchor="middle">长生命周期"任务记录中心"</text>
+    <rect x="474" y="215" width="332" height="2" fill="#334155" />
+    <text x="486" y="250" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">任务参数、状态、结果全量存储</text>
+    <text x="486" y="280" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">AppRecord：查询、审计、计费</text>
+    <text x="486" y="310" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">AppTaskMsg：完整任务消息</text>
+    <rect x="474" y="370" width="332" height="40" rx="6" fill="#0F172A" />
+    <text x="640" y="396" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#F97316" text-anchor="middle">持久化 · 灵活查询</text>
+  </g>
+  <g id="etcd-card" data-pptx-bounds="824,88,437,483">
+    <rect x="852" y="120" width="380" height="420" rx="10" fill="#1E293B" />
+    <rect x="852" y="120" width="380" height="50" rx="10" fill="#A78BFA" opacity="0.12" />
+    <text x="1042" y="152" font-family="Fira Code, SF Mono, monospace" font-size="22" font-weight="700" fill="#A78BFA" text-anchor="middle">etcd</text>
+    <text x="1042" y="195" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#E2E8F0" text-anchor="middle">运行态"强一致注册中心"</text>
+    <rect x="876" y="215" width="332" height="2" fill="#334155" />
+    <text x="888" y="250" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">Lease：TTL 自动过期清理</text>
+    <text x="888" y="280" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">Watch：实时感知 Worker 上下线</text>
+    <text x="888" y="310" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">Txn：乐观锁防并发覆盖</text>
+    <text x="888" y="340" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">Raft 强一致</text>
+    <rect x="876" y="370" width="332" height="40" rx="6" fill="#0F172A" />
+    <text x="1042" y="396" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#A78BFA" text-anchor="middle">强一致 · 自动清理</text>
+  </g>
+  <g id="bottom-principle" data-pptx-bounds="0,566,1280,69">
+    <rect x="48" y="570" width="1184" height="60" rx="8" fill="#1E293B" stroke="#F97316" stroke-width="1" />
+    <text x="640" y="607" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="18" font-weight="600" fill="#F97316" text-anchor="middle">核心原则：不同语义用不同存储，不要强求一套搞定 — 经典分布式系统取舍</text>
+  </g>
+  <g id="page-number" data-pptx-bounds="1216,676,23,23">
+    <text x="1232" y="692" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569" text-anchor="end">05</text>
+  </g>
+</svg>

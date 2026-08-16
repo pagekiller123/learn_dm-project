@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="cover">
+  <rect width="1280" height="720" fill="#0F172A"/>
+  <rect x="80" y="280" width="120" height="4" rx="2" fill="#38BDF8"/>
+  <text x="80" y="340" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="44" font-weight="700" fill="#E2E8F0">DreamMaker Scheduler</text>
+  <text x="80" y="400" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="44" font-weight="700" fill="#38BDF8">架构深度解析</text>
+  <text x="80" y="460" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="22" fill="#94A3B8">面向新人的系统入门</text>
+  <rect x="80" y="560" width="60" height="3" rx="1.5" fill="#F97316"/>
+  <text x="80" y="590" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#64748B">约 15 分钟</text>
+  <text x="200" y="590" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#64748B">·</text>
+  <text x="220" y="590" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#64748B">DreamMaker — 网易互娱 AI 美术平台</text>
+  <rect x="900" y="100" width="300" height="520" rx="12" fill="#1E293B" opacity="0.5"/>
+  <text x="940" y="180" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">Go + dmfr</text>
+  <text x="940" y="220" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">Redis (ZSet)</text>
+  <text x="940" y="260" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">MongoDB</text>
+  <text x="940" y="300" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">etcd</text>
+  <text x="940" y="340" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">Kafka</text>
+  <text x="940" y="380" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">K8s + Istio</text>
+  <text x="940" y="420" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">Hertz / Fiber</text>
+  <text x="940" y="150" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="600" fill="#94A3B8">TECH STACK</text>
+</svg>

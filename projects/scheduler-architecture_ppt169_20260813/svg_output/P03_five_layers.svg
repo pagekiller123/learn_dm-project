@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="content">
+  <rect width="1280" height="720" fill="#0F172A" />
+  <g id="header" data-pptx-bounds="30,40,271,54">
+    <rect x="48" y="48" width="6" height="36" rx="3" fill="#38BDF8" />
+    <text x="68" y="80" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="36" font-weight="700" fill="#E2E8F0">五层架构总览</text>
+  </g>
+  <g id="layer1" data-pptx-bounds="0,114,1280,92">
+    <rect x="48" y="120" width="1184" height="80" rx="8" fill="#1E293B" stroke="#38BDF8" stroke-width="1" />
+    <text x="80" y="150" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#38BDF8">1  外部请求层</text>
+    <text x="80" y="178" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#E2E8F0">前端 / Monet 客户端 / 内部工具</text>
+    <text x="680" y="178" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#94A3B8">组装请求、携带鉴权 Header</text>
+  </g>
+  <g id="arrow1" data-pptx-bounds="632,198,23,30">
+    <line x1="640" y1="200" x2="640" y2="220" stroke="#475569" stroke-width="2" />
+    <polygon points="634,218 640,226 646,218" fill="#475569" />
+  </g>
+  <g id="layer2" data-pptx-bounds="0,222,1280,92">
+    <rect x="48" y="228" width="1184" height="80" rx="8" fill="#1E293B" stroke="#A78BFA" stroke-width="1" />
+    <text x="80" y="258" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#A78BFA">2  业务服务层</text>
+    <text x="80" y="286" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#E2E8F0">api-outer / app-gateway / 2d / story-board</text>
+    <text x="680" y="286" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#94A3B8">参数校验、鉴权、参数映射、入队</text>
+  </g>
+  <g id="arrow2" data-pptx-bounds="632,306,23,30">
+    <line x1="640" y1="308" x2="640" y2="328" stroke="#475569" stroke-width="2" />
+    <polygon points="634,326 640,334 646,326" fill="#475569" />
+  </g>
+  <g id="layer3" data-pptx-bounds="0,330,1280,92">
+    <rect x="48" y="336" width="1184" height="80" rx="8" fill="#1E293B" stroke="#F97316" stroke-width="1" />
+    <text x="80" y="366" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#F97316">3  基础设施层</text>
+    <text x="80" y="394" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#E2E8F0">worker-scheduler</text>
+    <text x="680" y="394" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#94A3B8">拉队列、分配任务、回写结果、Autoscaler</text>
+  </g>
+  <g id="arrow3" data-pptx-bounds="632,414,23,30">
+    <line x1="640" y1="416" x2="640" y2="436" stroke="#475569" stroke-width="2" />
+    <polygon points="634,434 640,442 646,434" fill="#475569" />
+  </g>
+  <g id="layer4" data-pptx-bounds="0,438,1280,92">
+    <rect x="48" y="444" width="1184" height="80" rx="8" fill="#1E293B" stroke="#38BDF8" stroke-width="1" />
+    <text x="80" y="474" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#38BDF8">4  Worker 执行层</text>
+    <text x="80" y="502" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#E2E8F0">worker-sidecar + ComfyUI Worker / SD Worker / Training Worker</text>
+    <text x="820" y="502" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#94A3B8">执行推理、上报结果</text>
+  </g>
+  <g id="arrow4" data-pptx-bounds="632,522,23,30">
+    <line x1="640" y1="524" x2="640" y2="544" stroke="#475569" stroke-width="2" />
+    <polygon points="634,542 640,550 646,542" fill="#475569" />
+  </g>
+  <g id="layer5" data-pptx-bounds="0,546,1280,92">
+    <rect x="48" y="552" width="1184" height="80" rx="8" fill="#1E293B" stroke="#94A3B8" stroke-width="1" stroke-dasharray="6,4" />
+    <text x="80" y="582" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="700" fill="#94A3B8">5  外部供应商层</text>
+    <text x="80" y="610" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#E2E8F0">ComfyUI / SD-WebUI / 火山 / Kling / Runway / Sora</text>
+    <text x="820" y="610" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#94A3B8">实际 AI 推理</text>
+  </g>
+  <g id="principle" data-pptx-bounds="28,654,313,24">
+    <text x="48" y="672" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#F97316">核心原则：每层只做自己的事，不越界</text>
+  </g>
+  <g id="page-number" data-pptx-bounds="1216,676,23,23">
+    <text x="1232" y="692" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569" text-anchor="end">03</text>
+  </g>
+</svg>

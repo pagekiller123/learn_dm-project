@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="content">
+  <rect width="1280" height="720" fill="#0F172A" />
+  <g id="header" data-pptx-bounds="13,40,536,54">
+    <rect x="48" y="48" width="6" height="36" rx="3" fill="#38BDF8" />
+    <text x="68" y="80" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="36" font-weight="700" fill="#E2E8F0">任务状态机与 Action 编排</text>
+  </g>
+  <g id="state-machine" data-pptx-bounds="4,95,667,294">
+    <text x="48" y="130" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#38BDF8">5 种任务状态</text>
+    <rect x="48" y="150" width="580" height="220" rx="8" fill="#1E293B" />
+    <rect x="90" y="190" width="100" height="36" rx="18" fill="#38BDF8" opacity="0.2" stroke="#38BDF8" stroke-width="1.5" />
+    <text x="140" y="214" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#38BDF8" text-anchor="middle">queued</text>
+    <line x1="190" y1="208" x2="240" y2="208" stroke="#475569" stroke-width="1.5" />
+    <polygon points="238,203 246,208 238,213" fill="#475569" />
+    <rect x="248" y="190" width="100" height="36" rx="18" fill="#F97316" opacity="0.2" stroke="#F97316" stroke-width="1.5" />
+    <text x="298" y="214" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#F97316" text-anchor="middle">running</text>
+    <line x1="348" y1="208" x2="398" y2="183" stroke="#475569" stroke-width="1.5" />
+    <rect x="408" y="165" width="100" height="36" rx="18" fill="#22C55E" opacity="0.2" stroke="#22C55E" stroke-width="1.5" />
+    <text x="458" y="189" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#22C55E" text-anchor="middle">success</text>
+    <line x1="348" y1="216" x2="398" y2="241" stroke="#475569" stroke-width="1.5" />
+    <rect x="408" y="223" width="100" height="36" rx="18" fill="#EF4444" opacity="0.2" stroke="#EF4444" stroke-width="1.5" />
+    <text x="458" y="247" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#EF4444" text-anchor="middle">failed</text>
+    <line x1="348" y1="226" x2="398" y2="296" stroke="#475569" stroke-width="1.5" />
+    <rect x="408" y="280" width="100" height="36" rx="18" fill="#94A3B8" opacity="0.2" stroke="#94A3B8" stroke-width="1.5" />
+    <text x="458" y="304" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#94A3B8" text-anchor="middle">stopped</text>
+    <text x="72" y="350" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">每次状态流转后 SetCache() 更新 Redis，/status 亚秒响应</text>
+  </g>
+  <g id="action-pattern" data-pptx-bounds="617,95,658,294">
+    <text x="660" y="130" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#F97316">Action 编排模式</text>
+    <rect x="660" y="150" width="572" height="220" rx="8" fill="#1E293B" />
+    <text x="690" y="185" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="600" fill="#E2E8F0">Template Method + Strategy</text>
+    <text x="690" y="225" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#38BDF8">Base 层</text>
+    <text x="810" y="225" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">公共实现 Add/Run/Success/Failed</text>
+    <text x="690" y="255" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#F97316">commonAction</text>
+    <text x="810" y="255" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">ZSet 队列，大多数直接复用</text>
+    <text x="690" y="285" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#A78BFA">专用 action</text>
+    <text x="810" y="285" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">仅差异大时才单独写</text>
+    <rect x="690" y="310" width="520" height="2" fill="#334155" />
+    <text x="690" y="345" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">Go 类型断言实现接口隔离（能力检测）</text>
+  </g>
+  <g id="pipeline" data-pptx-bounds="0,397,1280,106">
+    <text x="48" y="420" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#A78BFA">编排链路</text>
+    <rect x="48" y="440" width="1184" height="56" rx="8" fill="#1E293B" />
+    <text x="80" y="475" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#38BDF8">BeforeProduce</text>
+    <text x="226" y="475" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569">→</text>
+    <text x="246" y="475" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#F97316">Produce</text>
+    <text x="340" y="475" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569">→</text>
+    <text x="360" y="475" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#38BDF8">Consume</text>
+    <text x="460" y="475" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569">→</text>
+    <text x="480" y="475" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#F97316">BeforeCall</text>
+    <text x="598" y="475" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569">→</text>
+    <text x="618" y="475" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#38BDF8">GenerateTask</text>
+    <text x="758" y="475" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569">→</text>
+    <text x="778" y="475" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#F97316">AfterCall</text>
+  </g>
+  <g id="interfaces" data-pptx-bounds="0,519,1280,151">
+    <text x="48" y="545" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#38BDF8">可选接口（Go 类型断言）</text>
+    <rect x="48" y="560" width="1184" height="100" rx="8" fill="#1E293B" />
+    <text x="80" y="590" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">RequestMapper</text>
+    <text x="80" y="615" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="12" fill="#94A3B8">参数映射</text>
+    <text x="240" y="590" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">MsgProducer</text>
+    <text x="240" y="615" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="12" fill="#94A3B8">入队</text>
+    <text x="390" y="590" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">MsgConsumer</text>
+    <text x="390" y="615" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="12" fill="#94A3B8">出队</text>
+    <text x="540" y="590" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">Generator</text>
+    <text x="540" y="615" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="12" fill="#94A3B8">生成 JobData</text>
+    <text x="690" y="590" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">CallResponseMapper</text>
+    <text x="690" y="615" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="12" fill="#94A3B8">结果映射</text>
+    <text x="890" y="590" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">Progressor</text>
+    <text x="890" y="615" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="12" fill="#94A3B8">进度读写</text>
+    <text x="1040" y="590" font-family="Fira Code, SF Mono, monospace" font-size="13" fill="#38BDF8">Caller</text>
+    <text x="1040" y="615" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="12" fill="#94A3B8">直接调用</text>
+  </g>
+  <g id="page-number" data-pptx-bounds="1216,676,23,23">
+    <text x="1232" y="692" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569" text-anchor="end">07</text>
+  </g>
+</svg>

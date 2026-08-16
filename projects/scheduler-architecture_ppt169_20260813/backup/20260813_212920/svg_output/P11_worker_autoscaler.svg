@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="content">
+  <rect width="1280" height="720" fill="#0F172A" />
+  <g id="header" data-pptx-bounds="6,40,639,54">
+    <rect x="48" y="48" width="6" height="36" rx="3" fill="#38BDF8" />
+    <text x="68" y="80" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="36" font-weight="700" fill="#E2E8F0">Worker 生命周期与 Autoscaler</text>
+  </g>
+  <g id="worker-states" data-pptx-bounds="4,97,667,266">
+    <text x="48" y="130" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#38BDF8">Worker 状态机</text>
+    <rect x="48" y="145" width="580" height="200" rx="8" fill="#1E293B" />
+    <rect x="90" y="185" width="90" height="32" rx="16" fill="#94A3B8" opacity="0.2" stroke="#94A3B8" stroke-width="1" />
+    <text x="135" y="206" font-family="Fira Code, SF Mono, monospace" font-size="12" fill="#94A3B8" text-anchor="middle">pending</text>
+    <line x1="180" y1="201" x2="220" y2="201" stroke="#475569" stroke-width="1.5" />
+    <polygon points="218,196 226,201 218,206" fill="#475569" />
+    <rect x="228" y="185" width="90" height="32" rx="16" fill="#22C55E" opacity="0.2" stroke="#22C55E" stroke-width="1" />
+    <text x="273" y="206" font-family="Fira Code, SF Mono, monospace" font-size="12" fill="#22C55E" text-anchor="middle">running</text>
+    <line x1="318" y1="186" x2="370" y2="170" stroke="#475569" stroke-width="1.5" />
+    <rect x="372" y="155" width="110" height="32" rx="16" fill="#A78BFA" opacity="0.2" stroke="#A78BFA" stroke-width="1" />
+    <text x="427" y="176" font-family="Fira Code, SF Mono, monospace" font-size="12" fill="#A78BFA" text-anchor="middle">recovering</text>
+    <line x1="318" y1="217" x2="370" y2="230" stroke="#475569" stroke-width="1.5" />
+    <rect x="372" y="215" width="120" height="32" rx="16" fill="#F97316" opacity="0.2" stroke="#F97316" stroke-width="1" />
+    <text x="432" y="236" font-family="Fira Code, SF Mono, monospace" font-size="12" fill="#F97316" text-anchor="middle">terminating</text>
+    <line x1="492" y1="231" x2="520" y2="231" stroke="#475569" stroke-width="1.5" />
+    <polygon points="518,226 526,231 518,236" fill="#475569" />
+    <rect x="528" y="215" width="100" height="32" rx="16" fill="#EF4444" opacity="0.2" stroke="#EF4444" stroke-width="1" />
+    <text x="578" y="236" font-family="Fira Code, SF Mono, monospace" font-size="12" fill="#EF4444" text-anchor="middle">terminated</text>
+    <text x="80" y="290" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">terminated / terminating 状态不参与任务分配</text>
+  </g>
+  <g id="graceful-shutdown" data-pptx-bounds="617,97,658,266">
+    <text x="660" y="130" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#F97316">Sidecar 优雅关闭（两阶段）</text>
+    <rect x="660" y="145" width="572" height="200" rx="8" fill="#1E293B" />
+    <text x="690" y="178" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#38BDF8">1. K8s 发送 SIGTERM</text>
+    <text x="690" y="203" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">2. 停止接收新任务</text>
+    <text x="690" y="228" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#F97316">3. 上报 shutdown → status=terminating</text>
+    <text x="690" y="253" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">4. 等待已有任务完成（最长 10 分钟）</text>
+    <text x="690" y="278" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#F97316">5. 上报 exit → status=terminated</text>
+    <text x="690" y="310" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">意义：terminating 不分配新任务，但已有任务可执行完毕</text>
+  </g>
+  <g id="autoscaler" data-pptx-bounds="4,371,667,197">
+    <text x="48" y="400" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#A78BFA">自定义 Autoscaler vs K8s HPA</text>
+    <rect x="48" y="415" width="580" height="140" rx="8" fill="#1E293B" />
+    <text x="80" y="445" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">HPA 看 CPU / Memory → 看不到 GPU 任务队列长度</text>
+    <text x="80" y="475" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#38BDF8">自定义 Autoscaler 直接读 Redis 队列长度决策</text>
+    <text x="80" y="505" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">30s 定时触发 + Redis 分布式锁（同一时刻只有一个 Pod 执行）</text>
+    <text x="80" y="530" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">冷却机制：Redis ZSet 记录扩缩容历史</text>
+  </g>
+  <g id="scale-logic" data-pptx-bounds="617,404,658,161">
+    <rect x="660" y="415" width="280" height="140" rx="8" fill="#1E293B" stroke="#22C55E" stroke-width="1" />
+    <text x="800" y="445" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" font-weight="600" fill="#22C55E" text-anchor="middle">扩容</text>
+    <text x="690" y="475" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">Worker = 0 → 必须扩</text>
+    <text x="690" y="500" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">Worker ≤ 队列/2 → 扩</text>
+    <text x="690" y="525" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#38BDF8">唤醒 terminated Worker</text>
+    <rect x="952" y="415" width="280" height="140" rx="8" fill="#1E293B" stroke="#EF4444" stroke-width="1" />
+    <text x="1092" y="445" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" font-weight="600" fill="#EF4444" text-anchor="middle">缩容</text>
+    <text x="982" y="475" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">Running &gt; MinWorker</text>
+    <text x="982" y="500" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">Worker 当前不忙</text>
+    <text x="982" y="525" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">空闲 &gt; ScaleDownIdleTime</text>
+  </g>
+  <g id="safety" data-pptx-bounds="0,576,1280,69">
+    <rect x="48" y="580" width="1184" height="60" rx="8" fill="#1E293B" stroke="#F97316" stroke-width="1" />
+    <text x="80" y="616" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="600" fill="#F97316">安全检查：</text>
+    <text x="200" y="616" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">有 pending / terminating Worker 时跳过本轮 → 防止雪球式过度扩容</text>
+  </g>
+  <g id="page-number" data-pptx-bounds="1216,676,23,23">
+    <text x="1232" y="692" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569" text-anchor="end">11</text>
+  </g>
+</svg>

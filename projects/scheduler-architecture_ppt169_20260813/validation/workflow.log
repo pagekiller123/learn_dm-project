@@ -1,0 +1,463 @@
+
+=== 2026-08-13T13:08:51.167Z NOTE id=da362770f284 ===
+Project initialized: profile=default; canvas=ppt169; path=D:\project\my_root_project\learn_dm-project\projects\scheduler-architecture_ppt169_20260813
+
+=== 2026-08-13T13:15:39.413Z PYTHON run=367f9a5297c9 ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/project_manager.py", "validate", "projects/scheduler-architecture_ppt169_20260813"]
+stdout:
+  [WARN]
+  [OK] Project structure is valid, with warnings.
+=== 2026-08-13T13:15:39.926Z END run=367f9a5297c9 elapsed_ms=500 output_lines=5 retained=2 omitted=3 ===
+
+=== 2026-08-13T13:17:15.422Z PYTHON run=0ca814bcff92 ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/svg_quality_checker.py", "projects/scheduler-architecture_ppt169_20260813", "--stage", "first-page", "--json"]
+stdout:
+  [WARN] P01_cover.svg - Passed (with warnings)
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] 17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id="...">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as "background" or "decoration"
+  [SUMMARY] Check Summary
+  Total files: 1
+    [OK] Fully passed: 0 (0%)
+    [WARN] With warnings: 1 (100%)
+    [ERROR] With errors: 0 (0%)
+  Provenance categories:
+    blocking: 0          hard findings; gate also requires exit 0
+    introduced: 2        advisory; new or changed
+    inherited: 0         informational; prototype-identical
+    source-import: 0     informational; source-conversion loss
+  Contextual values beyond spec_lock anchors (informational):
+    Colors:
+      #64748B  (1 file)
+  [REPORT] JSON quality report exported: projects\scheduler-architecture_ppt169_20260813\validation\svg_quality_first_page_report.json
+=== 2026-08-13T13:17:16.537Z END run=0ca814bcff92 elapsed_ms=1125 output_lines=34 retained=17 omitted=17 ===
+
+=== 2026-08-13T13:23:59.157Z PYTHON run=5a4f8b9b3387 ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/svg_quality_checker.py", "projects/scheduler-architecture_ppt169_20260813", "--stage", "final", "--json"]
+stdout:
+  [WARN] P01_cover.svg - Passed (with warnings)
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] 17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id="...">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as "background" or "decoration"
+  [ERROR] P02_what_is_scheduler.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 5 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="one-liner">; <g id="tech-stack">; +2 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P03_five_layers.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 12 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="layer1">; <g id="arrow1">; +9 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P04_three_components.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 5 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="card-gateway">; <g id="card-scheduler">; +2 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 3 paragraph-like line run(s) split across sibling <text> elements (<g id="card-gateway"> x=72.0, y=425.0..475.0, 3 lines; <g id="card-scheduler"> x=474.0, y=455.0..480.0, 2 lines; <g id="card-sidecar"> x=876.0, y=515.0..540.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P05_three_storages.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 6 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="redis-card">; <g id="mongo-card">; +3 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P06_task_lifecycle.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 9 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="phase-submit">; <g id="arrow-submit-schedule">; +6 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 4 paragraph-like line run(s) split across sibling <text> elements (<g id="phase-submit"> x=100.0, y=205.0..280.0, 4 lines; <g id="phase-schedule"> x=502.0, y=205.0..280.0, 4 lines; <g id="phase-execute"> x=904.0, y=205.0..280.0, 4 lines; +1 more). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P07_state_machine_action.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 6 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="state-machine">; <g id="action-pattern">; +3 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P08_redis_zset.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 6 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="zset-design">; <g id="multi-queue">; +3 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 2 paragraph-like line run(s) split across sibling <text> elements (<g id="multi-queue"> x=690.0, y=245.0..295.0, 3 lines; <g id="two-round"> x=80.0, y=445.0..470.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P09_priority_concurrency.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 5 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="weighted-scheduler">; <g id="concurrent-control">; +2 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 2 paragraph-like line run(s) split across sibling <text> elements (<g id="weighted-scheduler"> x=80.0, y=340.0..365.0, 2 lines; <g id="concurrent-control"> x=690.0, y=285.0..310.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P10_etcd_heartbeat.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 7 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="etcd-capabilities">; <g id="key-format">; +4 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P11_worker_autoscaler.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 7 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="worker-states">; <g id="graceful-shutdown">; +4 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 3 paragraph-like line run(s) split across sibling <text> elements (<g id="autoscaler"> x=80.0, y=505.0..530.0, 2 lines; <g id="scale-logic"> x=690.0, y=475.0..500.0, 2 lines; <g id="scale-logic"> x=982.0, y=475.0..525.0, 3 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P12_summary.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] Detected 8 visible root-level <g> module(s) without explicit data-pptx-bounds (<g id="header">; <g id="decision-1">; <g id="decision-2">; +5 more); every final-page/template root <g> declares its root-coordinate layout subcanvas even when it also carries data-pptx-frame or native chart/table coordinates
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [SUMMARY] Check Summary
+  Total files: 12
+    [OK] Fully passed: 0 (0%)
+    [WARN] With warnings: 1 (8%)
+    [ERROR] With errors: 11 (91%)
+  Provenance categories:
+    blocking: 11         hard findings; gate also requires exit 0
+    introduced: 18       advisory; new or changed
+    inherited: 0         informational; prototype-identical
+    source-import: 0     informational; source-conversion loss
+  Issue categories:
+    Other: 11
+  Contextual values beyond spec_lock anchors (informational):
+    Colors:
+      #94A3B8  (12 files)
+      #475569  (11 files)
+  [REPORT] JSON quality report exported: projects\scheduler-architecture_ppt169_20260813\validation\svg_quality_report.json
+=== 2026-08-13T13:24:00.175Z END run=5a4f8b9b3387 elapsed_ms=1016 output_lines=89 retained=69 omitted=20 ===
+
+=== 2026-08-13T13:25:00.801Z PYTHON run=6d0715db40ce ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/svg_quality_checker.py", "projects/scheduler-architecture_ppt169_20260813", "--stage", "final", "--json"]
+stdout:
+  [WARN] P01_cover.svg - Passed (with warnings)
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] 17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id="...">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as "background" or "decoration"
+  [ERROR] P02_what_is_scheduler.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Scheduler 是什么？') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(430.9, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 1814.4%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='02') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] <text> (x=48, y=230; text='技术栈速览') exceeds <g id="tech-stack"> data-pptx-bounds on the vertical axis: content (48.0, 218.1)-(125.9, 234.9), container (48.0, 230.0)-(608.0, 604.0), overflow horizontal 0.0%, vertical 3.2%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+  [ERROR] P03_five_layers.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='五层架构总览') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(308.4, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 1202.0%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=672; text='核心原则：每层只做自己的事，不越界') exceeds <g id="principle"> data-pptx-bounds on the horizontal and vertical axis: content (48.0, 658.4)-(350.7, 677.6), container (48.0, 672.0)-(68.0, 692.0), overflow horizontal 1413.7%, vertical 68.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='03') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P04_three_components.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='三大核心组件') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(308.4, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 1202.0%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='04') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 3 paragraph-like line run(s) split across sibling <text> elements (<g id="card-gateway"> x=72.0, y=425.0..475.0, 3 lines; <g id="card-scheduler"> x=474.0, y=455.0..480.0, 2 lines; <g id="card-sidecar"> x=876.0, y=515.0..540.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P05_three_storages.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='为什么需要三套存储？') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(468.7, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 2003.4%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='05') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P06_task_lifecycle.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='任务完整生命周期') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(388.5, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 1602.7%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='06') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 4 paragraph-like line run(s) split across sibling <text> elements (<g id="phase-submit"> x=100.0, y=205.0..280.0, 4 lines; <g id="phase-schedule"> x=502.0, y=205.0..280.0, 4 lines; <g id="phase-execute"> x=904.0, y=205.0..280.0, 4 lines; +1 more). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P07_state_machine_action.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='任务状态机与 Action 编排') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(539.2, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 2356.0%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=130; text='5 种任务状态') exceeds <g id="state-machine"> data-pptx-bounds on the vertical axis: content (48.0, 116.4)-(152.2, 135.6), container (48.0, 130.0)-(628.0, 370.0), overflow horizontal 0.0%, vertical 5.7%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=660, y=130; text='Action 编排模式') exceeds <g id="action-pattern"> data-pptx-bounds on the vertical axis: content (660.0, 116.4)-(792.1, 135.6), container (660.0, 130.0)-(1232.0, 370.0), overflow horizontal 0.0%, vertical 5.7%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=420; text='编排链路') exceeds <g id="pipeline"> data-pptx-bounds on the vertical axis: content (48.0, 406.4)-(119.2, 425.6), container (48.0, 420.0)-(1232.0, 496.0), overflow horizontal 0.0%, vertical 17.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=545; text='可选接口（Go 类型断言）') exceeds <g id="interfaces"> data-pptx-bounds on the vertical axis: content (48.0, 531.4)-(256.8, 550.6), container (48.0, 545.0)-(1232.0, 660.0), overflow horizontal 0.0%, vertical 11.8%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='07') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P08_redis_zset.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Redis ZSet 队列与乐观抢占') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(570.1, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 2510.7%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=130; text='ZSet 设计亮点') exceeds <g id="zset-design"> data-pptx-bounds on the vertical axis: content (48.0, 116.4)-(167.0, 135.6), container (48.0, 130.0)-(628.0, 315.0), overflow horizontal 0.0%, vertical 7.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=660, y=130; text='多队列 Key 结构') exceeds <g id="multi-queue"> data-pptx-bounds on the vertical axis: content (660.0, 116.4)-(791.5, 135.6), container (660.0, 130.0)-(1232.0, 315.0), overflow horizontal 0.0%, vertical 7.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='08') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] <text> (x=48, y=365; text='两轮扫描策略') exceeds <g id="two-round"> data-pptx-bounds on the vertical axis: content (48.0, 351.4)-(154.8, 370.6), container (48.0, 365.0)-(628.0, 660.0), overflow horizontal 0.0%, vertical 4.6%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Detected 2 paragraph-like line run(s) split across sibling <text> elements (<g id="multi-queue"> x=690.0, y=245.0..295.0, 3 lines; <g id="two-round"> x=80.0, y=445.0..470.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P09_priority_concurrency.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='优先级调度与并发控制') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(468.7, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 2003.4%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=130; text='WeightedScheduler 加权…') exceeds <g id="weighted-scheduler"> data-pptx-bounds on the vertical axis: content (48.0, 116.4)-(287.3, 135.6), container (48.0, 130.0)-(628.0, 395.0), overflow horizontal 0.0%, vertical 5.1%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=660, y=130; text='用户并发控制') exceeds <g id="concurrent-control"> data-pptx-bounds on the vertical axis: content (660.0, 116.4)-(766.8, 135.6), container (660.0, 130.0)-(1232.0, 395.0), overflow horizontal 0.0%, vertical 5.1%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='09') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 2 paragraph-like line run(s) split across sibling <text> elements (<g id="weighted-scheduler"> x=80.0, y=340.0..365.0, 2 lines; <g id="concurrent-control"> x=690.0, y=285.0..310.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P10_etcd_heartbeat.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='etcd 注册、心跳与故障检测') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(568.9, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 2504.3%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=130; text='etcd 四大核心能力') exceeds <g id="etcd-capabilities"> data-pptx-bounds on the vertical axis: content (48.0, 116.4)-(199.4, 135.6), container (48.0, 130.0)-(1232.0, 245.0), overflow horizontal 0.0%, vertical 11.8%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=290; text='Key 格式') exceeds <g id="key-format"> data-pptx-bounds on the vertical axis: content (48.0, 276.4)-(119.7, 295.6), container (48.0, 290.0)-(628.0, 385.0), overflow horizontal 0.0%, vertical 14.3%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=660, y=290; text='心跳机制') exceeds <g id="heartbeat"> data-pptx-bounds on the vertical axis: content (660.0, 276.4)-(731.2, 295.6), container (660.0, 290.0)-(1232.0, 385.0), overflow horizontal 0.0%, vertical 14.3%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=435; text='故障检测链路') exceeds <g id="failure-detection"> data-pptx-bounds on the vertical axis: content (48.0, 421.4)-(154.8, 440.6), container (48.0, 435.0)-(1232.0, 570.0), overflow horizontal 0.0%, vertical 10.1%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='10') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P11_worker_autoscaler.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Worker 生命周期与 Autosca…') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(647.0, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 2895.2%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=130; text='Worker 状态机') exceeds <g id="worker-states"> data-pptx-bounds on the vertical axis: content (48.0, 116.4)-(170.2, 135.6), container (48.0, 130.0)-(628.0, 345.0), overflow horizontal 0.0%, vertical 6.3%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=660, y=130; text='Sidecar 优雅关闭（两阶段）') exceeds <g id="graceful-shutdown"> data-pptx-bounds on the vertical axis: content (660.0, 116.4)-(891.6, 135.6), container (660.0, 130.0)-(1232.0, 345.0), overflow horizontal 0.0%, vertical 6.3%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=400; text='自定义 Autoscaler vs K8…') exceeds <g id="autoscaler"> data-pptx-bounds on the vertical axis: content (48.0, 386.4)-(298.7, 405.6), container (48.0, 400.0)-(628.0, 555.0), overflow horizontal 0.0%, vertical 8.8%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='11') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 3 paragraph-like line run(s) split across sibling <text> elements (<g id="autoscaler"> x=80.0, y=505.0..530.0, 2 lines; <g id="scale-logic"> x=690.0, y=475.0..500.0, 2 lines; <g id="scale-logic"> x=982.0, y=475.0..525.0, 3 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P12_summary.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='关键设计决策总结') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(388.5, 92.6), container (48.0, 48.0)-(68.0, 84.0), overflow horizontal 1602.7%, vertical 23.9%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='12') exceeds <g id="page-number"> data-pptx-bounds on the horizontal and vertical axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1232.0, 692.0)-(1252.0, 712.0), overflow horizontal 81.6%, vertical 59.5%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [SUMMARY] Check Summary
+  Total files: 12
+    [OK] Fully passed: 0 (0%)
+    [WARN] With warnings: 1 (8%)
+    [ERROR] With errors: 11 (91%)
+  Provenance categories:
+    blocking: 38         hard findings; gate also requires exit 0
+    introduced: 20       advisory; new or changed
+    inherited: 0         informational; prototype-identical
+    source-import: 0     informational; source-conversion loss
+  Issue categories:
+    Other: 38
+  Contextual values beyond spec_lock anchors (informational):
+    Colors:
+      #94A3B8  (12 files)
+      #475569  (11 files)
+  [REPORT] JSON quality report exported: projects\scheduler-architecture_ppt169_20260813\validation\svg_quality_report.json
+=== 2026-08-13T13:25:01.761Z END run=6d0715db40ce elapsed_ms=953 output_lines=118 retained=98 omitted=20 ===
+
+=== 2026-08-13T13:25:51.262Z PYTHON run=27eea7599c24 ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/svg_quality_checker.py", "projects/scheduler-architecture_ppt169_20260813", "--stage", "final", "--json"]
+stdout:
+  [WARN] P01_cover.svg - Passed (with warnings)
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] 17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id="...">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as "background" or "decoration"
+  [ERROR] P02_what_is_scheduler.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Scheduler 是什么？') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(430.9, 92.6), container (48.0, 44.0)-(410.0, 91.0), overflow horizontal 5.8%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='02') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P03_five_layers.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='五层架构总览') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(308.4, 92.6), container (48.0, 44.0)-(284.0, 91.0), overflow horizontal 10.3%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=672; text='核心原则：每层只做自己的事，不越界') exceeds <g id="principle"> data-pptx-bounds on the horizontal axis: content (48.0, 658.4)-(350.7, 677.6), container (48.0, 656.0)-(320.0, 677.0), overflow horizontal 11.3%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='03') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P04_three_components.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='三大核心组件') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(308.4, 92.6), container (48.0, 44.0)-(284.0, 91.0), overflow horizontal 10.3%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='04') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 3 paragraph-like line run(s) split across sibling <text> elements (<g id="card-gateway"> x=72.0, y=425.0..475.0, 3 lines; <g id="card-scheduler"> x=474.0, y=455.0..480.0, 2 lines; <g id="card-sidecar"> x=876.0, y=515.0..540.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P05_three_storages.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='为什么需要三套存储？') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(468.7, 92.6), container (48.0, 44.0)-(428.0, 91.0), overflow horizontal 10.7%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='05') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P06_task_lifecycle.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='任务完整生命周期') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(388.5, 92.6), container (48.0, 44.0)-(356.0, 91.0), overflow horizontal 10.6%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='06') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 4 paragraph-like line run(s) split across sibling <text> elements (<g id="phase-submit"> x=100.0, y=205.0..280.0, 4 lines; <g id="phase-schedule"> x=502.0, y=205.0..280.0, 4 lines; <g id="phase-execute"> x=904.0, y=205.0..280.0, 4 lines; +1 more). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P07_state_machine_action.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='任务状态机与 Action 编排') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(539.2, 92.6), container (48.0, 44.0)-(514.0, 91.0), overflow horizontal 5.4%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='07') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P08_redis_zset.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Redis ZSet 队列与乐观抢占') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(570.1, 92.6), container (48.0, 44.0)-(538.0, 91.0), overflow horizontal 6.6%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='08') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 2 paragraph-like line run(s) split across sibling <text> elements (<g id="multi-queue"> x=690.0, y=245.0..295.0, 3 lines; <g id="two-round"> x=80.0, y=445.0..470.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P09_priority_concurrency.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='优先级调度与并发控制') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(468.7, 92.6), container (48.0, 44.0)-(428.0, 91.0), overflow horizontal 10.7%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='09') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 2 paragraph-like line run(s) split across sibling <text> elements (<g id="weighted-scheduler"> x=80.0, y=340.0..365.0, 2 lines; <g id="concurrent-control"> x=690.0, y=285.0..310.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P10_etcd_heartbeat.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='etcd 注册、心跳与故障检测') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(568.9, 92.6), container (48.0, 44.0)-(527.0, 91.0), overflow horizontal 8.7%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='10') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P11_worker_autoscaler.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Worker 生命周期与 Autosca…') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(647.0, 92.6), container (48.0, 44.0)-(604.0, 91.0), overflow horizontal 7.7%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='11') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 3 paragraph-like line run(s) split across sibling <text> elements (<g id="autoscaler"> x=80.0, y=505.0..530.0, 2 lines; <g id="scale-logic"> x=690.0, y=475.0..500.0, 2 lines; <g id="scale-logic"> x=982.0, y=475.0..525.0, 3 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P12_summary.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='关键设计决策总结') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(388.5, 92.6), container (48.0, 44.0)-(356.0, 91.0), overflow horizontal 10.6%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='12') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [SUMMARY] Check Summary
+  Total files: 12
+    [OK] Fully passed: 0 (0%)
+    [WARN] With warnings: 1 (8%)
+    [ERROR] With errors: 11 (91%)
+  Provenance categories:
+    blocking: 23         hard findings; gate also requires exit 0
+    introduced: 18       advisory; new or changed
+    inherited: 0         informational; prototype-identical
+    source-import: 0     informational; source-conversion loss
+  Issue categories:
+    Other: 23
+  Contextual values beyond spec_lock anchors (informational):
+    Colors:
+      #94A3B8  (12 files)
+      #475569  (11 files)
+  [REPORT] JSON quality report exported: projects\scheduler-architecture_ppt169_20260813\validation\svg_quality_report.json
+=== 2026-08-13T13:25:52.299Z END run=27eea7599c24 elapsed_ms=1046 output_lines=101 retained=81 omitted=20 ===
+
+=== 2026-08-13T13:26:04.683Z PYTHON run=b86ee7ed363a ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/svg_quality_checker.py", "projects/scheduler-architecture_ppt169_20260813", "--stage", "final", "--json"]
+stdout:
+  [WARN] P01_cover.svg - Passed (with warnings)
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] 17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id="...">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as "background" or "decoration"
+  [ERROR] P02_what_is_scheduler.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Scheduler 是什么？') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(430.9, 92.6), container (48.0, 44.0)-(410.0, 91.0), overflow horizontal 5.8%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='02') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P03_five_layers.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='五层架构总览') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(308.4, 92.6), container (48.0, 44.0)-(284.0, 91.0), overflow horizontal 10.3%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=48, y=672; text='核心原则：每层只做自己的事，不越界') exceeds <g id="principle"> data-pptx-bounds on the horizontal axis: content (48.0, 658.4)-(350.7, 677.6), container (48.0, 656.0)-(320.0, 677.0), overflow horizontal 11.3%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='03') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P04_three_components.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='三大核心组件') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(308.4, 92.6), container (48.0, 44.0)-(284.0, 91.0), overflow horizontal 10.3%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='04') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 3 paragraph-like line run(s) split across sibling <text> elements (<g id="card-gateway"> x=72.0, y=425.0..475.0, 3 lines; <g id="card-scheduler"> x=474.0, y=455.0..480.0, 2 lines; <g id="card-sidecar"> x=876.0, y=515.0..540.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P05_three_storages.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='为什么需要三套存储？') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(468.7, 92.6), container (48.0, 44.0)-(428.0, 91.0), overflow horizontal 10.7%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='05') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P06_task_lifecycle.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='任务完整生命周期') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(388.5, 92.6), container (48.0, 44.0)-(356.0, 91.0), overflow horizontal 10.6%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='06') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 4 paragraph-like line run(s) split across sibling <text> elements (<g id="phase-submit"> x=100.0, y=205.0..280.0, 4 lines; <g id="phase-schedule"> x=502.0, y=205.0..280.0, 4 lines; <g id="phase-execute"> x=904.0, y=205.0..280.0, 4 lines; +1 more). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P07_state_machine_action.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='任务状态机与 Action 编排') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(539.2, 92.6), container (48.0, 44.0)-(514.0, 91.0), overflow horizontal 5.4%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='07') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P08_redis_zset.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Redis ZSet 队列与乐观抢占') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(570.1, 92.6), container (48.0, 44.0)-(538.0, 91.0), overflow horizontal 6.6%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='08') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 2 paragraph-like line run(s) split across sibling <text> elements (<g id="multi-queue"> x=690.0, y=245.0..295.0, 3 lines; <g id="two-round"> x=80.0, y=445.0..470.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P09_priority_concurrency.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='优先级调度与并发控制') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(468.7, 92.6), container (48.0, 44.0)-(428.0, 91.0), overflow horizontal 10.7%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='09') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 2 paragraph-like line run(s) split across sibling <text> elements (<g id="weighted-scheduler"> x=80.0, y=340.0..365.0, 2 lines; <g id="concurrent-control"> x=690.0, y=285.0..310.0, 2 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P10_etcd_heartbeat.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='etcd 注册、心跳与故障检测') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(568.9, 92.6), container (48.0, 44.0)-(527.0, 91.0), overflow horizontal 8.7%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='10') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [ERROR] P11_worker_autoscaler.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='Worker 生命周期与 Autosca…') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(647.0, 92.6), container (48.0, 44.0)-(604.0, 91.0), overflow horizontal 7.7%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='11') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] Detected 3 paragraph-like line run(s) split across sibling <text> elements (<g id="autoscaler"> x=80.0, y=505.0..530.0, 2 lines; <g id="scale-logic"> x=690.0, y=475.0..500.0, 2 lines; <g id="scale-logic"> x=982.0, y=475.0..525.0, 3 lines). If each run is one prose paragraph, combine it into one <text>: keep its first line as direct text and use direct <tspan> children with the parent x and positive relative dy values for later lines. An all-<tspan> form may start with dy="0". Keep semantically independent text frames separate.
+  [ERROR] P12_summary.svg - Failed
+     viewBox: 0 0 1280 720
+     [ERROR] <text> (x=68, y=80; text='关键设计决策总结') exceeds <g id="header"> data-pptx-bounds on the horizontal and vertical axis: content (68.0, 49.4)-(388.5, 92.6), container (48.0, 44.0)-(356.0, 91.0), overflow horizontal 10.6%, vertical 3.4%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [ERROR] <text> (x=1232, y=692; text='12') exceeds <g id="page-number"> data-pptx-bounds on the horizontal axis: content (1215.7, 680.1)-(1232.0, 696.9), container (1217.0, 678.0)-(1237.0, 698.0), overflow horizontal 6.6%, vertical 0.0%; expand the root module bounds into available non-overlapping space; otherwise reflow the text
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+  [SUMMARY] Check Summary
+  Total files: 12
+    [OK] Fully passed: 0 (0%)
+    [WARN] With warnings: 1 (8%)
+    [ERROR] With errors: 11 (91%)
+  Provenance categories:
+    blocking: 23         hard findings; gate also requires exit 0
+    introduced: 18       advisory; new or changed
+    inherited: 0         informational; prototype-identical
+    source-import: 0     informational; source-conversion loss
+  Issue categories:
+    Other: 23
+  Contextual values beyond spec_lock anchors (informational):
+    Colors:
+      #94A3B8  (12 files)
+      #475569  (11 files)
+  [REPORT] JSON quality report exported: projects\scheduler-architecture_ppt169_20260813\validation\svg_quality_report.json
+=== 2026-08-13T13:26:05.631Z END run=b86ee7ed363a elapsed_ms=953 output_lines=101 retained=81 omitted=20 ===
+
+=== 2026-08-13T13:26:38.017Z PYTHON run=0dcca0c3a8fd ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/svg_quality_checker.py", "projects/scheduler-architecture_ppt169_20260813", "--stage", "final", "--json"]
+stdout:
+  [WARN] P01_cover.svg - Passed (with warnings)
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] 17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id="...">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as "background" or "decoration"
+  [WARN] P02_what_is_scheduler.svg - Passed (with warnings)
+  [SUMMARY] Check Summary
+  Total files: 12
+    [OK] Fully passed: 0 (0%)
+    [WARN] With warnings: 12 (100%)
+    [ERROR] With errors: 0 (0%)
+  Provenance categories:
+    blocking: 0          hard findings; gate also requires exit 0
+    introduced: 27       advisory; new or changed
+    inherited: 0         informational; prototype-identical
+    source-import: 0     informational; source-conversion loss
+  Contextual values beyond spec_lock anchors (informational):
+    Colors:
+      #94A3B8  (12 files)
+  [REPORT] JSON quality report exported: projects\scheduler-architecture_ppt169_20260813\validation\svg_quality_report.json
+=== 2026-08-13T13:26:39.061Z END run=0dcca0c3a8fd elapsed_ms=1031 output_lines=85 retained=18 omitted=67 ===
+
+=== 2026-08-13T13:26:50.915Z PYTHON run=4431f9c0866f ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/svg_quality_checker.py", "projects/scheduler-architecture_ppt169_20260813", "--stage", "final", "--json"]
+stdout:
+  [WARN] P01_cover.svg - Passed (with warnings)
+     [WARN] Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif
+     [WARN] 17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id="...">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as "background" or "decoration"
+  [WARN] P02_what_is_scheduler.svg - Passed (with warnings)
+  [SUMMARY] Check Summary
+  Total files: 12
+    [OK] Fully passed: 0 (0%)
+    [WARN] With warnings: 12 (100%)
+    [ERROR] With errors: 0 (0%)
+  Provenance categories:
+    blocking: 0          hard findings; gate also requires exit 0
+    introduced: 27       advisory; new or changed
+    inherited: 0         informational; prototype-identical
+    source-import: 0     informational; source-conversion loss
+  Contextual values beyond spec_lock anchors (informational):
+    Colors:
+      #94A3B8  (12 files)
+  [REPORT] JSON quality report exported: projects\scheduler-architecture_ppt169_20260813\validation\svg_quality_report.json
+=== 2026-08-13T13:26:51.865Z END run=4431f9c0866f elapsed_ms=953 output_lines=85 retained=18 omitted=67 ===
+
+=== 2026-08-13T13:28:54.015Z PYTHON run=3ec3325d448a ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/total_md_split.py", "projects/scheduler-architecture_ppt169_20260813"]
+stdout:
+  [OK] SVG files and notes have one-to-one correspondence
+  [Done] Successfully generated 12/12 file(s)
+  [Done] Notes splitting complete
+=== 2026-08-13T13:28:54.031Z END run=3ec3325d448a elapsed_ms=15 output_lines=21 retained=3 omitted=18 ===
+
+=== 2026-08-13T13:29:06.643Z PYTHON run=ab5530574e54 ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/finalize_svg.py", "projects/scheduler-architecture_ppt169_20260813"]
+stdout:
+  [OK] Done!
+=== 2026-08-13T13:29:07.204Z END run=ab5530574e54 elapsed_ms=562 output_lines=12 retained=1 omitted=11 ===
+
+=== 2026-08-13T13:29:19.150Z PYTHON run=d5571f1843fd ===
+cwd: D:\project\my_root_project\learn_dm-project
+argv: ["C:\\Users\\zhangqiudi01\\AppData\\Local\\Programs\\Python\\Python311\\python.exe", ".claude/skills/ppt-master/scripts/svg_to_pptx.py", "projects/scheduler-architecture_ppt169_20260813"]
+stdout:
+  [Done] Saved: projects\scheduler-architecture_ppt169_20260813\exports\scheduler-architecture_20260813_212920.pptx
+    [POSTFLIGHT] status=passed-with-warnings quality_gate=passed slides=12 warning_categories=2
+    [POSTFLIGHT][WARNING] quality_introduced_warnings=27
+    [POSTFLIGHT][WARNING] unsafe_exported_font_faces=2
+    [PPTX] projects\scheduler-architecture_ppt169_20260813\exports\scheduler-architecture_20260813_212920.pptx
+    [REPORT] projects\scheduler-architecture_ppt169_20260813\validation\scheduler-architecture_20260813_212920.report.json
+=== 2026-08-13T13:29:21.874Z END run=d5571f1843fd elapsed_ms=2735 output_lines=48 retained=6 omitted=42 ===

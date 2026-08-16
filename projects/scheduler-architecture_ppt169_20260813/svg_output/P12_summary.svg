@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="ending">
+  <rect width="1280" height="720" fill="#0F172A" />
+  <g id="header" data-pptx-bounds="25,40,354,54">
+    <rect x="48" y="48" width="6" height="36" rx="3" fill="#38BDF8" />
+    <text x="68" y="80" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="36" font-weight="700" fill="#E2E8F0">关键设计决策总结</text>
+  </g>
+  <g id="decision-1" data-pptx-bounds="0,110,1280,78">
+    <rect x="48" y="115" width="1184" height="68" rx="8" fill="#1E293B" />
+    <rect x="48" y="115" width="6" height="68" rx="3" fill="#38BDF8" />
+    <text x="80" y="145" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#38BDF8">三套存储各司其职</text>
+    <text x="80" y="170" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">Redis 做吞吐（队列+缓存） · MongoDB 做持久（记录+审计） · etcd 做一致性（注册+Watch）</text>
+  </g>
+  <g id="decision-2" data-pptx-bounds="0,190,1280,78">
+    <rect x="48" y="195" width="1184" height="68" rx="8" fill="#1E293B" />
+    <rect x="48" y="195" width="6" height="68" rx="3" fill="#F97316" />
+    <text x="80" y="225" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#F97316">Worker Pull 模型</text>
+    <text x="80" y="250" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">Worker 主动上报空闲 → 天然背压 → Worker 不会被打爆</text>
+  </g>
+  <g id="decision-3" data-pptx-bounds="0,270,1280,78">
+    <rect x="48" y="275" width="1184" height="68" rx="8" fill="#1E293B" />
+    <rect x="48" y="275" width="6" height="68" rx="3" fill="#A78BFA" />
+    <text x="80" y="305" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#A78BFA">多 Pod 并行 + 乐观抢占</text>
+    <text x="80" y="330" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">etcd Watch 同步状态 + Redis ZRem 竞争任务 → 无需 Leader 选举</text>
+  </g>
+  <g id="decision-4" data-pptx-bounds="0,350,1280,78">
+    <rect x="48" y="355" width="1184" height="68" rx="8" fill="#1E293B" />
+    <rect x="48" y="355" width="6" height="68" rx="3" fill="#22C55E" />
+    <text x="80" y="385" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#22C55E">两轮扫描</text>
+    <text x="80" y="410" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">第一轮公平性优先（跳过冲突用户） · 第二轮吞吐量兜底（不让 Worker 空闲）</text>
+  </g>
+  <g id="decision-5" data-pptx-bounds="0,430,1280,78">
+    <rect x="48" y="435" width="1184" height="68" rx="8" fill="#1E293B" />
+    <rect x="48" y="435" width="6" height="68" rx="3" fill="#38BDF8" />
+    <text x="80" y="465" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#38BDF8">先加载再 Watch</text>
+    <text x="80" y="490" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#94A3B8">启动时从 etcd 全量加载建立基线 → 然后 Watch 增量更新 → 最终一致性</text>
+  </g>
+  <g id="golden-rule" data-pptx-bounds="42,532,1196,115">
+    <rect x="120" y="540" width="1040" height="100" rx="12" fill="#1E293B" stroke="#F97316" stroke-width="2" />
+    <text x="640" y="585" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="24" font-weight="700" fill="#F97316" text-anchor="middle">不同语义用不同存储</text>
+    <text x="640" y="620" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="24" font-weight="700" fill="#38BDF8" text-anchor="middle">不同场景用不同策略</text>
+  </g>
+  <g id="page-number" data-pptx-bounds="1216,676,23,23">
+    <text x="1232" y="692" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569" text-anchor="end">12</text>
+  </g>
+</svg>

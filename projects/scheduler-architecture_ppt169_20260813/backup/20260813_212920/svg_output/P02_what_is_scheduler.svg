@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="content">
+  <rect width="1280" height="720" fill="#0F172A" />
+  <g id="header" data-pptx-bounds="21,40,416,54">
+    <rect x="48" y="48" width="6" height="36" rx="3" fill="#38BDF8" />
+    <text x="68" y="80" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="36" font-weight="700" fill="#E2E8F0">Scheduler 是什么？</text>
+  </g>
+  <g id="one-liner" data-pptx-bounds="0,104,1280,92">
+    <rect x="48" y="110" width="1184" height="80" rx="8" fill="#1E293B" />
+    <text x="72" y="142" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="600" fill="#F97316">核心使命</text>
+    <text x="72" y="172" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="18" fill="#E2E8F0">把 AI 生成任务（文生图、图生视频、3D 等）从用户提交到 GPU Worker 执行，全流程调度</text>
+  </g>
+  <g id="tech-stack" data-pptx-bounds="6,187,644,446">
+    <text x="48" y="230" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" font-weight="600" fill="#94A3B8">技术栈速览</text>
+    <rect x="48" y="248" width="560" height="44" rx="6" fill="#1E293B" />
+    <text x="72" y="276" font-family="Fira Code, SF Mono, monospace" font-size="15" fill="#38BDF8">Go + dmfr</text>
+    <text x="280" y="276" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" fill="#94A3B8">微服务框架，统一 HTTP / 日志 / 错误码</text>
+    <rect x="48" y="300" width="560" height="44" rx="6" fill="#1E293B" />
+    <text x="72" y="328" font-family="Fira Code, SF Mono, monospace" font-size="15" fill="#38BDF8">Redis (ZSet)</text>
+    <text x="280" y="328" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" fill="#94A3B8">任务队列 + 乐观抢占 + 状态缓存</text>
+    <rect x="48" y="352" width="560" height="44" rx="6" fill="#1E293B" />
+    <text x="72" y="380" font-family="Fira Code, SF Mono, monospace" font-size="15" fill="#38BDF8">MongoDB</text>
+    <text x="280" y="380" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" fill="#94A3B8">任务记录中心（AppRecord）</text>
+    <rect x="48" y="404" width="560" height="44" rx="6" fill="#1E293B" />
+    <text x="72" y="432" font-family="Fira Code, SF Mono, monospace" font-size="15" fill="#38BDF8">etcd</text>
+    <text x="280" y="432" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" fill="#94A3B8">Worker/Task 运行态注册</text>
+    <rect x="48" y="456" width="560" height="44" rx="6" fill="#1E293B" />
+    <text x="72" y="484" font-family="Fira Code, SF Mono, monospace" font-size="15" fill="#38BDF8">Kafka</text>
+    <text x="280" y="484" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" fill="#94A3B8">任务结果通知下游（监控 / 统计）</text>
+    <rect x="48" y="508" width="560" height="44" rx="6" fill="#1E293B" />
+    <text x="72" y="536" font-family="Fira Code, SF Mono, monospace" font-size="15" fill="#38BDF8">K8s + Istio</text>
+    <text x="280" y="536" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" fill="#94A3B8">服务发现、流量路由、统一鉴权</text>
+    <rect x="48" y="560" width="560" height="44" rx="6" fill="#1E293B" />
+    <text x="72" y="588" font-family="Fira Code, SF Mono, monospace" font-size="15" fill="#38BDF8">Hertz / Fiber</text>
+    <text x="280" y="588" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" fill="#94A3B8">HTTP 框架（新 Hertz / 老 Fiber）</text>
+  </g>
+  <g id="equation" data-pptx-bounds="617,221,658,409">
+    <rect x="660" y="248" width="572" height="356" rx="10" fill="#1E293B" />
+    <text x="700" y="290" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="600" fill="#38BDF8">一句话架构</text>
+    <text x="700" y="330" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="18" fill="#E2E8F0">Scheduler =</text>
+    <text x="720" y="365" font-family="Fira Code, SF Mono, monospace" font-size="16" fill="#38BDF8">Go 微服务集群</text>
+    <text x="720" y="395" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#F97316">+</text>
+    <text x="745" y="395" font-family="Fira Code, SF Mono, monospace" font-size="16" fill="#38BDF8">Redis 任务队列</text>
+    <text x="720" y="425" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#F97316">+</text>
+    <text x="745" y="425" font-family="Fira Code, SF Mono, monospace" font-size="16" fill="#38BDF8">MongoDB 记录中心</text>
+    <text x="720" y="455" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#F97316">+</text>
+    <text x="745" y="455" font-family="Fira Code, SF Mono, monospace" font-size="16" fill="#38BDF8">etcd 注册中心</text>
+    <text x="720" y="485" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#F97316">+</text>
+    <text x="745" y="485" font-family="Fira Code, SF Mono, monospace" font-size="16" fill="#38BDF8">K8s 服务发现</text>
+    <text x="720" y="515" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" fill="#F97316">+</text>
+    <text x="745" y="515" font-family="Fira Code, SF Mono, monospace" font-size="16" fill="#38BDF8">dmfr 内部框架</text>
+  </g>
+  <g id="page-number" data-pptx-bounds="1216,676,23,23">
+    <text x="1232" y="692" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569" text-anchor="end">02</text>
+  </g>
+</svg>

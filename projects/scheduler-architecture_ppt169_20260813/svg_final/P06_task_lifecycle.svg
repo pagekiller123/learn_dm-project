@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" data-pptx-page-role="content">
+  <rect width="1280" height="720" fill="#0F172A" />
+  <g id="header" data-pptx-bounds="25,40,354,54">
+    <rect x="48" y="48" width="6" height="36" rx="3" fill="#38BDF8" />
+    <text x="68" y="80" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="36" font-weight="700" fill="#E2E8F0">任务完整生命周期</text>
+  </g>
+  <g id="phase-submit" data-pptx-bounds="20,96,437,299">
+    <rect x="48" y="115" width="380" height="260" rx="8" fill="#1E293B" />
+    <rect x="48" y="115" width="380" height="40" rx="8" fill="#38BDF8" opacity="0.12" />
+    <text x="238" y="142" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="700" fill="#38BDF8" text-anchor="middle">提交阶段</text>
+    <text x="72" y="180" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#E2E8F0">Client 发起请求</text>
+    <text x="100" y="205" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ api-outer（JWT 鉴权）</text>
+    <text x="100" y="230" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ app-gateway（权限 + 映射）</text>
+    <text x="100" y="255" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ Mongo 写 AppRecord</text>
+    <text x="100" y="280" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ Redis ZAdd 入队</text>
+    <text x="100" y="310" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#38BDF8">→ 返回 task_id（立即）</text>
+  </g>
+  <g id="arrow-submit-schedule" data-pptx-bounds="426,238,30,23">
+    <line x1="428" y1="245" x2="448" y2="245" stroke="#475569" stroke-width="2" />
+    <polygon points="446,239 454,245 446,251" fill="#475569" />
+  </g>
+  <g id="phase-schedule" data-pptx-bounds="422,96,437,299">
+    <rect x="450" y="115" width="380" height="260" rx="8" fill="#1E293B" />
+    <rect x="450" y="115" width="380" height="40" rx="8" fill="#F97316" opacity="0.12" />
+    <text x="640" y="142" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="700" fill="#F97316" text-anchor="middle">调度阶段</text>
+    <text x="474" y="180" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#E2E8F0">Worker 上报"我空闲了"</text>
+    <text x="502" y="205" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ WeightedScheduler 选优先级</text>
+    <text x="502" y="230" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ ZRange 扫描候选</text>
+    <text x="502" y="255" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ ZRem 原子抢占</text>
+    <text x="502" y="280" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ Mongo 加载 + etcd 注册</text>
+    <text x="502" y="310" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#F97316">→ 下发 JobReportData</text>
+  </g>
+  <g id="arrow-schedule-exec" data-pptx-bounds="828,238,30,23">
+    <line x1="830" y1="245" x2="850" y2="245" stroke="#475569" stroke-width="2" />
+    <polygon points="848,239 856,245 848,251" fill="#475569" />
+  </g>
+  <g id="phase-execute" data-pptx-bounds="824,96,437,299">
+    <rect x="852" y="115" width="380" height="260" rx="8" fill="#1E293B" />
+    <rect x="852" y="115" width="380" height="40" rx="8" fill="#A78BFA" opacity="0.12" />
+    <text x="1042" y="142" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="16" font-weight="700" fill="#A78BFA" text-anchor="middle">执行与回写</text>
+    <text x="876" y="180" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#E2E8F0">Worker 执行推理</text>
+    <text x="904" y="205" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ 上报 progress / result</text>
+    <text x="904" y="230" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ AfterCall + MapCallResponse</text>
+    <text x="904" y="255" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ Mongo 写 Success</text>
+    <text x="904" y="280" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#94A3B8">↓ Kafka 通知下游</text>
+    <text x="904" y="310" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="13" fill="#A78BFA">→ etcd 删除 running 注册</text>
+  </g>
+  <g id="design-points" data-pptx-bounds="0,400,1280,150">
+    <rect x="48" y="410" width="1184" height="130" rx="8" fill="#1E293B" />
+    <text x="80" y="445" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="15" font-weight="600" fill="#F97316">设计要点</text>
+    <text x="80" y="480" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">提交和执行完全异步 — 提交后立即返回 task_id，客户端通过 /status 轮询</text>
+    <text x="80" y="508" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#E2E8F0">Worker Pull 模型 — Worker 主动上报空闲，天然背压，Worker 不会被打爆</text>
+  </g>
+  <g id="status-query" data-pptx-bounds="0,556,1280,69">
+    <rect x="48" y="560" width="1184" height="60" rx="8" fill="#0F172A" stroke="#334155" stroke-width="1" />
+    <text x="80" y="596" font-family="Fira Code, SF Mono, monospace" font-size="14" fill="#38BDF8">Client → GET /apps/{app}/status?task_id=xxx → app-gateway → Mongo 读取 → 返回 status + output</text>
+  </g>
+  <g id="page-number" data-pptx-bounds="1216,676,23,23">
+    <text x="1232" y="692" font-family="Noto Sans SC, Inter, Microsoft YaHei, sans-serif" font-size="14" fill="#475569" text-anchor="end">06</text>
+  </g>
+</svg>

@@ -1,0 +1,115 @@
+{
+  "schema": "ppt-master.svg-quality-report.v1",
+  "stage": "first-page",
+  "target": "D:\\project\\my_root_project\\learn_dm-project\\projects\\scheduler-architecture_ppt169_20260813",
+  "source_fingerprint": {
+    "algorithm": "sha256",
+    "digest": "2ddf7936e9148798046c4ee2ae7bcb16101359f6690fe769c48c9fce72a0baad",
+    "file_count": 1,
+    "files": [
+      {
+        "file": "P01_cover.svg",
+        "sha256": "d4c145433eb9b55627a68217afca2d7d150db6d9abe8727c3a92939f278c3438"
+      }
+    ]
+  },
+  "summary": {
+    "total": 1,
+    "passed": 0,
+    "warnings": 1,
+    "errors": 0
+  },
+  "issue_types": {},
+  "categories": {
+    "blocking": {
+      "count": 0,
+      "issues": []
+    },
+    "introduced": {
+      "count": 2,
+      "issues": [
+        {
+          "file": "P01_cover.svg",
+          "message": "Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif"
+        },
+        {
+          "file": "P01_cover.svg",
+          "message": "17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id=\"...\">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as \"background\" or \"decoration\""
+        }
+      ]
+    },
+    "inherited": {
+      "count": 0,
+      "issues": []
+    },
+    "source-import": {
+      "count": 0,
+      "summary": {
+        "warning_count": 0,
+        "by_code": {}
+      }
+    }
+  },
+  "drift": {
+    "colors": {
+      "#64748B": [
+        "P01_cover.svg"
+      ],
+      "#94A3B8": [
+        "P01_cover.svg"
+      ]
+    },
+    "fonts": {
+      "Fira Code, SF Mono, monospace": [
+        "P01_cover.svg"
+      ]
+    },
+    "sizes": {
+      "44": [
+        "P01_cover.svg"
+      ]
+    }
+  },
+  "project_issues": {
+    "template": [],
+    "animation": [],
+    "illustration": [],
+    "communication_trace": [],
+    "pptx_structure": []
+  },
+  "files": [
+    {
+      "file": "P01_cover.svg",
+      "path": "projects\\scheduler-architecture_ppt169_20260813\\svg_output\\P01_cover.svg",
+      "exists": true,
+      "errors": [],
+      "warnings": [
+        "Font stack exports non-PPT-safe typeface(s) to PPTX (latin=Inter): Noto Sans SC, Inter, Microsoft YaHei, sans-serif",
+        "17 ungrouped top-level Slide-local element(s) in svg_output (<rect> #2, <text> #3, <text> #4, ...); group only logical content units in a top-level <g id=\"...\">. Keep genuine static page framing as a root primitive and declare a supported data-pptx-role such as \"background\" or \"decoration\""
+      ],
+      "info": {
+        "viewbox": "0 0 1280 720",
+        "fonts": [
+          "Fira Code, SF Mono, monospace",
+          "Noto Sans SC, Inter, Microsoft YaHei, sans-serif"
+        ],
+        "text_elements": 14,
+        "tspan_elements": 0,
+        "contextual_values": {
+          "colors": [
+            "#64748B",
+            "#94A3B8"
+          ],
+          "font_families": [
+            "Fira Code, SF Mono, monospace"
+          ]
+        },
+        "sparse_typography_sizes": {
+          "44": 2
+        }
+      },
+      "passed": true,
+      "source_sha256": "d4c145433eb9b55627a68217afca2d7d150db6d9abe8727c3a92939f278c3438"
+    }
+  ]
+}

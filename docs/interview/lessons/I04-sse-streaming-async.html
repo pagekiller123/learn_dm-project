@@ -83,7 +83,7 @@ li { margin: 0.35rem 0; }
   <span><strong>模块：</strong>Monet AI Agent 画布</span>
   <span><strong>面试题数：</strong>9 题（SSE 6 + 异步 3）</span>
   <span><strong>考察权重：</strong>高频 &mdash; 流式通信是 AI Agent 最有区分度的工程话题</span>
-  <span><strong>前置知识：</strong>HTTP 协议基础、Python asyncio、设计模式</span>
+  <span><strong>前置知识：</strong>HTTP 协议基础、Python asyncio、设计模式（不熟悉请先读"前置背景知识"一节）</span>
 </div>
 
 <!-- ============================================================ -->
@@ -113,6 +113,197 @@ li { margin: 0.35rem 0; }
   <tr><td>Q8</td><td>并发安全</td><td>你理解异步上下文管理吗</td><td>中高</td></tr>
   <tr><td>Q9</td><td>性能优化</td><td>你做过性能分析和瓶颈定位吗</td><td>高</td></tr>
 </table>
+
+<!-- ============================================================ -->
+<h2>前置背景知识（先读这里）</h2>
+<!-- ============================================================ -->
+
+<p>后面的面试题和逐字稿大量引用以下概念。如果你对 SSE 协议细节、Nginx 长连接配置、asyncio 协程管理或 LangGraph 事件体系不熟悉，<strong>先把这一节吃透再往下看</strong>，否则后面的回答你只是在背，不是在理解。</p>
+
+<!-- ─────── SSE 协议 ─────── -->
+<h3>B1. SSE 协议（重中之重）</h3>
+
+<p><strong>一句话定义：</strong>SSE（Server-Sent Events）是基于 HTTP 长连接的<strong>服务端单向推流</strong>协议，MIME 类型为 <code>Content-Type: text/event-stream</code>。</p>
+
+<h4>SSE 帧格式</h4>
+
+<p>一条完整的 SSE 消息由若干字段行 + <strong>一个空行</strong>（双换行 <code>\n\n</code>）构成。双换行是协议硬性规定，少了前端收不到完整消息。</p>
+
+<pre><code>id: 1
+event: error
+data: {"error_code":500}
+                          &larr; 这里是空行，即 \n\n，代表一条消息结束</code></pre>
+
+<table>
+  <tr><th>字段</th><th>作用</th><th>关键细节</th></tr>
+  <tr>
+    <td><code>id:</code></td>
+    <td>事件编号，自增，发给前端</td>
+    <td>断线重连时浏览器自动把最后收到的 id 放进请求头 <code>Last-Event-ID</code> 带回后端</td>
+  </tr>
+  <tr>
+    <td><code>event:</code></td>
+    <td>自定义事件类型</td>
+    <td>有 event 字段时，前端<strong>不能</strong>用 <code>onmessage</code>，必须用 <code>addEventListener("error", ...)</code> 等对应名称监听</td>
+  </tr>
+  <tr>
+    <td><code>data:</code></td>
+    <td>业务数据</td>
+    <td>一般放 JSON 字符串。可以有多行 <code>data:</code>，前端会把它们用 <code>\n</code> 拼起来</td>
+  </tr>
+  <tr>
+    <td><code>\n\n</code></td>
+    <td>消息结束标记</td>
+    <td><strong>协议硬性规定</strong>：双换行分隔消息，少一个换行前端不会把这条消息视为完整</td>
+  </tr>
+</table>
+
+<h4>Comment 注释帧（心跳的基础）</h4>
+
+<pre><code>: heartbeat\n\n</code></pre>
+
+<p>冒号开头的行是<strong>注释</strong>。协议规定：前端直接忽略，不触发任何 JS 回调（onmessage、addEventListener 都不触发），但数据确实在 TCP 连接上传输了 → <strong>用来做心跳，维持连接存活</strong>。</p>
+
+<h4>onmessage 与 addEventListener</h4>
+
+<p><code>EventSource.onmessage</code> 是 JS 的默认回调，<strong>只有不带 <code>event:</code> 字段的普通消息才触发它</strong>。一旦消息携带了自定义 <code>event:</code> 字段（如 <code>event: delta</code>），就必须用 <code>addEventListener("delta", handler)</code> 来监听。</p>
+
+<h4>Last-Event-ID：断线重连的关键</h4>
+
+<div class="highlight-box">
+  <strong>注意区分协议职责和业务职责：</strong>SSE 协议只负责浏览器在重连时把最后收到的 id 通过 <code>Last-Event-ID</code> 请求头带回来。<strong>根据这个 ID 从断点补发历史消息，协议不会帮你做，必须自己写业务代码</strong>（维护事件缓冲区、查找断点位置、重发后续事件）。适配器基类只负责输出 id 字段，不做补发逻辑。
+</div>
+
+<!-- ─────── Nginx ─────── -->
+<h3>B2. Nginx（读法：“engine‑x”） 网关背景</h3>
+
+<p>Monet 的 SSE 流量要经过 Nginx 反向代理才到达前端。Nginx 对长连接有两个关键行为你必须知道：</p>
+
+<table>
+  <tr><th>配置项</th><th>含义</th><th>对 SSE 的影响</th></tr>
+  <tr>
+    <td><code>proxy_read_timeout 60s</code></td>
+    <td>Nginx 如果 60 秒内没有收到后端<strong>任何数据</strong>，就主动把长连接断开</td>
+    <td>Agent 思考时间很久（几十秒没输出任何 token）时，连接会被 Nginx 掐断</td>
+  </tr>
+  <tr>
+    <td><code>proxy_buffering off</code></td>
+    <td>关闭 Nginx 的响应缓冲，收到数据立即转发</td>
+    <td>SSE <strong>必须关闭</strong>，否则 Nginx 缓存数据攒够才发，没有实时流式效果</td>
+  </tr>
+</table>
+
+<div class="highlight-box">
+  <strong>心跳存在的根本原因：</strong>后端每 15 秒发一次心跳 comment 帧，骗过 Nginx 的 <code>proxy_read_timeout</code>，让 Nginx 以为"后端还在传数据"，不断开连接。15s &lt; 60s，留了足够的安全余量。心跳不是发给浏览器看的，是发给 Nginx 看的。
+</div>
+
+<!-- ─────── asyncio ─────── -->
+<h3>B3. Python asyncio 异步知识（必须懂这 3 点）</h3>
+
+<p>流式适配器的心跳机制依赖 asyncio 的协程并发。以下三个概念是理解心跳实现的前提：</p>
+
+<h4>1. <code>asyncio.create_task()</code> &mdash; 启动后台独立协程</h4>
+
+<p>调用 <code>asyncio.create_task(coro)</code> 会在<strong>同一个线程、同一个事件循环</strong>中启动一个独立协程任务，和主流程并行跑。</p>
+
+<pre><code># 主协程在处理 Agent 流；心跳是另一个协程，每 15 秒输出一个心跳帧
+heartbeat_task = asyncio.create_task(self._heartbeat_loop())
+# 此时主流程继续 async for event in raw_stream: ...
+# 心跳协程独立运行，隔 15 秒发一次心跳</code></pre>
+
+<blockquote>通俗理解：主流程是"主工人"在搬 Agent 输出的砖，心跳是"兼职工人"每 15 秒喊一声"还活着"。两个人在同一间屋子里（同一线程），但各干各的。</blockquote>
+
+<h4>2. <code>task.cancel()</code> &mdash; 取消协程</h4>
+
+<p>流结束或用户断开连接时，<strong>必须把心跳 task cancel 掉</strong>。不 cancel 的后果：后台协程继续在事件循环里无限跑 → <strong>协程泄漏</strong>，吃内存、占调度资源。</p>
+
+<pre><code># adapt_stream 的 finally 块：
+finally:
+    heartbeat_task.cancel()  # 活干完了，把兼职辞退</code></pre>
+
+<h4>3. <code>CancelledError</code> &mdash; cancel 后协程内部抛出的异常</h4>
+
+<p>调用 <code>cancel()</code> 后，目标协程内部会在下一个 <code>await</code> 点抛出 <code>asyncio.CancelledError</code>。必须捕获它，否则会在日志里打一堆错误堆栈：</p>
+
+<pre><code>async def _heartbeat_loop(self):
+    try:
+        while True:
+            await asyncio.sleep(15)
+            yield ": heartbeat\n\n"
+    except asyncio.CancelledError:
+        pass  # 正常取消，不需要报错</code></pre>
+
+<blockquote>通俗理解：你对兼职说"你被辞退了"（cancel），兼职收到通知会抛出"我被辞退了"（CancelledError）。你得接住这个通知说"知道了"（except），不然他会到处喊"我被辞退了"搞得日志很难看。</blockquote>
+
+<!-- ─────── LangGraph ─────── -->
+<h3>B4. LangGraph 事件体系</h3>
+
+<h4><code>astream_events</code> &mdash; 流式事件接口</h4>
+
+<p>LangGraph 提供的 <code>astream_events()</code> 返回一个 async generator，<strong>源源不断地吐出事件对象</strong>。不是一次性返回最终结果，而是 Agent 执行过程中每产生一个动作（输出一个 token、调用一个工具、工具执行完毕）就抛出一个事件。</p>
+
+<h4>关键事件类型</h4>
+
+<table>
+  <tr><th>事件类型</th><th>含义</th><th>携带数据</th></tr>
+  <tr>
+    <td><code>on_chat_model_stream</code></td>
+    <td>大模型正在输出 token</td>
+    <td>增量文本（delta），比如"你"、"好"、"，我"</td>
+  </tr>
+  <tr>
+    <td><code>on_tool_start</code></td>
+    <td>Agent 准备调用工具</td>
+    <td>工具名称、参数</td>
+  </tr>
+  <tr>
+    <td><code>on_tool_end</code></td>
+    <td>工具调用执行完毕</td>
+    <td>工具返回结果</td>
+  </tr>
+</table>
+
+<h4><code>_map_event</code> &mdash; 翻译函数</h4>
+
+<p>LangGraph 的原始事件格式前端不认识。<code>_map_event</code> 的职责就是把 LangGraph 内部格式<strong>翻译成我们前端约定好的 Block 格式</strong>：</p>
+
+<pre><code># LangGraph 原始事件                           翻译后
+# on_chat_model_stream  ──_map_event──&gt;  TextBlock Delta（增量文本帧）
+# on_tool_start         ──_map_event──&gt;  ToolCallBlock（工具调用帧）
+# on_tool_end           ──_map_event──&gt;  ToolResultBlock（工具结果帧）</code></pre>
+
+<blockquote>类比：LangGraph 说法语，前端说中文，适配器是翻译官。翻译官不改变说话内容，只转换语言格式。</blockquote>
+
+<!-- ─────── 整体链路 ─────── -->
+<h3>B5. 整体业务链路一览</h3>
+
+<p>从 LangGraph 到前端，数据经过的完整链路：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    LG["LangGraph<br/>astream_events"]
+    AD["LangGraphStreamAdapter<br/>_map_event 翻译事件"]
+    BA["BaseStreamAdapter 基类<br/>编码 SSE 帧 / 发心跳 / 发错误帧"]
+    FA["FastAPI<br/>StreamingResponse"]
+    NG["Nginx<br/>proxy_buffering off"]
+    FE["前端 EventSource<br/>JS 接收 SSE 事件"]
+
+    LG --> AD --> BA --> FA --> NG --> FE
+</pre>
+</div>
+
+<table>
+  <tr><th>环节</th><th>职责</th></tr>
+  <tr><td>LangGraph <code>astream_events</code></td><td>产出原始事件流（on_chat_model_stream / on_tool_start / on_tool_end）</td></tr>
+  <tr><td>LangGraphStreamAdapter</td><td>用 <code>_map_event</code> 把 LangGraph 事件翻译成 TextBlock / ToolCallBlock 等 Block 格式</td></tr>
+  <tr><td>BaseStreamAdapter 基类</td><td>把 Block 数据编码成标准 SSE 帧（<code>id: / event: / data: / \n\n</code>），同时管理心跳和错误帧</td></tr>
+  <tr><td>FastAPI StreamingResponse</td><td>把 async generator 产出的 SSE 帧通过 HTTP 长连接推出去</td></tr>
+  <tr><td>Nginx</td><td>关闭 <code>proxy_buffering</code>，收到数据立即透传给客户端</td></tr>
+  <tr><td>前端 EventSource</td><td>按 event 字段分发到对应的 <code>addEventListener</code> 回调，拼接 Delta、渲染 Block</td></tr>
+</table>
+
+<hr style="border: none; border-top: 2px dashed var(--border); margin: 3rem 0;">
 
 <!-- ============================================================ -->
 <h2>二、核心知识精讲</h2>
@@ -518,7 +709,7 @@ graph TB
   <p>我们在 Monet 画布做 AI Agent 流式输出时，技术选型上对比了三种方案：短轮询、WebSocket 和 SSE。</p>
   <p>短轮询首先排除了。Agent 一次推理可能持续 5 到 30 秒，如果用轮询，客户端要反复发请求问"好了没"，既浪费带宽也增加延迟，用户体验很差。</p>
   <p>WebSocket 的能力其实是过剩的。WebSocket 是全双工的，支持客户端和服务端双向发消息，但 Agent 流式输出场景其实是单向的——服务端不断往客户端推 Token，客户端在流式输出过程中不需要往回发数据。用户的新问题是通过普通 HTTP POST 提交的，不走 WebSocket 通道。如果用 WebSocket，首先是增加了协议复杂度，需要管理连接状态、处理升级握手；其次是<strong>运维代价高</strong>，WebSocket 连接是有状态的，不走标准 HTTP，对 Nginx 反向代理和负载均衡不够友好，弹性伸缩时需要处理连接迁移；再者我们整个服务是 FastAPI + Uvicorn，WebSocket 需要额外的连接管理逻辑。</p>
-  <p>最终选择 SSE，原因有几点。第一，SSE 完全基于标准 HTTP，<code>Content-Type: text/event-stream</code>，跟现有的 Nginx、负载均衡、CDN 完全兼容，不需要任何特殊配置（除了关掉 proxy_buffering）。第二，浏览器原生提供 <code>EventSource</code> API，自带断线自动重连，并且支持 <code>Last-Event-ID</code>，我们在服务端每个事件帧都带了递增 ID，断线重连时可以从断点继续推送。第三，SSE 的实现代价极低，在 FastAPI 里就是一个 <code>StreamingResponse</code> 加一个 async generator，代码量很小。</p>
+  <p>最终选择 SSE，原因有几点。第一，SSE 完全基于标准 HTTP，使用MIME类型<code>Content-Type: text/event-stream</code>，对Nginx、负载均衡具备良好的兼容性；并且Nginx关闭 <code>proxy_buffering</code> 禁用代理缓冲（因为SSE要求每一段数据立即透传给前端，不能在缓存里攒着），CDN（Content Delivery Network）调整长连接相关参数即可使用。第二，浏览器原生提供 <code> EventSource</code> API，自带断线自动重连，并且支持 <code>Last-Event-ID</code>请求头；重连时浏览器会携带该ID，由服务端根据事件ID实现断点续推。第三，SSE 的实现代价极低， FastAPI 中通过 <code>StreamingResponse</code> 配合 async generator即可完成流式输出，业务代码简洁。</p>
   <p>SSE 的缺点也很明显：不支持二进制帧（只能传文本），不支持客户端主动推送。但这两个限制在我们场景里完全不是问题。如果未来需要双向通信（比如用户中途修改生成参数），我会考虑把 SSE 和 POST 组合使用，而不是换成 WebSocket。</p>
 </div>
 
@@ -531,7 +722,7 @@ graph TB
   <p>我设计流式适配器时用的是经典的<strong>适配器模式</strong>，核心思路是把"SSE 协议的通用能力"和"具体 Agent 框架的事件映射"分离开来。</p>
   <p>基类叫 <code>BaseStreamAdapter</code>，它封装了三个维度的通用能力：</p>
   <p>第一是<strong>事件帧编码</strong>。SSE 协议有固定格式：<code>id: xxx\nevent: xxx\ndata: xxx\n\n</code>。基类的 <code>send_event</code> 方法负责把业务数据序列化成标准 SSE 帧，包括 JSON 序列化、换行符处理、事件 ID 自增。事件 ID 用一个简单的自增计数器实现，每发一帧加一，这个 ID 前端会在断线重连时通过 <code>Last-Event-ID</code> 头传回来。</p>
-  <p>第二是<strong>心跳保活</strong>。基类提供 <code>send_heartbeat</code> 方法，发送 SSE 的 comment 帧（冒号开头的行），不会触发前端的 onmessage 事件，但能保持 TCP 连接活跃。间隔设定为 15 秒，因为我们 Nginx 配置的 <code>proxy_read_timeout</code> 是 60 秒，15 秒间隔留了足够的安全余量。心跳通过 <code>asyncio.create_task</code> 启动一个独立的后台协程，在流结束时通过 <code>cancel()</code> 清理。</p>
+  <p>第二是<strong>心跳保活</strong>。基类提供 <code>send_heartbeat</code> 方法，发送 SSE 的 comment 帧（ <code>: \n\n</code>冒号开头的行），不会触发前端的 onmessage 事件，但能保持 TCP 连接活跃。间隔设定为 15 秒，因为我们 Nginx 配置的 <code>proxy_read_timeout</code> 是 60 秒，15 秒间隔留了足够的安全余量。心跳通过 <code>asyncio.create_task</code> 启动一个独立的后台协程，在流结束时通过 <code>cancel()</code> 清理。</p>
   <p>第三是<strong>异常帧发送</strong>。<code>send_error</code> 方法发送结构化的错误事件，包含 error_code 和 message。前端收到 error 事件后可以根据 error_code 决定是重试还是提示用户。这个设计保证了即使后端出错，前端也能优雅降级，而不是连接突然断开用户一脸懵。</p>
   <p>子类是 <code>LangGraphStreamAdapter</code>，它实现基类的抽象方法 <code>adapt_stream</code>。这个方法接收 LangGraph 的 <code>astream_events</code> 产生的原始事件流，然后用一个 <code>_map_event</code> 方法做类型映射：<code>on_chat_model_stream</code> 事件映射为 TextBlock 的 Delta 帧，<code>on_tool_start</code> 映射为 ToolCallBlock 的 block_start 帧，<code>on_tool_end</code> 映射为 ToolResultBlock 的 block_end 帧。</p>
   <p>这个结构的好处是：如果未来要换成 AutoGen 或者 CrewAI，我只需要新写一个 <code>AutoGenStreamAdapter</code>，实现它自己的 <code>_map_event</code> 逻辑就行，基类的心跳、ID 递增、异常帧全部复用，前端代码完全不用动。</p>
@@ -546,7 +737,7 @@ graph TB
   <p>这个双层模型的设计动机来自 Agent 输出的<strong>异构性</strong>。Agent 一次回复里可能同时包含文本、工具调用、工具返回结果、甚至图片。如果只用一个扁平的 message 字符串来承载，前端解析和渲染会非常痛苦，也没法做到不同类型内容的差异化展示。</p>
   <p>所以我设计了 <strong>Message 和 Block 两层结构</strong>。Message 是 Agent 一轮回复的容器，拥有 message_id、role、status 等元数据，以及一个 blocks 数组。Block 是 Message 中的一个内容片段，每个 Block 有独立的 block_id 和 block_type。目前支持五种类型：TextBlock（文本）、ToolCallBlock（工具调用）、ToolResultBlock（工具返回）、ImageBlock（图片）、ErrorBlock（错误）。</p>
   <p>这样设计的好处是前端可以<strong>按 Block 类型做差异化渲染</strong>：TextBlock 用 Markdown 渲染器，ToolCallBlock 显示为"正在调用 xx 工具"的加载态，ToolResultBlock 展示结构化结果，ImageBlock 渲染为图片卡片。每种 Block 的渲染组件是独立的，互不干扰。</p>
-  <p>Delta 增量推送主要用在 TextBlock 上。LLM 逐 Token 生成文本，一个 TextBlock 的完整内容可能有几千字。如果每次都把完整内容发过去，假设一个字 3 字节，3000 字就是 9KB，乘以 Token 数量（可能 500 次），累计传输量会非常大。所以我用 Delta 模式：每个 SSE 帧只传新增的几个字（<code>text_delta</code> 字段），前端把它 append 到对应 Block 的 content 末尾。</p>
+  <p>Delta 增量推送主要用在 TextBlock 上。LLM 逐 Token 生成文本，一个 TextBlock 的完整内容可能有几千字。如果每次都把完整内容发过去，假设一个字 3 字节，3000 字就是 9KB，乘以 Token 数量（可能 500 次），产生大量重复带宽流量、前端重复渲染压力大。所以我用 Delta 模式：每个 SSE 帧只传新增的几个字（<code>text_delta</code> 字段），前端把它 append 到对应 Block 的 content 末尾。</p>
   <p>具体的 SSE 事件序列是这样的：首先发一个 <code>block_start</code> 事件，携带 block_id 和 block_type，前端据此创建一个空的 Block 容器。然后连续发 N 个 <code>delta</code> 事件，每个携带对应 block_id 和 text_delta。最后发一个 <code>block_end</code> 事件，标记该 Block 完成。一个 Message 中可能有多个 Block 交替推送（比如先是一段文本，然后调用工具，工具返回后又是一段文本）。</p>
   <p>这个设计和 OpenAI 的 Streaming API 思路一致——<code>choices[0].delta.content</code> 也是增量模式。但我们在上面加了 Block 层，让它能承载比纯文本更丰富的内容类型。前端只需要实现一个 Block 状态管理器，监听三种事件（start/delta/end），就能渲染任意复杂的 Agent 输出。</p>
 </div>
@@ -658,6 +849,15 @@ graph TB
 
 <table>
   <tr><th>知识点</th><th>一句话结论</th><th>关联题号</th></tr>
+  <tr><td>SSE 帧格式</td><td><code>id:</code> 事件编号 / <code>event:</code> 自定义类型 / <code>data:</code> 业务数据 / <code>\n\n</code> 双换行结束一条消息</td><td>前置 B1</td></tr>
+  <tr><td>SSE comment 注释帧</td><td>冒号开头，前端忽略不触发回调，只维持 TCP 存活 → 心跳</td><td>前置 B1, Q4</td></tr>
+  <tr><td>onmessage vs addEventListener</td><td><code>onmessage</code> 只收无 event 字段的消息；有 event 字段必须用 <code>addEventListener</code></td><td>前置 B1</td></tr>
+  <tr><td>Last-Event-ID 职责边界</td><td>协议只负责浏览器带回 ID，补发历史消息要自己业务代码写</td><td>前置 B1, Q4</td></tr>
+  <tr><td>Nginx proxy_read_timeout</td><td>60s 内无数据 Nginx 断连 → 心跳 15s 间隔骗过它</td><td>前置 B2, Q4</td></tr>
+  <tr><td>proxy_buffering off</td><td>SSE 必须关闭，否则 Nginx 缓存数据没有实时流效果</td><td>前置 B2, Q6</td></tr>
+  <tr><td>create_task / cancel / CancelledError</td><td>启动后台协程 → 流结束必须 cancel → 捕获 CancelledError 防止日志污染</td><td>前置 B3, Q7</td></tr>
+  <tr><td>LangGraph astream_events</td><td>流式事件接口，一点点往外抛事件（on_chat_model_stream / on_tool_start / on_tool_end）</td><td>前置 B4, Q2</td></tr>
+  <tr><td>_map_event 翻译函数</td><td>LangGraph 事件 → 前端 Block 格式（TextBlock / ToolCallBlock / ToolResultBlock）</td><td>前置 B4, Q2</td></tr>
   <tr><td>SSE 协议格式</td><td><code>id: N\nevent: type\ndata: json\n\n</code>，冒号开头是注释帧</td><td>Q1, Q4</td></tr>
   <tr><td>SSE vs WebSocket</td><td>SSE 是单向 HTTP，WebSocket 是双向独立协议；AI 流式输出用 SSE 够用</td><td>Q1</td></tr>
   <tr><td>适配器模式</td><td>基类封装协议通用能力，子类做框架事件映射，前端和协议层不感知底层框架</td><td>Q2, Q5</td></tr>

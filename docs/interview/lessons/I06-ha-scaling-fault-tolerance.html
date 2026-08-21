@@ -231,7 +231,7 @@ flowchart TD
 <span class="script-label">满分逐字稿</span>
 <h4>面试标准逐字稿</h4>
 <p><strong>etcd Lease 本质上是一个带 TTL 的"租约对象"，所有绑定到这个 Lease 的 key 会在 Lease 过期时一起删除。</strong></p>
-<p>在我们的调度平台里，Worker 的注册发现不是 Worker 直连 etcd，而是<strong>三层架构</strong>：Worker-sidecar 通过 HTTP 心跳上报给 worker-scheduler，worker-scheduler 负责维护 etcd 中的注册信息。具体流程是：worker-scheduler 启动时调用 etcd Grant 创建一个 TTL=7200s（2小时）的 Lease，然后每 5 分钟重新 Grant 一次刷新 Lease；Worker-sidecar 启动时通过 HTTP 调用 worker-scheduler 的 Report 接口注册自己，worker-scheduler 收到后将 Worker 信息 Put 到 etcd（如 /worker/{env}/{name}），绑定当前 Lease；之后 sidecar 每 30s 发一次 HTTP 心跳，worker-scheduler 收到后 re-PUT 该 Worker 的 key，保持信息新鲜。</p>
+<p>在我们的调度平台里，Worker 的注册发现不是 Worker 直连 etcd，而是Worker-sidecar 通过 HTTP 心跳上报给 worker-scheduler，worker-scheduler 负责维护 etcd 中的注册信息。具体流程是：worker-scheduler 启动时调用 etcd Grant 创建一个 TTL=7200s（2小时）的 Lease，然后每 5 分钟重新 Grant 一次刷新 Lease；Worker-sidecar 启动时通过 HTTP 调用 worker-scheduler 的 Report 接口注册自己，worker-scheduler 收到后将 Worker 信息 Put 到 etcd（如 /worker/{env}/{name}），绑定当前 Lease；之后 sidecar 每 30s 发一次 HTTP 心跳，worker-scheduler 收到后 re-PUT 该 Worker 的 key，保持信息新鲜。</p>
 <p>如果 Worker 宕机或网络断连，心跳停止。worker-scheduler 侧通过心跳超时判断 Worker 不可用，不再为其 re-PUT key。当 Lease 最终过期时，etcd 自动删除绑定在该 Lease 上的所有 Worker key。worker-scheduler 自身通过 Watch 机制监听 /worker/ 前缀，收到 DELETE 事件后将该 Worker 从内存调度缓存中移除、从任务路由表中清理，并递减对应集群的 Worker 计数器——这样后续任务就不会再分配给已下线的节点。</p>
 <p><strong>30s 心跳间隔的设计考量</strong>：这个 30s 是应用层 HTTP 心跳的频率，目的不是续约 etcd Lease（那是 worker-scheduler 每 5 分钟做的），而是让 worker-scheduler 及时感知 Worker 的健康状态和负载情况。30s 间隔在故障感知速度和网络开销之间取平衡——调小到 10s，心跳请求量增加 3 倍，对 worker-scheduler 有额外压力；调大到 60s，Worker 宕机后要等更久才能被发现不可用。30s 保证在 1-2 个心跳周期内就能感知异常，及时停止向该 Worker 分配新任务。</p>
 </div>

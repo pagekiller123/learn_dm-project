@@ -89,35 +89,39 @@ li { margin: 0.35rem 0; }
 
 <h3>2.1 etcd Lease 租约机制</h3>
 
-<p>etcd Lease 是服务注册发现的核心：Worker 启动时创建一个 TTL=90s 的 Lease，将自己的注册 key 绑定到这个 Lease，然后每 30s 发送 KeepAlive 续约。如果 Worker 宕机，停止续约后 90s Lease 过期，key 自动删除，scheduler 通过 Watch 感知到节点下线。</p>
+<p>etcd Lease 是服务注册发现的核心存储层。在 DreamMaker 中，Worker 不直接操作 etcd，而是通过三层架构实现注册发现：Worker-sidecar 每 30s 通过 HTTP 心跳上报给 worker-scheduler，worker-scheduler 负责管理 etcd 中的注册 key（/worker/{env}/{name}）。worker-scheduler 维护一个 TTL=7200s 的 Lease，每 5 分钟重新 Grant 刷新。如果 worker-scheduler 宕机，2 小时后 Lease 过期，所有 Worker key 自动删除。</p>
 
 <div class="diagram">
 <pre class="mermaid">
 sequenceDiagram
-    participant W as Worker 节点
+    participant WS as Worker-Sidecar
+    participant S as Worker-Scheduler
     participant E as etcd 集群
-    participant S as Scheduler（Leader）
 
-    W->>E: Grant Lease（TTL=90s）
-    E-->>W: LeaseID=abc123
-    W->>E: Put /workers/worker-0（LeaseID=abc123）
-    E-->>S: Watch 事件：PUT /workers/worker-0
+    Note over S: 启动时 Grant Lease（TTL=7200s）
+    WS->>S: HTTP Report（type=register）
+    S->>E: Put /worker/{env}/{name}（绑定 Lease）
+    E-->>S: Watch 事件：PUT
 
     loop 每 30s
-        W->>E: KeepAlive（LeaseID=abc123）
-        E-->>W: TTL 重置为 90s
+        WS->>S: HTTP Report（type=heartbeat）
+        S->>E: re-PUT /worker/{env}/{name}
     end
 
-    Note over W: Worker 宕机，停止续约
-    Note over E: 90s 后 Lease 过期
-    E->>E: 自动删除 /workers/worker-0
-    E-->>S: Watch 事件：DELETE /workers/worker-0
-    S->>S: 标记 worker-0 为 DOWN
-    S->>S: 将其未完成任务入重试队列
+    loop 每 5 分钟
+        S->>E: 重新 Grant Lease，刷新 TTL
+    end
+
+    Note over WS: Worker 宕机，心跳停止
+    Note over S: 不再为该 Worker re-PUT
+    Note over E: Lease 过期后自动删除 key
+    E-->>S: Watch 事件：DELETE
+    S->>S: 从调度缓存移除该 Worker
+    S->>S: 清理任务路由 + 递减集群计数器
 </pre>
 </div>
 
-<p><strong>30s 心跳间隔的设计依据</strong>：TTL=90s 允许 3 次心跳失败窗口（30s×3=90s）。调小到 10s → etcd 负载增大 3 倍，大量 KeepAlive 请求可能影响 etcd 读写性能。调大到 60s → 只有 1.5 次容错窗口（90/60），一次网络抖动就可能误判下线，增加不必要的任务重新调度。</p>
+<p><strong>30s 心跳间隔的设计考量</strong>：这是应用层 HTTP 心跳的频率，用于让 worker-scheduler 及时感知 Worker 健康状态。调小到 10s → 心跳请求量增 3 倍，worker-scheduler 处理压力增大。调大到 60s → Worker 宕机后感知延迟更长，可能持续向不可用节点分配任务。30s 保证 1-2 个周期内感知异常，及时停止分配。</p>
 
 <h3>2.2 Worker 故障转移策略</h3>
 
@@ -129,25 +133,36 @@ sequenceDiagram
 <tr><td>重试 N 次仍失败</td><td>标记为 FAILED + 告警</td><td>防止无限重试占用资源</td></tr>
 </table>
 
-<h3>2.3 自定义 K8s 扩缩容</h3>
+<h3>2.3 K8s 扩缩容：HPA + 自定义 Autoscaler</h3>
+
+<p>DM 用了<strong>两套扩缩容机制</strong>：CPU Worker（调供应商 API）用 K8s HPA 按 CPU/内存水位扩缩；GPU Worker（本地部署模型推理）用自定义 Autoscaler 按 Redis 队列积压深度扩缩。GPU 资源贵且 HPA 的 CPU 指标无法反映 GPU 负载，所以需要自定义逻辑。</p>
 
 <div class="diagram">
 <pre class="mermaid">
 flowchart TD
-    Start["定时检查<br/>（每 30s）"] --> Check{"队列积压量<br/>是否超过阈值？"}
-    Check -->|"积压 > 50"| ScaleUp["扩容：调用 K8s API<br/>增加 StatefulSet Replicas"]
-    Check -->|"积压 < 10 且<br/>空闲 Worker > 30%"| ScaleDown["缩容：从最大序号开始<br/>减少 Replicas"]
-    Check -->|"正常范围"| NoOp["维持不变"]
+    Start["定时检查<br/>（每 30s）"] --> Lock{"Redis 分布式锁<br/>autoscaler_lock"}
+    Lock -->|"获取失败"| Skip["跳过本轮"]
+    Lock -->|"获取成功"| Safe{"安全检查：<br/>有 pending/terminating？"}
+    Safe -->|"有"| Skip2["跳过本轮<br/>（防止超扩）"]
+    Safe -->|"没有"| Cool{"冷却期检查"}
+    Cool -->|"冷却中"| Skip3["跳过本轮"]
+    Cool -->|"冷却已过"| Check{"Worker 数 ≤<br/>队列长度 / 2？"}
+    Check -->|"是"| ScaleUp["扩容：唤醒 terminated Pod<br/>调 apiKube.UpdateWorker"]
+    Check -->|"否"| CheckDown{"Worker 不忙 且<br/>空闲超过阈值？"}
+    CheckDown -->|"是"| ScaleDown["缩容：删除空闲 Pod<br/>调 apiKube.DeleteWorker"]
+    CheckDown -->|"否"| NoOp["维持不变"]
 
-    ScaleUp --> Cooldown["冷却期 3 分钟<br/>防止频繁扩缩"]
-    ScaleDown --> Drain["等待目标 Worker<br/>完成当前任务"]
-    Drain --> Cooldown
+    ScaleUp --> Record["记录到 Redis ZSet"]
+    ScaleDown --> Record
+    Record --> Start
     NoOp --> Start
-    Cooldown --> Start
+    Skip --> Start
+    Skip2 --> Start
+    Skip3 --> Start
 </pre>
 </div>
 
-<p><strong>为什么不用 HPA</strong>：K8s 原生 HPA 基于 CPU/内存指标做扩缩容决策。但 AI 任务的瓶颈不是 CPU——Worker 大部分时间在等待外部 AI 供应商返回结果（IO 等待），CPU 利用率很低但实际上负载很满。正确的指标是<strong>队列积压深度</strong>和<strong>Worker 空闲比例</strong>，这需要自定义扩缩容逻辑。</p>
+<p><strong>为什么 GPU Worker 不能用 HPA</strong>：HPA 基于 CPU/内存指标，但 GPU Worker 的 GPU 可能满载而 CPU 很闲，HPA 看 CPU 5% 会误判为"资源充足"。自定义 Autoscaler 直接读 Redis 队列长度来决定扩缩容。两者不冲突——HPA 管基础设施弹性（CPU Worker），Autoscaler 管业务弹性（GPU Worker）。</p>
 
 <p><strong>StatefulSet vs Deployment</strong>：Worker 用 StatefulSet 部署有两个原因：(1) 稳定的网络标识（worker-0, worker-1...），与 etcd 注册的 key 对应，scheduler 能精确知道哪个 Worker 是哪个；(2) 有序缩容，缩容时从最大序号开始下掉，可以确保先下掉最近扩容的（通常是空闲的）节点。</p>
 
@@ -201,7 +216,7 @@ flowchart TD
 </div>
 
 <div class="highlight-box">
-<strong>错误 3</strong>：说"用 HPA 也行"。面试官追问为什么不用，你说"也行"等于没回答。必须讲清楚 HPA 的局限：基于 CPU/内存指标，而 AI 任务瓶颈是 IO 等待和 GPU 占用，CPU 指标完全不能反映真实负载。
+<strong>错误 3</strong>：说"GPU Worker 也可以用 HPA"。HPA 基于 CPU/内存指标，GPU 满载时 CPU 可能很闲，HPA 会误判。必须讲清楚 DM 用了两套：CPU Worker 用 HPA，GPU Worker 用自定义 Autoscaler 按队列积压深度扩缩。
 </div>
 
 <div class="highlight-box">
@@ -216,9 +231,9 @@ flowchart TD
 <span class="script-label">满分逐字稿</span>
 <h4>面试标准逐字稿</h4>
 <p><strong>etcd Lease 本质上是一个带 TTL 的"租约对象"，所有绑定到这个 Lease 的 key 会在 Lease 过期时一起删除。</strong></p>
-<p>在我们的调度平台里，Worker 启动时做三件事：第一，调用 etcd Grant 创建一个 TTL=90s 的 Lease；第二，调用 Put 将自己的注册信息（如 /workers/worker-0）绑定到这个 Lease；第三，启动一个后台协程，每 30s 调用 KeepAlive 续约，重置 TTL 到 90s。</p>
-<p>如果 Worker 宕机或网络断连，KeepAlive 停止，90s 后 Lease 过期，etcd 自动删除该 Worker 的所有注册 key。Scheduler 通过 Watch 机制监听 /workers/ 前缀，收到 DELETE 事件后立即将该 Worker 标记为 DOWN，并将其未完成的任务放入重试队列重新调度。</p>
-<p><strong>30s 心跳的依据是 TTL 的三分之一。</strong>TTL=90s 的情况下，30s 心跳间隔意味着有 3 次容错窗口——即使连续 2 次心跳因为网络抖动失败，第 3 次成功仍然能续约，不会误判下线。如果调小到 10s，心跳请求量增加 3 倍，在 100+ Worker 的集群规模下会给 etcd 带来显著的写入压力，影响其 Raft 共识的稳定性。如果调大到 60s，容错窗口只剩 1.5 次，一次持续 30s 以上的网络抖动就会误判下线，导致不必要的任务重新调度和 Worker 抖动。所以 30s 是一个在故障感知速度和系统负载之间取得平衡的经验值。</p>
+<p>在我们的调度平台里，Worker 的注册发现不是 Worker 直连 etcd，而是<strong>三层架构</strong>：Worker-sidecar 通过 HTTP 心跳上报给 worker-scheduler，worker-scheduler 负责维护 etcd 中的注册信息。具体流程是：worker-scheduler 启动时调用 etcd Grant 创建一个 TTL=7200s（2小时）的 Lease，然后每 5 分钟重新 Grant 一次刷新 Lease；Worker-sidecar 启动时通过 HTTP 调用 worker-scheduler 的 Report 接口注册自己，worker-scheduler 收到后将 Worker 信息 Put 到 etcd（如 /worker/{env}/{name}），绑定当前 Lease；之后 sidecar 每 30s 发一次 HTTP 心跳，worker-scheduler 收到后 re-PUT 该 Worker 的 key，保持信息新鲜。</p>
+<p>如果 Worker 宕机或网络断连，心跳停止。worker-scheduler 侧通过心跳超时判断 Worker 不可用，不再为其 re-PUT key。当 Lease 最终过期时，etcd 自动删除绑定在该 Lease 上的所有 Worker key。worker-scheduler 自身通过 Watch 机制监听 /worker/ 前缀，收到 DELETE 事件后将该 Worker 从内存调度缓存中移除、从任务路由表中清理，并递减对应集群的 Worker 计数器——这样后续任务就不会再分配给已下线的节点。</p>
+<p><strong>30s 心跳间隔的设计考量</strong>：这个 30s 是应用层 HTTP 心跳的频率，目的不是续约 etcd Lease（那是 worker-scheduler 每 5 分钟做的），而是让 worker-scheduler 及时感知 Worker 的健康状态和负载情况。30s 间隔在故障感知速度和网络开销之间取平衡——调小到 10s，心跳请求量增加 3 倍，对 worker-scheduler 有额外压力；调大到 60s，Worker 宕机后要等更久才能被发现不可用。30s 保证在 1-2 个心跳周期内就能感知异常，及时停止向该 Worker 分配新任务。</p>
 </div>
 
 <h3>Q2：Worker 故障时任务如何处理？</h3>
@@ -238,11 +253,11 @@ flowchart TD
 <div class="script-block">
 <span class="script-label">满分逐字稿</span>
 <h4>面试标准逐字稿</h4>
-<p><strong>我们没用 HPA 的原因很简单：HPA 的指标模型不适合 AI 任务场景。</strong></p>
-<p>HPA 默认基于 CPU 和内存利用率做扩缩容决策。但我们的 Worker 大部分时间在做什么？在等外部 AI 供应商返回结果——这是纯 IO 等待，CPU 利用率可能只有 5%，但这个 Worker 实际上已经满载了，因为它的并发任务槽位已经用完。如果用 HPA，它看到 CPU 5% 会觉得"资源充足"甚至触发缩容，这完全是错误判断。</p>
-<p>所以我们自定义了扩缩容模块。核心指标是两个：<strong>队列积压深度</strong>和<strong>Worker 空闲比例</strong>。队列积压 > 50 且持续 2 个检查周期（1分钟）→ 触发扩容；空闲 Worker 比例 > 30% 且队列积压 < 10 → 触发缩容。扩缩容操作通过 client-go 调用 K8s API 修改 StatefulSet 的 Replicas 字段。</p>
-<p>有几个细节：第一，扩缩容有 3 分钟冷却期，防止指标抖动导致频繁扩缩（thrashing）。第二，缩容时不是立即杀 Pod，而是先标记目标 Worker 为"不接新任务"，等它完成当前任务后再缩容，实现<strong>优雅下线</strong>。第三，设置了最小副本数下限（比如 5），即使完全空闲也不会缩到零，保证有基础算力响应突发请求。</p>
-<p>上线后对比固定 20 节点部署，动态扩缩容把平均空闲算力占用降低了约 35%——主要收益在低峰时段，节点数从 20 缩到 8-10 个。</p>
+<p><strong>我们实际上用了两套扩缩容机制，解决不同层面的问题。</strong></p>
+<p>DM 的任务分两类：调供应商 API 的任务（如 Kling、Runway）只需要 HTTP 调外部接口，跑在 CPU Worker 上；开源部署的任务（如 ComfyUI、SD）需要本地 GPU 推理，跑在 GPU Worker 上。CPU Worker 相对廉价，用 K8s HPA 按 CPU/内存水位扩缩就够了。但 GPU Worker 不行——GPU 满载推理时 CPU 可能很闲，HPA 看 CPU 5% 会觉得"资源充足"甚至触发缩容，这完全是误判。所以我们针对 GPU Worker 自定义了 Autoscaler。</p>
+<p>自定义 Autoscaler 的核心指标是 <strong>Redis 任务队列积压深度</strong>。每 30 秒检查一次，扩容条件是 Worker 数 ≤ 队列长度的一半；缩容条件是 Worker 不在忙且空闲时间超过配置的阈值，同时 Running Worker 数要大于最小副本数下限。扩容的方式比较特别——不是创建新 Pod，而是<strong>唤醒已 terminated 的 Pod</strong>，调 api-kube 的 UpdateWorker 接口重新激活它；缩容则是调 DeleteWorker 删除空闲 Pod。</p>
+<p>有几个细节：第一，扩缩容有冷却期，通过 Redis ZSet 记录操作历史，冷却期内跳过本轮，防止指标抖动导致频繁扩缩（thrashing）。第二，缩容时会检查 Worker 是否在忙，只对空闲且超过阈值的 Worker 缩容，实现<strong>优雅下线</strong>。第三，设置了最小副本数下限（MinWorker），即使完全空闲也不会缩到零。第四，有安全检查——如果有 Worker 处于 pending 或 terminating 状态，本轮直接跳过，防止"还没启动完就又触发扩容"的雪崩式超扩。第五，因为多个 worker-scheduler 实例同时运行，用 Redis 分布式锁保证同一时刻只有一个实例执行扩缩容。</p>
+<p>上线后对比固定节点部署，动态扩缩容把平均空闲算力占用降低了约 35%——主要收益在低峰时段。</p>
 </div>
 
 <h3>Q4：StatefulSet 部署 Worker 的原因？</h3>
@@ -291,9 +306,11 @@ flowchart TD
 <div class="script-block">
 <span class="script-label">满分逐字稿</span>
 <h4>面试标准逐字稿</h4>
-<p><strong>我们的策略是"故障切换"而不是"负载均衡切换"。</strong>区别在于：负载均衡是所有供应商同时接流量按权重分配，故障切换是平时只走主供应商，主供应商持续不可用时才切到备用。</p>
+<p><strong>我们的策略是"故障切换"而不是"负载均衡切换"。</strong>区别在于：负载均衡是所有供应商同时接流量按权重分配，故障切换是每个请求总是先走主供应商，主供应商失败后才切到备用。</p>
 <p>选择故障切换的原因是：不同供应商的模型效果有差异，我们希望优先使用效果最好的那个，备用供应商是"能用但效果可能略差"的兜底。如果做负载均衡，用户会发现"同样的提示词，生成结果质量时好时差"，体验不一致。</p>
-<p>切换触发条件：同一供应商连续 3 次重试失败（即指数退避 6 次都没恢复，算 1 次失败），触发切换到备用链路。切换后不是永久切换——我们有一个"恢复探测"机制，每 5 分钟对主供应商发一次健康检查请求，如果返回正常，后续新任务恢复使用主供应商。这样避免了主供应商恢复后流量仍然走备用链路的问题。</p>
+<p>具体实现是一个<strong>无状态的 per-request fallback chain</strong>。每个请求独立走一遍"主→备"链路：先调主供应商，内部有 3 次指数退避重试（1s→2s→4s），如果 3 次都失败且错误类型是可重试的（429 限流、503 不可用、网络超时等），就立即切到 fallback 链路中的下一个供应商。备用供应商同样有自己的重试，如果也失败则继续往后切，直到链路耗尽或遇到不可重试错误为止。</p>
+<p>这个设计是<strong>无状态的</strong>——系统不记录"哪个供应商当前不可用"，不维护熔断器状态。每个新请求都从主供应商开始尝试。这意味着主供应商恢复后，下一个请求自然就能成功，不需要额外的"恢复探测"机制。代价是：在主供应商持续故障期间，每个请求都会先打一次主供应商、等它超时后才切备用，增加了延迟。但对 AI 生成任务来说（本身耗时 10-30s），多等几秒重试的感知不强，这个 tradeoff 是可接受的。</p>
+<p>另外，fallback 规则是按模型粒度配置在 MongoDB 中的，不是所有任务都有备用链路——只有配了 fallback rule 且 enabled=true 的模型才会触发切换，其他直接返回失败。规则里还可以配 skip_on（某些错误不切换，比如内容审核不通过）和 retry_on（只在匹配特定错误时才切换），实现精细化控制。</p>
 </div>
 
 <h3>Q9：白名单管控实现？测试/生产环境区分？</h3>

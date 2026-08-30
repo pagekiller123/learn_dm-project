@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I12 - 面试高频基础 — 概念辨析与产品思维</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+:root {
+  --text: #1a1a1a; --text-muted: #555; --bg: #fffdf6; --accent: #b91c1c;
+  --accent-soft: #fef2f2; --code-bg: #f4f1eb; --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { font-family: var(--serif); color: var(--text); background: var(--bg); max-width: 1100px; margin: 3rem auto 3rem 280px; padding: 0 1.5rem; line-height: 1.7; }
+h1, h2, h3, h4 { font-family: var(--sans); font-weight: 600; line-height: 1.3; margin-top: 2.5rem; margin-bottom: 0.8rem; }
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+p { margin: 0.8rem 0; }
+code { font-family: var(--mono); background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid var(--accent); font-family: var(--mono); font-size: 0.9em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+pre.mermaid { border-left: none; background: white; text-align: center; font-family: var(--sans); }
+blockquote { border-left: 3px solid var(--border); margin: 1.2rem 0; padding: 0.5rem 1.2rem; color: var(--text-muted); background: #faf7ed; font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--sans); font-size: 0.95em; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; }
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+.lesson-meta { font-family: var(--sans); font-size: 0.85em; color: var(--text-muted); margin-bottom: 1.5rem; padding: 0.8rem 1rem; background: var(--code-bg); border-radius: 6px; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.highlight-box { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 4px; }
+.highlight-box strong { color: var(--accent); }
+.script-block { background: #f0fdf4; border: 2px solid #16a34a; padding: 1.2rem 1.5rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; line-height: 1.8; }
+.script-block h4 { color: #16a34a; margin-top: 0; }
+.script-block .script-label { display: inline-block; background: #16a34a; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 0.5rem; }
+.defend { background: #fef2f2; border: 2px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; }
+.defend h4 { margin-top: 0; color: var(--accent); }
+.diagram { background: white; padding: 1.2rem; border: 1px solid var(--border); border-radius: 6px; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+#toc-sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; overflow-y: auto; background: #faf8f0; border-right: 1px solid var(--border); padding: 1.5rem 1rem; font-family: var(--sans); font-size: 0.85em; z-index: 100; transition: transform 0.3s; }
+#toc-sidebar h3 { font-size: 0.95em; color: var(--accent); margin: 0 0 0.8rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+#toc-sidebar ul { list-style: none; padding: 0; margin: 0; }
+#toc-sidebar li { margin: 0.15rem 0; }
+#toc-sidebar a { color: var(--text-muted); text-decoration: none; display: block; padding: 0.2rem 0.5rem; border-radius: 3px; line-height: 1.4; transition: all 0.15s; border-left: 3px solid transparent; }
+#toc-sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+#toc-sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-left-color: var(--accent); }
+#toc-sidebar .toc-h2 { padding-left: 0.5rem; }
+#toc-sidebar .toc-h3 { padding-left: 1.2rem; font-size: 0.9em; color: #888; }
+#toc-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.9em; }
+@media (max-width: 1100px) {
+  #toc-sidebar { transform: translateX(-100%); }
+  #toc-sidebar.open { transform: translateX(0); }
+  #toc-toggle { display: block; }
+  body { margin-left: 0 !important; max-width: none !important; }
+}
+</style>
+</head>
+<body>
+
+<h1>I12 — 面试高频基础 — 概念辨析与产品思维</h1>
+
+<div class="lesson-meta">
+  <span><strong>定位</strong> 灵犀互娱面试复盘 + 基础概念补课</span>
+  <span><strong>覆盖题数</strong> 8 题</span>
+  <span><strong>难度</strong> ★★★☆☆</span>
+  <span><strong>时长</strong> ~45 分钟</span>
+</div>
+
+<h2>一、课程概述</h2>
+
+<p>本课来自灵犀互娱（阿里游戏）面试的复盘。这场面试暴露了几个不同维度的短板：有些是<strong>基础知识盲区</strong>（Token 换算、HPA vs VPA），有些是<strong>概念表述不清</strong>（Sidecar 模式），有些是<strong>代码细节说不出来</strong>（重试实现），还有一个是<strong>审题失误</strong>——面试官两次强调"从玩家角度"，结果答成了开发者视角。</p>
+
+<p>这些问题背后有一个共同模式：<strong>学了系统但没学基础，做了功能但没想用户</strong>。对实习生来说，面试官最怕的不是你没做过某个技术，而是你说了一堆专业术语但经不住一个"那具体怎么实现的"或"换个角度呢"的追问。</p>
+
+<table>
+<tr><th>题目方向</th><th>考察维度</th><th>面试表现</th><th>本课目标</th></tr>
+<tr><td>Token 换算</td><td>LLM 基础常识</td><td>完全答不上</td><td>记住换算关系 + 理解 tokenizer 原理</td></tr>
+<tr><td>HPA vs VPA</td><td>K8s 弹性伸缩</td><td>不知道区别</td><td>掌握两种扩缩容 + DM 自定义方案</td></tr>
+<tr><td>Sidecar 模式</td><td>架构模式辨析</td><td>解释混乱</td><td>区分 K8s 标准含义 vs DM 内部命名</td></tr>
+<tr><td>重试代码实现</td><td>工程细节</td><td>说不出代码级细节</td><td>能画出重试 + fallback 的完整流程</td></tr>
+<tr><td>游戏 Agent</td><td>产品思维</td><td>答成开发者视角</td><td>练习"从用户痛点出发"的思维方式</td></tr>
+<tr><td>Harness 框架</td><td>Agent 架构理解</td><td>答得好</td><td>打磨表达，形成标准版本</td></tr>
+<tr><td>两段实习对比</td><td>自我认知</td><td>正常发挥</td><td>结构化对比，突出成长弧线</td></tr>
+<tr><td>产品思维方法论</td><td>综合能力</td><td>（延伸题）</td><td>掌握"用户视角"答题框架</td></tr>
+</table>
+
+<h2>二、核心知识精讲</h2>
+
+<h3>2.1 Token 与中文字符的换算</h3>
+
+<p>Token 是大语言模型处理文本的最小单位。模型不直接处理"字"或"词"，而是将输入文本切分成 token 序列，再将每个 token 映射为一个整数 ID 送入模型。不同模型使用不同的 tokenizer，切分方式和词表大小都不同。</p>
+
+<h4>核心换算关系</h4>
+
+<table>
+<tr><th>文本类型</th><th>换算比例</th><th>说明</th></tr>
+<tr><td>中文</td><td>1 个汉字 ≈ 1.5 - 2 个 token</td><td>常用字偏低，生僻字偏高</td></tr>
+<tr><td>反过来</td><td>1 个 token ≈ 0.5 - 0.7 个汉字</td><td>用于估算输出长度</td></tr>
+<tr><td>英文</td><td>1 个单词 ≈ 1 - 1.5 个 token</td><td>常见单词通常 1 个 token，长单词会被拆分</td></tr>
+<tr><td>代码</td><td>变化大</td><td>变量名、运算符、缩进都会消耗 token</td></tr>
+</table>
+
+<h4>为什么中文消耗更多 token</h4>
+
+<p>这和 tokenizer 的训练数据分布有关。以 OpenAI 的 <code>tiktoken cl100k_base</code>（GPT-4 使用的 tokenizer）为例，它基于 BPE（Byte Pair Encoding）算法在大规模文本上训练词表。因为训练数据中英文占比更高，英文的常见子词组合被充分合并成较长的 token，而中文每个字的 UTF-8 编码本身就是 3 个字节，加上在训练数据中出现频率相对较低，很多汉字无法被合并成更长的 token，所以平均下来每个汉字需要更多 token 来表示。</p>
+
+<h4>主流 Tokenizer</h4>
+
+<table>
+<tr><th>Tokenizer</th><th>使用模型</th><th>算法</th><th>词表大小</th></tr>
+<tr><td>tiktoken (cl100k_base)</td><td>GPT-4, GPT-3.5</td><td>BPE</td><td>~100K</td></tr>
+<tr><td>tiktoken (o200k_base)</td><td>GPT-4o</td><td>BPE</td><td>~200K</td></tr>
+<tr><td>SentencePiece</td><td>LLaMA, Gemma</td><td>BPE / Unigram</td><td>32K - 128K</td></tr>
+<tr><td>Anthropic tokenizer</td><td>Claude</td><td>BPE</td><td>~100K</td></tr>
+</table>
+
+<p>面试中如果被问到，先说换算比例，再解释"为什么"（BPE 训练数据分布），最后补一句"实际使用中可以用 <code>tiktoken</code> 库精确计算"。三层递进，从记忆到理解到实践。</p>
+
+<h3>2.2 K8s HPA vs VPA 与 DM 的自定义扩缩容</h3>
+
+<p>Kubernetes 提供两种原生的自动扩缩容机制，分别解决不同维度的资源弹性问题。</p>
+
+<h4>HPA（Horizontal Pod Autoscaler）— 水平扩缩</h4>
+
+<p><strong>做什么</strong>：根据指标（CPU 利用率、内存使用率、自定义 metrics）自动调整 Pod 副本数。比如 CPU 利用率超过 70% 就加 Pod，低于 30% 就减 Pod。</p>
+
+<p><strong>适用场景</strong>：无状态服务（Web 服务器、API 网关），流量增大时多起几个 Pod 分担压力。</p>
+
+<h4>VPA（Vertical Pod Autoscaler）— 垂直扩缩</h4>
+
+<p><strong>做什么</strong>：自动调整单个 Pod 的 <code>resources.requests</code> 和 <code>resources.limits</code>（CPU、内存的申请值和上限值），让每个 Pod 获得更合适的资源配额。</p>
+
+<p><strong>适用场景</strong>：有状态服务或不适合水平扩展的场景（数据库、单实例任务处理器），通过给单个 Pod 更多资源来提升处理能力。</p>
+
+<p><strong>局限</strong>：调整 resource 通常需要重启 Pod（K8s 1.27+ 才支持 In-Place Resource Resize），对延迟敏感的服务有影响。</p>
+
+<div class="diagram">
+<pre class="mermaid">
+graph LR
+    subgraph HPA["HPA — 水平扩缩"]
+        direction TB
+        P1["Pod 1"]
+        P2["Pod 2"]
+        P3["Pod 3 (新增)"]
+    end
+    subgraph VPA["VPA — 垂直扩缩"]
+        direction TB
+        V1["Pod 1<br/>CPU: 100m → 500m<br/>Mem: 256Mi → 1Gi"]
+    end
+    M["Metrics Server"] --> HPA
+    M --> VPA
+</pre>
+</div>
+
+<h4>DM 为什么不直接用 HPA</h4>
+
+<p>DreamMaker 的 GPU Worker 执行的是 AI 推理/生成任务（文生图、图生视频等），这类任务的特点是：</p>
+
+<ul>
+<li><strong>CPU/内存指标与负载不相关</strong>：GPU Worker 的瓶颈在 GPU 显存和算力，CPU 利用率可能始终很低，用 CPU 指标触发 HPA 完全没有意义。</li>
+<li><strong>任务通过队列分发</strong>：负载的真实信号是队列深度（等待执行的任务数），而不是 Pod 本身的资源利用率。</li>
+<li><strong>GPU 实例启动成本高</strong>：GPU 节点价格贵、启动慢，需要更精细的扩缩策略（不能像 CPU Pod 那样随意增减）。</li>
+</ul>
+
+<p>因此 DM 采用<strong>自定义 Autoscaler</strong>：监控任务队列深度，当排队任务超过阈值时扩容 GPU Worker Pod，空闲时缩容。CPU 类 Worker（如调供应商 API 的任务）则仍然使用标准 HPA。</p>
+
+<table>
+<tr><th>Worker 类型</th><th>扩缩策略</th><th>监控指标</th><th>原因</th></tr>
+<tr><td>CPU Worker</td><td>标准 HPA</td><td>CPU/内存利用率</td><td>负载与 CPU 正相关</td></tr>
+<tr><td>GPU Worker</td><td>自定义 Autoscaler</td><td>任务队列深度</td><td>GPU 负载与 CPU 指标无关</td></tr>
+</table>
+
+<h3>2.3 Sidecar 模式 — 标准定义 vs DM 中的命名</h3>
+
+<p>这是一个容易混淆的点，因为 DM 内部的 <code>worker-sidecar</code> 组件名字里带了"sidecar"，但它<strong>并不是</strong> K8s 意义上的 Sidecar 容器。面试时必须先把标准定义讲清楚，再解释 DM 的命名。</p>
+
+<h4>K8s 标准 Sidecar 模式</h4>
+
+<p>在 Kubernetes 中，Sidecar 指的是<strong>在同一个 Pod 内与主容器（main container）并行运行的辅助容器</strong>，它们共享网络命名空间（localhost 互通）和存储卷。Sidecar 不承担核心业务逻辑，而是提供横切关注点（cross-cutting concerns）的能力。</p>
+
+<p>典型用途：</p>
+<ul>
+<li><strong>日志收集</strong>：Filebeat/Fluentd sidecar 读取主容器写到共享 volume 的日志文件，转发到 ELK。</li>
+<li><strong>服务网格代理</strong>：Istio 的 Envoy sidecar 拦截主容器的所有出入流量，实现 mTLS、限流、熔断。</li>
+<li><strong>配置热加载</strong>：一个 sidecar 轮询配置中心，把最新配置写入共享 volume，主容器 watch 文件变化自动 reload。</li>
+</ul>
+
+<h4>DM 中的 worker-sidecar</h4>
+
+<p>DM 的 <code>worker-sidecar</code> 名字虽然带"sidecar"，但它的角色是<strong>任务执行框架本身</strong>——它是一个独立的 Go 服务，负责：</p>
+
+<ol>
+<li>从 worker-scheduler 接收任务分配</li>
+<li>调用外部 AI 供应商（通过 Gateway 或直连）执行生成任务</li>
+<li>管理重试逻辑和 fallback 链路</li>
+<li>向 worker-scheduler 上报任务状态和结果</li>
+</ol>
+
+<p>它是 Worker Pod 中的<strong>主容器</strong>，不是辅助容器。之所以叫"sidecar"，可能是早期命名时相对于实际执行 AI 推理的 GPU 进程来说，Go 服务是一个"伴侧"角色——但从 K8s 架构的角度看，这个命名是不严谨的。</p>
+
+<div class="highlight-box">
+<strong>面试策略</strong>：被问到"Sidecar 模式"时，先讲 K8s 标准定义（辅助容器、共享 Pod、横切关注点），举 1-2 个经典例子（Envoy、日志收集），然后<strong>主动说明</strong> DM 中 worker-sidecar 的命名与标准定义的区别，展示你不是死记概念而是真正理解了。
+</div>
+
+<h3>2.4 重试机制的代码级实现</h3>
+
+<p>面试官问"重试怎么实现的"时，不能只停在"指数退避重试"这个概念上。要能说出：在哪个层、什么代码结构、怎么判断可重试、退避参数是什么、重试耗尽后怎么办。</p>
+
+<h4>重试逻辑的位置</h4>
+
+<p>重试逻辑在 <code>worker-sidecar</code> 层，具体是 <code>api/external/aigw/openai.go</code> 中的 <code>executeWithRetry()</code> 函数。</p>
+
+<h4>代码结构</h4>
+
+<pre><code>// 伪代码，展示核心逻辑
+func executeWithRetry(ctx context.Context, req Request) (Response, error) {
+    maxRetries := 3
+    baseDelay := 1 * time.Second
+
+    for attempt := 0; attempt &lt; maxRetries; attempt++ {
+        resp, err := callProvider(ctx, req)
+
+        if err == nil {
+            return resp, nil  // 成功，直接返回
+        }
+
+        if !isRetryable(err) {
+            return nil, err   // 不可重试错误，立即失败
+        }
+
+        if attempt &lt; maxRetries - 1 {
+            // 指数退避：1s → 2s → 4s
+            delay := baseDelay * time.Duration(1&lt;&lt;uint(attempt))
+            time.Sleep(delay)
+        }
+    }
+    return nil, fmt.Errorf("retries exhausted after %d attempts", maxRetries)
+}</code></pre>
+
+<h4>关键细节</h4>
+
+<ul>
+<li><strong>同步 for 循环</strong>：重试在同一个 goroutine 内完成，不会重新入队、不会换 Worker。</li>
+<li><strong>可重试错误判断</strong>：网络超时、连接拒绝、TCP 读写错误——这些是暂时性故障，等一下可能恢复。注意 HTTP 429 限流不是在 <code>executeWithRetry</code> 中处理的，而是由单独的 queue-retry 机制用更长的退避策略（3s→60s，最长可达 12 小时）来处理。</li>
+<li><strong>不可重试错误</strong>：HTTP 400（参数错误）、401（认证失败）、403（权限不足）、404（接口不存在）——这些是确定性错误，重试无意义。</li>
+<li><strong>指数退避</strong>：<code>1s → 2s → 4s</code>，避免在供应商限流时持续打满请求。</li>
+</ul>
+
+<h4>重试耗尽后的 Fallback</h4>
+
+<p>当内部重试全部失败后，不是直接返回错误，而是进入 <strong>fallback chain</strong>（在 <code>worker-sidecar/pkg/fallback/executor.go</code>）：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart LR
+    A["请求到达"] --> B["主供应商<br/>3次指数退避重试"]
+    B -->|全部失败 且 可重试| C["Fallback 供应商 1<br/>3次指数退避重试"]
+    B -->|成功| Z["返回结果"]
+    B -->|不可重试错误| X["立即失败"]
+    C -->|全部失败| D["Fallback 供应商 2<br/>..."]
+    C -->|成功| Z
+    D -->|链路耗尽| X
+    D -->|成功| Z
+</pre>
+</div>
+
+<p>Fallback 也是<strong>同步的</strong>，在同一个请求上下文中完成，不重新入队。每个 fallback 供应商各自有独立的重试逻辑。整个 retry + fallback 链路对调用方透明——调用方只知道"成功了"或"最终失败了"，不知道中间切了几个供应商。</p>
+
+<h3>2.5 产品思维：从用户视角出发</h3>
+
+<p>面试官问"游戏 Agent"时特意强调"从玩家角度"，这不是在考 AI 技术实现，而是在考<strong>产品思维</strong>——你能不能站在用户的位置想问题。这个能力在游戏公司面试中尤其重要，因为游戏行业的核心是"玩家体验"。</p>
+
+<h4>"从用户角度"答题的通用框架</h4>
+
+<ol>
+<li><strong>锁定用户是谁</strong>：玩家、开发者、运营、美术师？不同角色的痛点完全不同。</li>
+<li><strong>列举痛点场景</strong>：这个用户在使用过程中最难受的 3-5 个场景是什么？</li>
+<li><strong>每个痛点对应一个 Agent 方案</strong>：Agent 不是技术 demo，是解决特定痛点的产品功能。</li>
+<li><strong>说清楚体验提升</strong>：用了 Agent 之后，用户的操作流程哪里变短了、哪里变爽了。</li>
+</ol>
+
+<h4>错误示范 vs 正确示范</h4>
+
+<table>
+<tr><th></th><th>错误（开发者视角）</th><th>正确（玩家视角）</th></tr>
+<tr><td>思路起点</td><td>"NPC 可以用 LLM 驱动"</td><td>"我打 Boss 卡了两小时，烦死了"</td></tr>
+<tr><td>提出方案</td><td>"做用户留存分析 Agent"</td><td>"做一个不剧透的攻略 Copilot"</td></tr>
+<tr><td>衡量标准</td><td>"DAU 提升 5%"</td><td>"玩家不用退出游戏去翻 Wiki 了"</td></tr>
+</table>
+
+<p>前者是正确的技术思路，但面试官已经明确说了"从玩家角度"，答成开发者视角说明<strong>没有审题</strong>。面试中审题比答题重要——面试官的提示（"地图太大，要一边开 wiki"）就是在引导你往玩家痛点走。</p>
+
+<h2>三、面试易错点</h2>
+
+<div class="highlight-box">
+<strong>易错点 1：Token 换算只记数字不懂原理</strong><br/>
+面试官问"1 个中文字对应多少 token"时，只说"大约 2 个"是及格线。加分项是解释为什么（BPE 算法 + 训练数据英文为主 + UTF-8 编码），以及不同 tokenizer 的换算比例略有不同。如果能补一句"实际开发中我会用 tiktoken 库精确计算来做 prompt 的 token 预算管理"，就从背知识变成了有实践经验。
+</div>
+
+<div class="highlight-box">
+<strong>易错点 2：HPA 和 VPA 搞混方向</strong><br/>
+Horizontal = 横向 = 加减 Pod 数量；Vertical = 纵向 = 加减单 Pod 资源。最容易犯的错是把"VPA"说成"给集群加节点"——那不是 VPA，那是 Cluster Autoscaler（CA），是第三种扩缩容机制。记忆口诀：<strong>H = 数量变，V = 配额变，C = 节点变</strong>。
+</div>
+
+<div class="highlight-box">
+<strong>易错点 3：把 DM 的 worker-sidecar 当成 K8s Sidecar 容器讲</strong><br/>
+这两个完全不是一回事。K8s Sidecar 是辅助容器（如 Envoy 代理），DM 的 worker-sidecar 是主执行框架。面试时如果把它俩混为一谈，面试官会认为你对 K8s 架构模式的理解有问题。正确做法：先讲标准 Sidecar，再主动说明 DM 的命名差异。
+</div>
+
+<div class="highlight-box">
+<strong>易错点 4：重试只说概念不说代码</strong><br/>
+"我们用了指数退避重试"是概念层面的正确回答，但面试官追问"具体怎么实现的"时，你需要说出：同步 for 循环、可重试错误判断逻辑（网络超时/连接拒绝/网关错误 vs 400/401/404）、退避参数（1s/2s/4s）、重试耗尽后进入 fallback chain。HTTP 429 由单独的 queue-retry 机制处理，不在 <code>executeWithRetry</code> 里。如果能说出代码在 <code>executeWithRetry()</code> 函数里，用的是 <code>time.Sleep</code> + 倍增计算延迟，说明你真的读过代码。
+</div>
+
+<div class="highlight-box">
+<strong>易错点 5：审题失误——面试官说了两次"从玩家角度"你还在说开发者视角</strong><br/>
+这不是知识问题，是沟通问题。面试官给提示（"地图太大，要一边开 wiki"）时，你应该顺着这个场景展开，而不是继续按自己准备的答案讲。修正方法：回答前先复述面试官的限定条件（"好的，从玩家的角度来看..."），强制自己进入正确的思路。
+</div>
+
+<h2>四、满分逐字稿</h2>
+
+<h3>Q1：Token 和中文字符是什么关系？1 个中文字大约对应多少 token？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p>在大语言模型里，Token 是模型处理文本的最小单位，模型不直接看"字"或"词"，而是先用 Tokenizer 把输入文本切分成 token 序列。</p>
+<p>对于中文来说，<strong>1 个汉字大约对应 1.5 到 2 个 token</strong>，反过来说 1 个 token 大约能表示 0.5 到 0.7 个汉字。英文要好一些，常见英文单词通常 1 个单词就是 1 个 token，长一点的可能 1.5 个。</p>
+<p>为什么中文需要更多 token 呢？这跟 Tokenizer 的训练方式有关。以 GPT-4 使用的 tiktoken cl100k_base 为例，它是基于 BPE（Byte Pair Encoding）算法在大规模语料上训练出来的词表。因为训练语料中英文占比远高于中文，英文的常见子词组合会被充分合并成较长的 token，而中文每个字的 UTF-8 编码本身就是 3 个字节，出现频率相对低，没办法被很好地合并，所以平均每个汉字需要更多 token。</p>
+<p>不同模型的 Tokenizer 不太一样：OpenAI 系列用 tiktoken，LLaMA 系列用 SentencePiece，但换算比例大致在这个范围内。如果做了中文优化、扩充了中文词表（像 ChatGLM 那样），比例会好一些。在实际开发中如果需要精确计算，可以直接调 <code>tiktoken</code> 库来数，做 prompt 的 token 预算管理时经常要用到。</p>
+</div>
+
+<h3>Q2：K8s 的 HPA 和 VPA 有什么区别？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>HPA 是 Horizontal Pod Autoscaler，水平扩缩容，调的是 Pod 的副本数量</strong>。比如设一个规则：当 Deployment 里所有 Pod 的平均 CPU 利用率超过 70% 时，就自动增加 Pod 副本数；低于 30% 时缩减。它适合无状态服务，比如 Web API 服务器，流量大的时候多起几个 Pod 分担请求。</p>
+<p><strong>VPA 是 Vertical Pod Autoscaler，垂直扩缩容，调的是单个 Pod 的 resource requests 和 limits</strong>。比如一个 Pod 原来申请了 256Mi 内存，VPA 发现它实际经常用到 512Mi，就自动把 requests 调高。它适合不方便水平扩展的服务，比如有状态的数据库实例。但 VPA 的局限是调整 resource 通常需要重启 Pod，虽然 K8s 1.27 以后开始支持 In-Place Resource Resize，但还不算完全成熟。</p>
+<p>简单记就是：<strong>H 是调数量，V 是调配额</strong>。另外还有一个 Cluster Autoscaler（CA）是调节点数量的，三者解决的维度不同。</p>
+<p>在我实习的 DreamMaker 项目中，CPU 类型的 Worker 用的是标准 HPA，但 GPU Worker 没法用 HPA——因为 GPU 推理任务的瓶颈在 GPU 显存和算力，CPU 利用率可能一直很低，拿 CPU 指标来触发扩缩完全不准。所以我们用了<strong>自定义的 Autoscaler</strong>，监控的是 Redis 任务队列的深度：排队的任务数超过阈值就扩容 GPU Worker Pod，空闲就缩容。这算是一个根据业务特点选择扩缩策略的例子。</p>
+</div>
+
+<h3>Q3：什么是 Sidecar 模式？你们项目里的 worker-sidecar 是 Sidecar 吗？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>Sidecar 模式在 Kubernetes 里指的是在同一个 Pod 内，跟主容器并行运行的辅助容器</strong>。它们共享网络命名空间——可以通过 localhost 互通，也共享存储卷。Sidecar 不承担核心业务逻辑，而是提供一些横切关注点的能力。</p>
+<p>最典型的例子是 Istio 的 Envoy Sidecar：每个业务 Pod 里都注入一个 Envoy 代理容器，拦截所有进出流量，实现 mTLS 加密、限流、熔断、链路追踪，业务代码完全不用改。另一个常见用途是日志收集——跑一个 Filebeat sidecar，读取主容器写到共享 volume 里的日志文件，转发到 ELK 集群。</p>
+<p>Sidecar 模式的核心优势是<strong>关注点分离</strong>：主容器只关心业务逻辑，通用能力（日志、监控、安全、流量管理）由 sidecar 负责，而且 sidecar 可以独立升级，不影响业务容器。</p>
+<p>然后说到我们项目中的 <code>worker-sidecar</code>——说实话，<strong>它在 K8s 的定义下并不是一个 Sidecar 容器</strong>。它其实是 Worker Pod 中的主容器，是一个 Go 编写的任务执行框架：从 worker-scheduler 接收任务、调用外部 AI 供应商执行生成、管理重试和 fallback 链路、上报状态和结果。它承担的是核心业务逻辑，不是辅助功能。</p>
+<p>之所以叫"sidecar"这个名字，我的理解是早期命名的时候，相对于实际执行 AI 推理的 GPU 进程来说，这个 Go 服务被看作是一个"伴侧"的管理角色——但从 K8s 架构模式的角度看，这个命名确实是不严谨的。面试里如果被问到，我觉得主动指出这个差异反而加分，说明不是在死记概念。</p>
+</div>
+
+<h3>Q4：你说的重试机制，代码层面具体怎么实现的？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p>重试逻辑写在 worker-sidecar 层，具体是 <code>api/external/aigw/openai.go</code> 里的 <code>executeWithRetry()</code> 函数。</p>
+<p><strong>代码结构是一个同步的 for 循环</strong>。进入函数后，最多循环 3 次，每次调用供应商接口：如果成功就直接返回结果；如果失败，先判断错误是否可重试——网络超时、连接拒绝、TCP 读写错误、网关错误（502+），这些是暂时性故障，归类为可重试错误；而 400 参数错误、401 认证失败、403 权限不足、404 接口不存在，这些是确定性错误，重试一百次参数还是错的，所以立即返回失败。值得注意的是，HTTP 429 限流不是在这个函数里处理的——它有单独的 queue-retry 机制，用更长的退避策略（初始 3 秒，最大 60 秒，可等待数小时）来应对限流场景。</p>
+<p>如果是可重试错误且还有重试次数，就 <code>time.Sleep</code> 一段时间再重试。<strong>延迟用指数退避</strong>：第一次等 1 秒，第二次等 2 秒，第三次等 4 秒，用位移运算 <code>1 &lt;&lt; attempt</code> 来计算。这样做是为了在供应商限流的时候不要持续打满请求，给它喘息恢复的时间。</p>
+<p>整个过程是<strong>同步的，在同一个 goroutine 内完成</strong>，不会把任务重新放回队列、不会换一个 Worker 来执行。这一点很重要——重试是 Worker 内部的事情，对 worker-scheduler 来说任务状态还是"执行中"，scheduler 不感知重试过程。</p>
+<p>如果 3 次重试全部耗尽，不是直接返回错误，而是进入 <strong>fallback chain</strong>。这个逻辑在 <code>worker-sidecar/pkg/fallback/executor.go</code> 里。系统会读取这个模型在 MongoDB 中配置的 fallback 规则，如果有备用供应商，就切到下一个供应商，备用供应商也有自己独立的 3 次重试。如果备用也失败，继续往下切，直到 fallback 链路耗尽才最终返回失败。</p>
+<p>整个 retry + fallback 链路也是同步的、在同一个请求上下文中完成的，对上层调用方透明——调用方只看到最终的成功或失败，不知道中间切了几个供应商。这个设计是<strong>无状态的</strong>：没有维护熔断器、不记录"哪个供应商当前不可用"，每个新请求都从主供应商开始。代价是在主供应商持续故障期间每个请求都要先打一次主供应商等超时，但对于 AI 生成任务（本身就要 10-30 秒）来说，多等几秒重试的感知并不强。</p>
+</div>
+
+<h3>Q5：两段实习经历在技术上有什么区别和成长？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p>我有两段 AI 相关的实习，一段在科大讯飞，一段在网易互娱，技术栈和工作内容差异挺大的，但形成了一个比较清晰的<strong>能力成长弧线</strong>。</p>
+<p><strong>讯飞那段主要是数据处理和模型训练</strong>。工作内容是做大模型微调的全流程：数据清洗和预处理（写 Python 脚本，用多线程加速处理几十万条语料）、用 MS-Swift 和 LLaMA-Factory 这些开源框架跑 GPU 训练（SFT 监督微调）、然后用 FastAPI 封装推理服务。技术上偏"单机 + Python"：多线程、GPU 训练参数调优、简单的 API 服务。这段经历让我对大模型的训练和推理链路有了基础认知。</p>
+<p><strong>网易这段是真正进入分布式系统和工程化</strong>。DreamMaker 是一个服务网易内部几百个美术师的 AI 平台，技术栈是 Python 写 Agent 客户端 + Go 写后端的分布式调度系统。我从一个只会写 Python 脚本的状态，开始接触 Go 语言、微服务架构、任务调度、K8s 部署、多供应商容错降级这些真正的后端工程问题。</p>
+<p>如果要概括成长路径的话：<strong>讯飞让我理解了"模型"，网易让我理解了"系统"</strong>。讯飞教会我一个 AI 模型是怎么训练出来、怎么跑推理的；网易教会我当这个模型要服务几百人同时使用时，围绕它需要构建什么样的调度、容错、伸缩和监控体系。从"模型能跑"到"系统稳定运行"，中间的工程复杂度差了一个数量级，这是我在网易最大的收获。</p>
+<p>技术栈上也从纯 Python 扩展到了 Python + Go 双语言：Python 写 Agent 侧的工具调用、上下文管理和流式交互，Go 写后端的任务分发、Worker 调度和供应商适配。两种语言在各自的场景下各有优势，这段跨语言的经历对我理解"用合适的工具解决合适的问题"帮助很大。</p>
+</div>
+
+<h3>Q6：如果让你给一款开放世界游戏设计 AI Agent，从玩家角度你会怎么做？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p>好的，我从玩家的角度来想这个问题。我自己玩开放世界和 Roguelike 类型的游戏比较多，像<strong>空洞骑士</strong>和<strong>杀戮尖塔</strong>，所以我就从这两个游戏的实际痛点出发来说。</p>
+<p><strong>第一个痛点是"迷路 + 不知道去哪"</strong>。空洞骑士的地图非常大，而且很多区域需要解锁特定能力才能进入，玩家经常会出现"我知道我要去某个地方，但不记得怎么走了"或者"我刚拿到二段跳，之前哪些路被挡住了来着"的情况。现在玩家的做法是退出游戏去查 Wiki 地图或者看攻略视频。针对这个痛点，可以做一个<strong>地图导航 Agent</strong>：它记录玩家的探索足迹和已获能力，当玩家长时间在同一区域转圈时主动提示"你之前在遗忘十字路的东边有一条路需要二段跳，现在可以去了"。关键是不剧透——不告诉你那边有什么，只告诉你那条路现在能走了。</p>
+<p><strong>第二个痛点是"打 Boss 卡关"</strong>。空洞骑士的 Boss 战很难，很多玩家会卡在某个 Boss 上几个小时。现在的做法要么是硬磕，要么退出去看攻略视频学招式。可以做一个<strong>战斗策略 Copilot</strong>：分析玩家最近几次死亡的模式（比如总是被某个招式打中），给出针对性建议——"这个 Boss 的第三段攻击有一个向下劈砍，你可以往左闪而不是往右跳"。或者根据玩家当前装备的护符组合，建议更适合这个 Boss 的搭配。</p>
+<p><strong>第三个痛点是"信息过载"</strong>。杀戮尖塔是一个卡牌 Roguelike，每一层选牌、选遗物、选路线都需要决策，高级玩家能记住几百张牌的 Synergy，但新手完全记不住。现在新手的做法是一边打一边开 Wiki 查"这张牌到底好不好"。可以做一个<strong>构筑顾问 Agent</strong>：基于你当前牌组的构筑方向（比如你已经拿了很多力量牌），在选牌时提示"这张牌跟你的力量流有 Synergy"或者"你缺 AOE，这张可以补"。它不替你做决定，但帮你快速过滤信息。</p>
+<p><strong>第四个痛点是"查资料要退出游戏"</strong>。这是很多游戏玩家的共同痛点——遇到不懂的机制就要 Alt+Tab 出去搜索。可以做一个<strong>游戏内 Wiki RAG Agent</strong>：把游戏 Wiki 的内容做成向量检索，玩家在游戏内直接输入问题，Agent 返回相关的知识片段。比如在空洞骑士里问"白色宫殿怎么进"，直接返回解锁条件和位置，不用切出去查。</p>
+<p>总结一下，这四个 Agent 的共同设计原则是：<strong>减少玩家被迫中断游戏体验的次数</strong>。不管是查地图、看攻略还是翻 Wiki，每一次退出游戏都是一次"心流中断"。好的游戏 Agent 应该让这些信息在需要的时候自然出现在游戏内，而不是替玩家做决定。</p>
+</div>
+
+<h3>Q7：你说到 Agent 框架中的 Harness，它解决了什么问题？为什么不能自己写？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p>Harness 框架主要解决三个自己从头写会非常痛苦的问题。</p>
+<p><strong>第一个是动态上下文演进</strong>。Agent 不是发一条 prompt 拿一个回答就结束了，它是一个持续运行的过程——用户说一句话、Agent 调一个工具、工具返回结果、再根据结果决定下一步。在这个过程中，上下文是不断增长和变化的。简单的做法是把所有历史消息全塞进 prompt，但这样 token 会爆。Harness 提供了上下文管理的基础设施：哪些信息该保留、哪些可以压缩、什么时候做 summarization、工具调用的结果怎么结构化地注入回上下文。这些不是一次性逻辑，是每一轮对话都要做的，没有框架支撑的话每个 Agent 都要自己重复实现一遍。</p>
+<p><strong>第二个是有状态的长时间运行任务</strong>。比如 DreamMaker 里用户发起一个图生视频的任务，从提交到完成可能要几分钟甚至更长。这期间 Agent 需要维护一个状态机：任务提交 → 等待调度 → 执行中 → 结果回传 → 后处理。Harness 提供了状态机的抽象和 artifact 管理——中间产物（比如生成的初稿、进度信息）可以被存储和引用，任务如果中断了也能基于状态恢复而不是从头来。如果自己写，光是状态持久化和恢复就是一个不小的工程量。</p>
+<p><strong>第三个是工具执行的边界控制</strong>。Agent 需要调用外部工具（API 调用、文件操作、代码执行等），但不能让它无限制地调——需要权限控制（哪些工具可以调、哪些参数范围内可以自主决定）和沙箱隔离（代码执行不能影响宿主环境）。Harness 提供了这些执行边界的声明式配置和运行时守卫，不用在业务代码里到处写权限检查。</p>
+<p>那为什么不能完全自己写呢？其实不是"不能"，而是<strong>框架提供了可复用的基础原语</strong>——状态机、核心循环（observe → think → act）、工具注册和调度、上下文窗口管理——这些是所有 Agent 都需要的公共基础设施。自己写的话，每做一个新 Agent 都要重复实现这些。但反过来说，框架解决的是通用问题，<strong>业务特定的上下文管理策略还是需要自己实现</strong>。比如 DreamMaker 的 Agent 需要根据当前画布状态、用户历史偏好、已有生成结果来动态构建 prompt，这些跟具体业务深度耦合的逻辑是框架管不了的，需要在框架的扩展点上自己写。</p>
+<p>所以总结就是：<strong>框架管通用、业务管特定</strong>。Harness 让你不用重复造状态机和执行引擎的轮子，你把精力花在"对于我的业务场景，上下文应该怎么管理、工具应该怎么编排"上。</p>
+</div>
+
+<h3>Q8：你怎么培养自己从用户角度思考问题的能力？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p>说实话，这次面试被问到游戏 Agent 的时候，我第一反应确实是从开发者角度去想——NPC 智能化、用户留存分析之类的。被面试官纠正之后我意识到，<strong>做 AI 工程的人特别容易掉进"技术方案先行"的思维惯性</strong>：先想"我能用什么技术"，而不是"用户遇到了什么问题"。</p>
+<p>回顾我在网易的实习经历，DreamMaker 的用户是公司内部的美术师，其实有很多直接接触用户反馈的机会。比如美术师抱怨"生成太慢了"——这个反馈背后的真实痛点不一定是"推理速度慢"，也可能是"我提交了之后不知道要等多久、没有进度反馈、不敢离开页面"。同一个"太慢了"，如果从技术角度理解就是"优化推理性能"，从用户角度理解可能是"加一个进度条和预估时间"。后者的实现成本低得多，但用户体验提升可能更大。</p>
+<p>我觉得培养这种能力有三个具体方法。<strong>第一是回答任何问题之前先确认"谁是用户"</strong>——是玩家、开发者、运营还是美术师？不同角色的痛点完全不同，搞错角色整个回答方向就偏了。<strong>第二是用"痛点场景 → 方案"的顺序思考</strong>，而不是"技术 → 找应用场景"——前者是产品思维，后者是技术 demo 思维。<strong>第三是多当自己产品的用户</strong>——我在网易实习的时候会自己去试 DreamMaker 的各种功能，以美术师的身份走一遍完整流程，很多"用着不爽"的地方用开发者视角是发现不了的。</p>
+<p>这个教训对我来说挺重要的：<strong>技术能力决定你能做什么，但产品思维决定你该做什么</strong>。面试里也是一样——面试官的问题限定了角度，先审题、再答题，比答案本身的技术深度更重要。</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral', securityLevel: 'loose'});</script>
+
+<button id="toc-toggle" onclick="document.getElementById('toc-sidebar').classList.toggle('open')">&#9776; 目录</button>
+<nav id="toc-sidebar">
+  <h3>目录导航</h3>
+  <ul id="toc-list"></ul>
+</nav>
+<script>
+(function(){
+  var hs=Array.from(document.querySelectorAll('h1,h2,h3')).filter(function(h){return !h.closest('#toc-sidebar');});
+  var ul=document.getElementById('toc-list');
+  hs.forEach(function(h,i){
+    if(!h.id)h.id='sec-'+i;
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href='#'+h.id; a.textContent=h.textContent;
+    a.className='toc-'+h.tagName.toLowerCase();
+    a.onclick=function(e){e.preventDefault();document.getElementById(h.id).scrollIntoView({behavior:'smooth'});document.getElementById('toc-sidebar').classList.remove('open');};
+    li.appendChild(a);ul.appendChild(li);
+  });
+  var links=ul.querySelectorAll('a');
+  var ticking=false;
+  window.addEventListener('scroll',function(){
+    if(!ticking){requestAnimationFrame(function(){
+      var cur='';
+      hs.forEach(function(h){if(h.getBoundingClientRect().top<=100)cur=h.id;});
+      links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur);});
+      ticking=false;
+    });ticking=true;}
+  });
+})();
+</script>
+
+</body>
+</html>

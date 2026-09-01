@@ -420,6 +420,24 @@ Horizontal = 横向 = 加减 Pod 数量；Vertical = 纵向 = 加减单 Pod 资�
 <p>这个教训对我来说挺重要的：<strong>技术能力决定你能做什么，但产品思维决定你该做什么</strong>。面试里也是一样——面试官的问题限定了角度，先审题、再答题，比答案本身的技术深度更重要。</p>
 </div>
 
+<h3>Q9：你遇到的最大技术挑战是什么？怎么解决的？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p><strong>我遇到的最大挑战是在 AI Agent 画布项目中实现全链路流式通信。</strong></p>
+<p>背景是这样的：我们的 Monet AI Agent 画布是一个 Electron 桌面应用，架构比较特殊——前端、本地 Agent 服务、云端调度平台分布在三个不同的物理位置。Agent 需要把 LLM 的逐 token 推理、工具调用状态、生成任务进度这些<strong>异构事件</strong>实时推送给前端，同时还要处理 HITL 人机审批（用户确认后 Agent 才能继续执行）。挑战在于：LLM 推理链路需要全链路流式（AIGW → 本地 Agent → 前端），而生成任务链路是 HTTP 轮询拿一次性结果的——两种完全不同时间尺度和协议的数据流，要统一成一条 SSE 连接推给前端。</p>
+<p><strong>我做了三件事来解决。</strong></p>
+<p>第一，<strong>设计了 SSE 事件翻译层</strong>（DeepAgentStreamAdapter）。LangGraph 框架内部的事件（<code>on_chat_model_stream</code>、<code>on_tool_start</code>、<code>on_tool_end</code>）是框架私有格式，前端无法直接消费。我把这些事件统一翻译成前端约定的 Block 协议（<code>block.created</code>、<code>block.delta</code>、<code>block.updated</code>），这样即使未来换掉 LangGraph 换成其他 Agent 框架，只需要重写翻译层，前端协议不用改。</p>
+<p>第二，<strong>用 ContextVar 实现了请求作用域的画布上下文缓存</strong>。Agent 每次 LLM 调用前都需要注入画布概览，但画布数据存在云端，每次读都要 HTTP 请求。我在 <code>/chat</code> 入口拉取一次画布详情写入 ContextVar，后续同一请求内的多次 LLM 调用和工具调用直接从 ContextVar 读取，避免重复网络请求。ContextVar 是 Python 的协程局部变量，天然隔离不同请求，不需要改 LangGraph 框架的函数签名就能在深层调用链中透传数据。</p>
+<p>第三，<strong>实现了 interrupt-resume 机制与 SSE 连接的配合</strong>。HITL 审批时 LangGraph 通过 <code>interrupt()</code> 中断状态机，state 持久化到 SQLite Checkpointer。我用 <code>asyncio.Event</code> 挂起当前协程等待用户决策，SSE 连接保持不断——前端通过另一个 HTTP 请求提交 approve/reject，后端唤醒协程用 <code>Command(resume=decision)</code> 恢复状态机继续执行。整个过程对前端来说是同一条 SSE 流的延续，体验是连贯的。</p>
+<p><strong>最终效果</strong>是：LLM token 流做到了全链路流式（AIGW SSE → 本地 Agent → 前端 SSE），生成任务通过轮询拿结果后也走同一条 SSE 推给前端，HITL 审批不中断 SSE 连接。用户在前端看到的是一个流畅的对话体验——Agent 实时打字、工具调用卡片实时更新、审批弹窗无缝衔接。</p>
+</div>
+
+<div class="highlight-box">
+<strong>回答策略</strong>：面试官问"最大挑战"时，本质是考你的<strong>问题分解能力和技术深度</strong>。回答框架是：<strong>背景（为什么难）→ 挑战点（具体难在哪）→ 我做了什么（拆成 2-3 个具体动作）→ 结果（解决了什么）</strong>。关键是把挑战引到你最熟悉的技术领域，让后续追问都落在你准备好的地方。上面这个回答会自然引出 SSE 协议设计、asyncio 事件循环、ContextVar、LangGraph 状态机、HITL 中断恢复等话题——全是你准备过的知识点。
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <script>mermaid.initialize({startOnLoad: true, theme: 'neutral', securityLevel: 'loose'});</script>
 

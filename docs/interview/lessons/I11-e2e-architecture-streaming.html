@@ -378,7 +378,40 @@ _canvas_text: ContextVar[str | None] = ContextVar("canvas_text", default=None)</
 
 <p>ContextVar 在这里的核心价值：<strong>免传参</strong>（深层代码直接 <code>get()</code>，不用改 LangGraph 框架的函数签名）和<strong>请求内缓存</strong>（入口拉一次画布数据，同一个 <code>/chat</code> 请求内多次 LLM 调用和工具调用复用，避免重复 HTTP）。</p>
 
-<h4>2.3.3 SSE 事件翻译：DeepAgentStreamAdapter</h4>
+<h4>2.3.3 Message / Block 双层数据模型</h4>
+
+<p>Agent 一次回复里可能同时包含文本、思考过程、工具调用、图片、文件、画布节点引用——如果只用一个扁平的 message 字符串来承载，前端解析和渲染会非常痛苦。所以设计了 <strong>Message 和 Block 两层结构</strong>：</p>
+
+<ul>
+  <li><strong>Message</strong>：Agent 一轮回复的容器，拥有 <code>id</code>、<code>role</code>（user/assistant）、<code>status</code> 等元数据，以及一个 <code>blocks</code> 数组。</li>
+  <li><strong>Block</strong>：Message 中的一个内容片段，每个 Block 有独立的 <code>block_id</code> 和 <code>type</code>。</li>
+</ul>
+
+<p>目前支持<strong>六种 Block 类型</strong>：</p>
+
+<table>
+  <tr><th>类型</th><th>含义</th><th>前端渲染</th></tr>
+  <tr><td><code>TextBlock</code>（type=text）</td><td>文本内容</td><td>Markdown 渲染器，支持流式打字效果</td></tr>
+  <tr><td><code>ThinkingBlock</code>（type=thinking）</td><td>Agent 思考过程</td><td>可折叠的思考面板</td></tr>
+  <tr><td><code>ToolUseBlock</code>（type=tool_use）</td><td>工具调用（含参数和结果）</td><td>工具卡片：调用中显示加载态，完成后展示结果。注意：工具结果<strong>内嵌在同一个 block</strong> 的 <code>tool.result</code> 字段里，没有独立的 ToolResultBlock</td></tr>
+  <tr><td><code>ImageBlock</code>（type=image）</td><td>图片</td><td>图片卡片</td></tr>
+  <tr><td><code>FileBlock</code>（type=file）</td><td>文件</td><td>文件下载链接</td></tr>
+  <tr><td><code>NodeBlock</code>（type=node）</td><td>画布节点引用</td><td>节点缩略图卡片</td></tr>
+</table>
+
+<p>每种 Block 的渲染组件是独立的，互不干扰。前端按 <code>type</code> 字段做差异化渲染。</p>
+
+<p><strong>SSE 事件与 Block 生命周期的对应关系</strong>：</p>
+
+<ol>
+  <li><code>block.created</code>：携带 <code>block_id</code> 和 <code>type</code>，前端据此创建一个空的 Block 容器。</li>
+  <li><code>block.delta</code>：携带 <code>block_id</code> 和增量内容（文本 delta 或工具参数 delta），前端追加到对应 Block 里——TextBlock 表现为打字机效果，ToolUseBlock 表现为参数逐步填充。</li>
+  <li><code>block.updated</code>：携带 <code>block_id</code> 和更新后的完整状态——比如 ToolUseBlock 从 <code>status=generating</code> 变为 <code>status=running</code>（开始执行）再变为 <code>status=completed</code>（结果内嵌在 <code>tool.result</code> 中）。</li>
+</ol>
+
+<p>一个 Message 中可能有多个 Block 交替推送——比如先是一段 TextBlock（Agent 说"好的，我来帮你生成"），然后一个 ToolUseBlock（调用 generate_image 工具），工具返回后又是一段 TextBlock（Agent 说"图片已生成"）。整个过程在同一条 SSE 流中交织推送。</p>
+
+<h4>2.3.4 SSE 事件翻译：DeepAgentStreamAdapter</h4>
 
 <p>LangGraph 内部产生的事件（<code>on_chat_model_stream</code>、<code>on_tool_start</code>、<code>on_tool_end</code> 等）是框架私有的，前端无法直接消费。要理解这些事件从何而来，需要先看清 token 从 AIGW 到前端的<strong>完整流式调用链</strong>：</p>
 
@@ -411,7 +444,7 @@ flowchart LR
 
 <p>这层翻译的价值在于<strong>框架解耦</strong>：如果未来换掉 LangGraph（比如换成 AutoGen 或 CrewAI），只需要写一个新的 StreamAdapter 实现事件映射，前端协议不用改（详见 I04）。</p>
 
-<h4>2.3.4 分层上下文感知</h4>
+<h4>2.3.5 分层上下文感知</h4>
 
 <p>Agent 不是一个"纯聊天机器人"——它需要知道画布上现在有什么。上下文注入分三层（详见 I02）：</p>
 
@@ -421,7 +454,7 @@ flowchart LR
   <li><strong>Token 预算管理（三道防线）</strong>：随着对话轮次增加，上下文总量会逼近模型窗口限制（128k）。第一道防线是 token 预检（用 tiktoken 编码器计算即将发送的 message 列表 token 数）；第二道是渐进式裁剪（从最早的历史开始裁，优先裁工具调用结果，保留系统提示词和最近 4 轮）；第三道是 LLM 摘要压缩（把被裁掉的部分用轻量模型压缩成 200-500 token 的摘要拼到保留内容前面）。</li>
 </ol>
 
-<h4>2.3.5 HITL 人机审批</h4>
+<h4>2.3.6 HITL 人机审批</h4>
 
 <p>Agent 调用工具时，需要判断这个操作是否需要用户确认。权限配置分<strong>两层</strong>：</p>
 
@@ -466,7 +499,7 @@ flowchart LR
 
 <p>如果用户 approve → 工具正常执行，结果通过 SSE 推给前端。如果 reject → 工具跳过，Agent 收到拒绝信息后可能换一种方式继续对话。恢复后可能又触发新的 interrupt（比如 Agent 接着又要调另一个写操作），所以外层是 <code>while True</code> 循环，直到 graph 正常完成（无 pending interrupt）才退出。</p>
 
-<h4>2.3.6 任务提交与轮询（连接模块三）</h4>
+<h4>2.3.7 任务提交与轮询（连接模块三）</h4>
 
 <p>当 Agent 决定执行一个 AI 生成任务（比如调用 <code>generate_image</code> 工具），本地服务通过 <code>DmProvider</code> 向云端提交任务：</p>
 
@@ -478,7 +511,7 @@ flowchart LR
 
 <p>注意：这里的轮询对象是<strong>云端 DM Scheduler</strong>（模块三），不是 AIGW。AIGW 只负责 LLM 推理的流式调用，不负责生成任务。</p>
 
-<h4>2.3.7 反向代理：Nginx vs Electron 自定义协议</h4>
+<h4>2.3.8 反向代理：Nginx vs Electron 自定义协议</h4>
 
 <p>前端访问本地 Python 服务和云端 API 的路由方式，在<strong>浏览器版和 Electron 桌面版是不同的</strong>：</p>
 

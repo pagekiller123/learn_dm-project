@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>I13 - 监控与可观测性 — 工程稳定性、业务埋点与用户满意度</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Fira+Code:wght@400&family=EB+Garamond:ital,wght@0,400;0,600;1,400&display=swap');
+:root {
+  --text: #1a1a1a; --text-muted: #555; --bg: #fffdf6; --accent: #b91c1c;
+  --accent-soft: #fef2f2; --code-bg: #f4f1eb; --border: #d4c9a8;
+  --sans: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, sans-serif;
+  --serif: "EB Garamond", "et-book", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  --mono: "Fira Code", "SF Mono", Monaco, monospace;
+}
+* { box-sizing: border-box; }
+html { font-size: 16px; }
+body { font-family: var(--serif); color: var(--text); background: var(--bg); max-width: 1100px; margin: 3rem auto 3rem 280px; padding: 0 1.5rem; line-height: 1.7; }
+h1, h2, h3, h4 { font-family: var(--sans); font-weight: 600; line-height: 1.3; margin-top: 2.5rem; margin-bottom: 0.8rem; }
+h1 { font-size: 2.2rem; border-bottom: 2px solid var(--accent); padding-bottom: 0.5rem; }
+h2 { font-size: 1.6rem; color: var(--accent); }
+h3 { font-size: 1.25rem; }
+h4 { font-size: 1.05rem; color: var(--text-muted); }
+p { margin: 0.8rem 0; }
+code { font-family: var(--mono); background: var(--code-bg); padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }
+pre { background: var(--code-bg); padding: 1rem; border-radius: 6px; overflow-x: auto; border-left: 3px solid var(--accent); font-family: var(--mono); font-size: 0.9em; line-height: 1.5; }
+pre code { background: none; padding: 0; }
+pre.mermaid { border-left: none; background: white; text-align: center; font-family: var(--sans); }
+blockquote { border-left: 3px solid var(--border); margin: 1.2rem 0; padding: 0.5rem 1.2rem; color: var(--text-muted); background: #faf7ed; font-style: italic; }
+table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; font-family: var(--sans); font-size: 0.95em; }
+th, td { border: 1px solid var(--border); padding: 0.6rem 0.9rem; text-align: left; }
+th { background: var(--accent-soft); font-weight: 600; }
+tr:nth-child(even) td { background: #faf7ed; }
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.35rem 0; }
+.lesson-meta { font-family: var(--sans); font-size: 0.85em; color: var(--text-muted); margin-bottom: 1.5rem; padding: 0.8rem 1rem; background: var(--code-bg); border-radius: 6px; display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.highlight-box { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 4px; }
+.highlight-box strong { color: var(--accent); }
+.script-block { background: #f0fdf4; border: 2px solid #16a34a; padding: 1.2rem 1.5rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; line-height: 1.8; }
+.script-block h4 { color: #16a34a; margin-top: 0; }
+.script-block .script-label { display: inline-block; background: #16a34a; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 0.5rem; }
+.defend { background: #fef2f2; border: 2px solid var(--accent); padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; }
+.defend h4 { margin-top: 0; color: var(--accent); }
+.diagram { background: white; padding: 1.2rem; border: 1px solid var(--border); border-radius: 6px; margin: 1.5rem 0; text-align: center; overflow-x: auto; }
+.mentor-box { background: #eff6ff; border: 2px solid #2563eb; padding: 1rem 1.2rem; margin: 1.5rem 0; border-radius: 6px; font-family: var(--sans); font-size: 0.95em; line-height: 1.8; }
+.mentor-box h4 { color: #2563eb; margin-top: 0; }
+.mentor-box .mentor-label { display: inline-block; background: #2563eb; color: white; padding: 2px 10px; border-radius: 4px; font-size: 0.8em; margin-bottom: 0.5rem; }
+#toc-sidebar { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; overflow-y: auto; background: #faf8f0; border-right: 1px solid var(--border); padding: 1.5rem 1rem; font-family: var(--sans); font-size: 0.85em; z-index: 100; transition: transform 0.3s; }
+#toc-sidebar h3 { font-size: 0.95em; color: var(--accent); margin: 0 0 0.8rem 0; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); }
+#toc-sidebar ul { list-style: none; padding: 0; margin: 0; }
+#toc-sidebar li { margin: 0.15rem 0; }
+#toc-sidebar a { color: var(--text-muted); text-decoration: none; display: block; padding: 0.2rem 0.5rem; border-radius: 3px; line-height: 1.4; transition: all 0.15s; border-left: 3px solid transparent; }
+#toc-sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+#toc-sidebar a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; border-left-color: var(--accent); }
+#toc-sidebar .toc-h2 { padding-left: 0.5rem; }
+#toc-sidebar .toc-h3 { padding-left: 1.2rem; font-size: 0.9em; color: #888; }
+#toc-toggle { display: none; position: fixed; top: 1rem; left: 1rem; z-index: 101; background: var(--accent); color: white; border: none; padding: 0.5rem 0.8rem; border-radius: 4px; cursor: pointer; font-family: var(--sans); font-size: 0.9em; }
+@media (max-width: 1100px) {
+  #toc-sidebar { transform: translateX(-100%); }
+  #toc-sidebar.open { transform: translateX(0); }
+  #toc-toggle { display: block; }
+  body { margin-left: 0 !important; max-width: none !important; }
+}
+</style>
+</head>
+<body>
+
+<h1>I13 — 监控与可观测性 — 工程稳定性、业务埋点与用户满意度</h1>
+
+<div class="lesson-meta">
+  <span><strong>定位</strong> 监控体系梳理 + 面试高频题准备</span>
+  <span><strong>覆盖题数</strong> 2 题</span>
+  <span><strong>难度</strong> ★★★☆☆</span>
+  <span><strong>时长</strong> ~60 分钟</span>
+</div>
+
+<h2>一、课程概述</h2>
+
+<p>这节课回答两个面试高频问题：<strong>你处理过线上问题吗？</strong>和<strong>有没有办法主动监控业务层面的用户满意度？</strong></p>
+
+<p>回答这类问题的关键不是堆技术名词，而是<strong>展示你的思维框架</strong>：先理解监控要解决什么问题，再说 DM 实际做了什么，最后指出哪些还没做、为什么没做、如果做会怎么做。特别是第二个问题，很容易答成"应该加个点赞按钮"——这不够，面试官想听的是<strong>你对监控维度的系统性理解</strong>。</p>
+
+<div class="mentor-box">
+<span class="mentor-label">Mentor 视角</span>
+<h4>监控的两个维度与业务优先级</h4>
+<p>监控其实是两种维度：<strong>工程上看稳定性</strong>，监控维度；<strong>产品上看业务数据报表</strong>，包括转换和漏斗，想要什么数据会去做埋点上报。这两种都算蛮常规的思路，最主要是看业务上关心的数据重点和稳定性的重点在哪里。</p>
+<p>如果再往更深一步看，不同业务的侧重点不同。传统 toC 业务，稳定性反而是最基本的东西，由此延伸出稳定性治理、熔断降级、混沌演练等等。而业务上最重要的是数据，一般都会有专门的 BI 团队做数据报表，因为数据结果就是产品的 KPI，所有功能都是服务于这个报表的结果。</p>
+<p><strong>而我们这个业务，坦白说，这两样都不是重点</strong>——因为这两个都不是汇报的重心，我们要汇报的是<strong>降本</strong>。</p>
+</div>
+
+<table>
+<tr><th>面试问题</th><th>考察维度</th><th>回答要点</th></tr>
+<tr><td>你处理过线上问题吗？资源负载较大的情况？</td><td>工程稳定性认知 + 实操经验</td><td>DM 的多层监控体系、GPU 自动伸缩、限流策略</td></tr>
+<tr><td>有没有办法主动监控用户对任务满意度？</td><td>产品思维 + 监控维度理解</td><td>两种维度的区分 + 现有缺失 + 改进思路 + 业务优先级判断</td></tr>
+</table>
+
+<h2>二、行业黑话科普：线上指标与业务数据</h2>
+
+<p>在进入 DM 的具体实现之前，先把面试和工作中会反复出现的术语过一遍。分两大块：工程侧的线上指标和产品侧的业务数据概念。</p>
+
+<h3>2.1 工程侧：线上指标</h3>
+
+<h4>流量指标</h4>
+
+<table>
+<tr><th>术语</th><th>全称</th><th>含义</th><th>类比</th></tr>
+<tr><td><strong>QPS</strong></td><td>Queries Per Second</td><td>每秒查询数。衡量系统当前承受的请求压力</td><td>高速公路每秒通过的车辆数</td></tr>
+<tr><td><strong>TPS</strong></td><td>Transactions Per Second</td><td>每秒事务数。侧重于完整的业务事务（一个事务可能包含多个请求）</td><td>收银台每秒完成的结账数</td></tr>
+<tr><td><strong>RPS</strong></td><td>Requests Per Second</td><td>每秒请求数。和 QPS 基本同义，只是叫法不同</td><td>—</td></tr>
+<tr><td><strong>RPM</strong></td><td>Requests Per Minute</td><td>每分钟请求数。限流场景常用，DM Gateway 的限流就是按 RPM 算的</td><td>—</td></tr>
+<tr><td><strong>吞吐量</strong></td><td>Throughput</td><td>单位时间内系统实际处理完成的请求量。QPS 是"进来多少"，吞吐量是"做完多少"</td><td>工厂每小时的产出量</td></tr>
+<tr><td><strong>并发数</strong></td><td>Concurrency</td><td>同一时刻正在处理中的请求数。DM Gateway 用 Redis Lua 做并发槽位控制</td><td>餐厅里同时被服务的桌数</td></tr>
+</table>
+
+<h4>延迟指标</h4>
+
+<table>
+<tr><th>术语</th><th>含义</th><th>为什么重要</th></tr>
+<tr><td><strong>P50</strong></td><td>50% 的请求在这个时间内完成（中位数）</td><td>代表"大多数用户的体验"</td></tr>
+<tr><td><strong>P95</strong></td><td>95% 的请求在这个时间内完成</td><td>代表"绝大多数用户的体验"，是最常用的 SLO 指标</td></tr>
+<tr><td><strong>P99</strong></td><td>99% 的请求在这个时间内完成</td><td>代表"最慢的那 1% 用户的体验"，能暴露尾部延迟问题</td></tr>
+<tr><td><strong>平均延迟</strong></td><td>所有请求延迟的算术平均</td><td>⚠️ <strong>面试陷阱</strong>：平均值会被极端值拉高，掩盖真实分布。面试里提延迟建议说 P95/P99，别说"平均"</td></tr>
+</table>
+
+<div class="highlight-box">
+<strong>为什么用百分位数而不是平均值？</strong> 假设 100 个请求中有 99 个 10ms 完成、1 个 5000ms 完成。平均延迟 = 59.9ms，看起来还行；P99 = 5000ms，直接暴露问题。百分位数能告诉你"最差的 N% 用户是什么体验"，这才是用户真正感知到的。
+</div>
+
+<h4>可用性与 SLA 体系</h4>
+
+<table>
+<tr><th>术语</th><th>全称</th><th>含义</th><th>举例</th></tr>
+<tr><td><strong>SLA</strong></td><td>Service Level Agreement</td><td>服务等级<strong>协议</strong>。写在合同里的，违反要赔钱</td><td>"保证 99.9% 可用性，否则赔偿月费的 10%"</td></tr>
+<tr><td><strong>SLO</strong></td><td>Service Level Objective</td><td>服务等级<strong>目标</strong>。团队内部设定的目标，比 SLA 更严格</td><td>"我们目标 P99 延迟 &lt; 500ms"</td></tr>
+<tr><td><strong>SLI</strong></td><td>Service Level Indicator</td><td>服务等级<strong>指标</strong>。实际测量值，用来判断 SLO 有没有达标</td><td>"过去 30 天 P99 延迟实际是 420ms"</td></tr>
+<tr><td><strong>可用性</strong></td><td>Availability</td><td>系统正常服务的时间占比。常说的"几个 9"</td><td>99.9% = 每年宕机 8.76 小时</td></tr>
+</table>
+
+<p>"几个 9"的直观含义：</p>
+<table>
+<tr><th>可用性</th><th>叫法</th><th>每年允许宕机时间</th><th>每月允许宕机时间</th></tr>
+<tr><td>99%</td><td>两个 9</td><td>3.65 天</td><td>7.3 小时</td></tr>
+<tr><td>99.9%</td><td>三个 9</td><td>8.76 小时</td><td>43.8 分钟</td></tr>
+<tr><td>99.99%</td><td>四个 9</td><td>52.6 分钟</td><td>4.38 分钟</td></tr>
+<tr><td>99.999%</td><td>五个 9</td><td>5.26 分钟</td><td>26.3 秒</td></tr>
+</table>
+
+<h4>Prometheus 指标类型</h4>
+
+<p>DM 的 Prometheus 指标用到了三种基本类型，面试里经常被问"你用了什么类型的 metric"：</p>
+
+<table>
+<tr><th>类型</th><th>行为</th><th>适用场景</th><th>DM 中的例子</th></tr>
+<tr><td><strong>Counter</strong></td><td>只增不减的累加器</td><td>请求总数、错误总数、已完成任务数</td><td><code>dreammaker_apiserver_requests_total</code></td></tr>
+<tr><td><strong>Gauge</strong></td><td>可增可减的瞬时值</td><td>当前队列长度、在途请求数、GPU 节点数</td><td><code>dreammaker_scheduler_task_queue_length</code></td></tr>
+<tr><td><strong>Histogram</strong></td><td>把数据分到预定义的桶（bucket）里，统计每个桶的计数</td><td>延迟分布、任务耗时分布</td><td><code>dreammaker_apiserver_http_request_duration_seconds</code></td></tr>
+</table>
+
+<div class="highlight-box">
+<strong>Histogram 怎么算 P99？</strong> Histogram 不记录每个请求的精确延迟，而是记录"落在 0~5ms 桶里的有 100 个、5~10ms 的有 200 个、10~50ms 的有 50 个……"。Prometheus 的 <code>histogram_quantile(0.99, ...)</code> 函数根据这些桶做插值估算出 P99。桶的边界（bucket）越细，估算越准。DM 的 HTTP 请求延迟设了从 5ms 到 100000ms 的多个桶。
+</div>
+
+<h4>稳定性治理术语</h4>
+
+<table>
+<tr><th>术语</th><th>含义</th><th>类比</th><th>DM 有没有</th></tr>
+<tr><td><strong>限流</strong><br/>Rate Limiting</td><td>限制单位时间内的请求量，超出的请求直接拒绝（返回 429）</td><td>高速公路收费站限制每分钟放行车辆数</td><td>✅ 有，RPM 滑动窗口 + 并发槽位</td></tr>
+<tr><td><strong>熔断</strong><br/>Circuit Breaker</td><td>下游服务连续报错时，主动切断调用，快速返回失败，防止雪崩。过一段时间后试探性恢复</td><td>家里的保险丝——电流过大自动断开，保护整条线路</td><td>❌ 没有</td></tr>
+<tr><td><strong>降级</strong><br/>Degradation</td><td>系统压力大时，关闭非核心功能，保核心链路。比如电商大促时关闭推荐、评价等模块</td><td>飞机紧急情况时关闭娱乐系统，保飞行控制</td><td>❌ 没有显式的降级策略</td></tr>
+<tr><td><strong>兜底 / Fallback</strong></td><td>调用失败时返回一个预设的默认结果，而不是直接报错</td><td>ATM 取不出钱时提示"请到柜台办理"</td><td>✅ 有，图像生成有供应商 fallback 链</td></tr>
+<tr><td><strong>混沌演练</strong><br/>Chaos Engineering</td><td>主动注入故障（杀 Pod、断网、注入延迟）来验证系统的容错能力</td><td>消防演习——平时模拟火灾，真着火才不慌</td><td>❌ 没有</td></tr>
+<tr><td><strong>fail-open</strong></td><td>保护机制本身故障时，放行请求（而不是拒绝）。保业务可用，牺牲保护</td><td>消防门断电时自动打开（让人逃生），而不是锁死</td><td>✅ DM 的限流就是 fail-open</td></tr>
+<tr><td><strong>fail-close</strong></td><td>保护机制故障时，拒绝所有请求。保安全，牺牲可用性</td><td>银行金库断电时自动锁死</td><td>—</td></tr>
+</table>
+
+<h4>可观测性三大支柱</h4>
+
+<p>面试常见问题："可观测性（Observability）包含哪些？" 标准答案是三大支柱：</p>
+
+<table>
+<tr><th>支柱</th><th>解决什么问题</th><th>典型工具</th><th>DM 的实现</th></tr>
+<tr><td><strong>Metrics（指标）</strong></td><td>"发生了多少？" 数字化的聚合数据，用于告警和趋势分析</td><td>Prometheus, VictoriaMetrics, Grafana</td><td>三层 Prometheus 指标 + VictoriaMetrics</td></tr>
+<tr><td><strong>Logs（日志）</strong></td><td>"发生了什么？" 离散的事件记录，用于排查具体问题</td><td>ELK, Loki, Loghub</td><td>Zap JSON 日志 + Loghub 远程上报</td></tr>
+<tr><td><strong>Traces（链路追踪）</strong></td><td>"在哪条路径上发生的？" 一个请求经过多个服务的完整链路</td><td>Jaeger, Zipkin, OpenTelemetry</td><td>Jaeger + OpenTelemetry + <code>ntes-trace-id</code> 串联</td></tr>
+</table>
+
+<p>三者的关系：<strong>Metrics 告诉你"有问题了"，Logs 告诉你"具体是什么问题"，Traces 告诉你"问题出在哪个环节"</strong>。排障时通常先看 Metrics 发现异常 → 用 Traces 定位到哪个服务 → 用 Logs 查具体错误。</p>
+
+<h3>2.2 产品侧：业务数据黑话</h3>
+
+<h4>核心概念</h4>
+
+<table>
+<tr><th>术语</th><th>含义</th><th>举例</th></tr>
+<tr><td><strong>埋点</strong><br/>Event Tracking</td><td>在代码里预埋数据采集点，当用户触发某个行为时，上报一条事件数据到数据平台</td><td>用户点击"生成"按钮 → 上报 <code>{event: "generate_click", model: "flux", user: "xxx"}</code></td></tr>
+<tr><td><strong>转化率</strong><br/>Conversion Rate</td><td>从一个步骤到下一个步骤的完成比例</td><td>100 个用户打开页面，30 个点了"生成"→ 转化率 30%</td></tr>
+<tr><td><strong>漏斗</strong><br/>Funnel</td><td>把用户行为拆成多个步骤，看每一步有多少人流失。叫"漏斗"是因为每一步人数都在减少，形状像漏斗</td><td>访问页面(1000) → 输入 prompt(500) → 点生成(300) → 保存结果(100)</td></tr>
+<tr><td><strong>留存率</strong><br/>Retention</td><td>一段时间后还在使用产品的用户比例</td><td>今天注册 100 人，7 天后还有 40 人活跃 → 7 日留存 40%</td></tr>
+<tr><td><strong>DAU / MAU</strong></td><td>Daily / Monthly Active Users，日活 / 月活用户数</td><td>"这个功能 DAU 2000"</td></tr>
+<tr><td><strong>LTV</strong></td><td>Life Time Value，用户生命周期价值。一个用户从注册到流失总共贡献的价值</td><td>"这批用户平均 LTV ¥500"</td></tr>
+<tr><td><strong>ARPU</strong></td><td>Average Revenue Per User，每用户平均收入</td><td>"本月 ARPU ¥12"</td></tr>
+<tr><td><strong>NPS</strong></td><td>Net Promoter Score，净推荐值。问用户"你会不会推荐这个产品给朋友"（0-10 分），推荐者 - 贬损者 = NPS</td><td>"我们的 NPS 是 +45"（范围 -100 到 +100）</td></tr>
+<tr><td><strong>BI</strong></td><td>Business Intelligence，商业智能。泛指用数据辅助业务决策的体系，包括数据仓库、报表、分析平台等</td><td>"BI 团队出了一份留存报告"</td></tr>
+</table>
+
+<h4>漏斗分析详解</h4>
+
+<p>漏斗是产品数据分析中最核心的工具，面试里说"业务数据"基本绑定漏斗。以 DM 为例，一个理想的生成任务漏斗是：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+graph TB
+    A["打开 App 页面<br/><strong>1000 人</strong>"] -->|50% 转化| B["输入参数/Prompt<br/><strong>500 人</strong>"]
+    B -->|60% 转化| C["点击生成<br/><strong>300 人</strong>"]
+    C -->|80% 转化| D["生成成功<br/><strong>240 人</strong>"]
+    D -->|42% 转化| E["保存/导出结果<br/><strong>100 人</strong>"]
+    E -->|50% 转化| F["二次使用<br/><strong>50 人</strong>"]
+    style A fill:#dcfce7
+    style F fill:#fef2f2
+</pre>
+</div>
+
+<p>漏斗的价值在于<strong>定位流失发生在哪一步</strong>：</p>
+<ul>
+<li>"打开页面 → 输入参数"转化率低 → 可能是界面不直观，用户不知道怎么用</li>
+<li>"点击生成 → 生成成功"转化率低 → 可能是任务失败率高，工程问题</li>
+<li>"生成成功 → 保存结果"转化率低 → 可能是生成质量不满足预期，<strong>这就是用户满意度问题</strong></li>
+<li>"保存结果 → 二次使用"转化率低 → 可能是用户觉得平台没有持续价值</li>
+</ul>
+
+<div class="highlight-box">
+<strong>为什么漏斗和监控有关？</strong> 工程稳定性监控只能告诉你"生成成功率 80%"，但不能告诉你剩下 20% 的成功生成里有多少用户满意。漏斗把工程指标和业务指标串起来了——你不仅知道"系统成功率"，还知道"用户认可率"。这就是前面说的两个维度的区别。
+</div>
+
+<h4>埋点的几种类型</h4>
+
+<table>
+<tr><th>类型</th><th>做法</th><th>优点</th><th>缺点</th></tr>
+<tr><td><strong>代码埋点</strong></td><td>开发者在代码里手动调用 SDK 上报事件</td><td>精确控制，可以带业务参数</td><td>开发成本高，容易漏埋</td></tr>
+<tr><td><strong>无埋点 / 全埋点</strong></td><td>SDK 自动采集所有用户交互（点击、滑动、页面停留等）</td><td>不漏数据，不需要开发介入</td><td>数据量大、噪音多、缺业务语义</td></tr>
+<tr><td><strong>可视化埋点</strong></td><td>产品/运营在可视化界面上圈选元素，配置要采集的事件</td><td>不需要改代码</td><td>只能采集前端交互，不能带复杂参数</td></tr>
+</table>
+
+<p>DM 目前用的全是<strong>代码埋点</strong>——Scheduler 的 <code>EventTracking()</code> 和 Agent 的 <code>track_*</code> 函数都是开发者在代码里手动调用的。</p>
+
+<h4>A/B 测试</h4>
+
+<p>把用户随机分成两组，一组看版本 A（对照组），一组看版本 B（实验组），比较两组在指标上的差异，判断改动是否有效。</p>
+
+<p>举例：想知道在生成结果旁加 👍/👎 按钮会不会提高用户二次使用率 → A 组不加、B 组加 → 跑两周 → 比较二次使用率。如果 B 组显著更高，说明反馈功能有正面效果。</p>
+
+<p>DM 目前<strong>没有 A/B 测试框架</strong>。</p>
+
+<h3>2.3 一图串联：工程指标和业务数据的关系</h3>
+
+<div class="diagram">
+<pre class="mermaid">
+graph LR
+    subgraph Engineering["工程稳定性<br/>（回答：系统有没有坏）"]
+        QPS["QPS / 吞吐量"]
+        LAT["P50 / P95 / P99"]
+        ERR["错误率 / 成功率"]
+        RES["GPU/CPU/内存"]
+    end
+    subgraph Business["业务数据<br/>（回答：产品有没有用）"]
+        FUN["漏斗转化率"]
+        RET["留存 / DAU"]
+        SAT["用户满意度"]
+        BIZ["收入 / LTV"]
+    end
+    ERR -->|"成功≠满意"| SAT
+    QPS -->|"流量≠价值"| FUN
+    LAT -->|"快≠好用"| RET
+    style Engineering fill:#eff6ff,stroke:#2563eb
+    style Business fill:#f0fdf4,stroke:#16a34a
+</pre>
+</div>
+
+<p>面试里如果被问"你们有监控吗"，先说工程侧再说业务侧，展示你知道这是两个维度。如果只说工程指标，面试官可能追问"那你怎么知道用户满不满意"——这就是上面这个问题的来源。</p>
+
+<h2>三、核心知识：DM 监控体系全貌</h2>
+
+<p>DreamMaker 的监控体系覆盖三个仓库、四种数据通道，下面这张图是整体数据流向：</p>
+
+<div class="diagram">
+<pre class="mermaid">
+graph TB
+    subgraph Scheduler["Scheduler（Go 后端）"]
+        ET["业务操作埋点<br/>dm_operation_metrics"]
+        BU["后端用量埋点 v2<br/>backend_usage_event_tracking_v2"]
+        PM["Prometheus 指标<br/>/metrics 端点"]
+        JA["Jaeger 链路追踪"]
+    end
+    subgraph Gateway["Gateway（Go 网关）"]
+        KE["Kafka 监控事件<br/>9 种事件类型"]
+    end
+    subgraph Agent["Monet Agent（Python）"]
+        TR["行为追踪<br/>4 种事件"]
+        LH["Loghub 远程日志"]
+        OT["OpenTelemetry"]
+    end
+    subgraph MonitorSvc["Monitor 服务（独立微服务）"]
+        KC["Kafka 消费者"]
+        MQ["MongoDB 队列轮询"]
+    end
+    subgraph External["外部基础设施"]
+        VM["VictoriaMetrics<br/>/ Prometheus"]
+        LP["日志管线"]
+        VG["织女数据服务<br/>Vega"]
+        PX["Proxima<br/>Loghub"]
+        CL["OTel Collector"]
+    end
+    ET -->|stdout JSON| LP
+    BU -->|stdout JSON| LP
+    PM -->|抓取| VM
+    JA -->|span batch log| LP
+    KE -->|Kafka| KC
+    KC -->|转 Prometheus| VM
+    MQ -->|15s 轮询| VM
+    TR -->|HTTP POST| VG
+    LH -->|HTTP POST| PX
+    OT -->|gRPC OTLP| CL
+</pre>
+</div>
+
+<h3>3.1 工程稳定性监控</h3>
+
+<h4>Prometheus 指标体系（三层）</h4>
+
+<p>Scheduler 仓库的 <code>app/metrics/</code> 目录下定义了三层 Prometheus 指标：</p>
+
+<table>
+<tr><th>层级</th><th>关键指标</th><th>代码位置</th></tr>
+<tr><td>API 层</td><td>HTTP 请求时长直方图（5ms~100s）、请求总数（按状态码/方法/路径）、在途请求数</td><td><code>app/metrics/metrics.go</code></td></tr>
+<tr><td>调度层</td><td>任务排队时间、计算时间、端到端时间、队列长度、GPU 节点状态/数量、模型重载次数</td><td><code>app/metrics/scheduler.go</code></td></tr>
+<tr><td>App 层</td><td>预处理耗时、排队耗时、计算耗时、任务完成数（按成功/失败）、ComfyUI 节点生命周期、大图压缩</td><td><code>app/metrics/app.go</code></td></tr>
+</table>
+
+<p>P50/P95/P99 延迟：代码里不做显式计算，通过 Histogram bucket 暴露到 VictoriaMetrics，用 <code>histogram_quantile()</code> 在 Grafana 里查。</p>
+
+<h4>GPU 资源监控与自动伸缩</h4>
+
+<p>GPU 节点状态通过两个 Gauge 指标暴露（<code>app/metrics/scheduler.go</code>）：</p>
+
+<pre><code>dreammaker_scheduler_gpu_backend_node_status  // 按环境/集群/GPU 型号/机器标识打标签
+dreammaker_scheduler_gpu_backend_node_count    // 同维度</code></pre>
+
+<p>自动伸缩器（<code>app/worker-scheduler/service/service_autoscaler.go</code>）的工作方式：</p>
+
+<ul>
+<li>每 <strong>30 秒</strong>检查一次：队列深度 vs Worker 数量</li>
+<li><strong>扩容</strong>：唤醒已终止的 Pod（不是新建，因为 GPU 节点启动成本高）</li>
+<li><strong>缩容</strong>：空闲超过可配置的超时时间后释放</li>
+<li>有冷却机制、最小/最大 Worker 数约束、Redis 分布式锁防多实例竞争</li>
+</ul>
+
+<div class="highlight-box">
+<strong>为什么不用 K8s HPA？</strong> GPU Worker 的 GPU 打满但 CPU 空闲，HPA 看 CPU 利用率会完全误判。所以 DM 对 GPU Worker 用自研的基于队列深度的伸缩器，CPU Worker（调供应商 API）才用标准 HPA。这是 I06 课的重点内容。
+</div>
+
+<h4>限流（QPS 控制）</h4>
+
+<table>
+<tr><th>仓库</th><th>机制</th><th>实现方式</th><th>容错策略</th></tr>
+<tr><td>Scheduler</td><td>滑动窗口限流中间件</td><td><code>util/middleware/limiter.go</code>，设 <code>X-RateLimit-*</code> 响应头</td><td>Redis 挂了放行（fail-open）</td></tr>
+<tr><td>Gateway</td><td>Redis Lua 滑动窗口 RPM</td><td><code>traffic/rpm.go</code>，60 秒窗口，ZSET 实现</td><td>fail-open</td></tr>
+<tr><td>Gateway</td><td>Redis 并发槽位限流</td><td><code>traffic/concurrency.go</code>，Lua 原子 INCR/DECR</td><td>fail-open</td></tr>
+</table>
+
+<p>所有限流都是 <strong>fail-open</strong> 策略：Redis 挂了放行请求，保业务连续性。没有熔断器。</p>
+
+<h4>健康检查</h4>
+
+<ul>
+<li>8 个微服务都暴露了 <code>/ping</code> → <code>"pong"</code> 存活检查端点</li>
+<li>心跳接口 <code>/api/v1/user/heartbeat</code>（高频调用，日志里特意排除）</li>
+<li>Worker <code>Ready()</code> 接口：Sidecar Worker 实现就绪检查</li>
+<li>K8s 探针：namespace 配置里开启了 katib metrics collector 注入</li>
+</ul>
+
+<h4>告警</h4>
+
+<p><strong>已实现</strong>：积分额度告警（<code>app/app-gateway/service/service_credit_alert.go</code>）</p>
+<ul>
+<li>每 30 分钟扫一次用户组积分余额</li>
+<li>触达阈值（默认 10000、5000）时通过 POPO 发 P2P 通知给组管理员</li>
+<li>去重（跨越更严重级别才通知）、静默窗口（默认 10 分钟防刷屏）、Redis 分布式锁</li>
+</ul>
+
+<p><strong>已设计未完全落地</strong>：Gateway 的 PromQL 告警规则（在 <code>observability-metrics-design.md</code> 里规划了错误率 &gt;5%、供应商 5xx、RPM 拒绝率、任务失败率 &gt;20% 等规则，Phase 1 事件管道已实现，告警规则本身还在推进中）</p>
+
+<h4>链路追踪</h4>
+
+<table>
+<tr><th>仓库</th><th>方案</th><th>传播协议</th></tr>
+<tr><td>Scheduler</td><td>OpenTracing + Jaeger</td><td><code>ntes-trace-id</code> HTTP 头</td></tr>
+<tr><td>Agent</td><td>OpenTelemetry + OTLP gRPC</td><td>同样兼容 <code>ntes-trace-id</code> 实现跨服务关联</td></tr>
+<tr><td>Gateway</td><td>无完整 tracing，用 <code>request_id</code> 做关联</td><td>—</td></tr>
+</table>
+
+<p>跨服务关联的关键：Scheduler 的 Jaeger 和 Agent 的 OpenTelemetry 都通过 <code>ntes-trace-id</code> 网易内部头做跨服务 span 串联。</p>
+
+<h3>3.2 业务埋点体系</h3>
+
+<p>三个仓库用了三种不同的上报方式，但目的相似——记录业务事件的发生和状态：</p>
+
+<h4>Scheduler — 两层日志埋点</h4>
+
+<p><strong>第一层：业务操作埋点</strong>（<code>util/log.go</code>）</p>
+<ul>
+<li>关键字 <code>dm_operation_metrics</code>，结构化 JSON 写 stdout，外部日志管线采集</li>
+<li>字段：event 名、module、user、group_id、扩展属性</li>
+<li>30+ 个打点位置，覆盖：任务创建、蓝图运行/下载、App 运行成功/失败、模型/LoRA/ControlNet 使用、训练事件等</li>
+</ul>
+
+<p><strong>第二层：后端用量埋点 v2</strong>（<code>util/event_tracking.go</code>）</p>
+<ul>
+<li>关键字 <code>backend_usage_event_tracking_v2</code></li>
+<li>16 种事件类型：<code>app_run</code>、<code>sd_run</code>、<code>3d_run</code>、<code>flux_run</code>、<code>video_run</code>、<code>image_run</code>、<code>blueprint_run</code>、<code>training_task</code> 等</li>
+<li>状态：<code>in_progress</code> / <code>success</code> / <code>failed</code></li>
+<li>来源模块通过 <code>X-Tracking-Source-Module</code> HTTP 头传播</li>
+</ul>
+
+<h4>Gateway — Kafka 事件管道</h4>
+
+<p>Gateway 的监控事件（<code>app/dm-gateway/internal/monitor/event.go</code>）不是日志，而是通过 <strong>Kafka</strong> 推给独立的 Monitor 服务：</p>
+
+<table>
+<tr><th>事件类型</th><th>含义</th></tr>
+<tr><td><code>http_request</code></td><td>每个 HTTP 请求</td></tr>
+<tr><td><code>rate_limit_check</code></td><td>限流决策</td></tr>
+<tr><td><code>provider_request</code></td><td>上游供应商调用</td></tr>
+<tr><td><code>task_created</code> / <code>task_transition</code> / <code>task_terminal</code></td><td>任务生命周期</td></tr>
+<tr><td><code>billing_precharged</code> / <code>billing_charged</code> / <code>billing_error</code></td><td>计费事件</td></tr>
+</table>
+
+<p>数据流：Gateway → Kafka（4096 事件缓冲）→ Scheduler 的 Monitor 服务消费 → 转成 11 个 Prometheus 指标。</p>
+
+<h4>Monet Agent — HTTP 上报到织女数据服务</h4>
+
+<ul>
+<li>4 种事件：<code>monet-agent-run</code>、<code>monet-node-run</code>、<code>monet-tool-run</code>、<code>monet-postprocessor-run</code></li>
+<li>异步队列（最大 1000 条）→ 后台批量（每 0.1s 最多 20 条）→ HTTP POST 到 <code>data-service.vega.nie.netease.com</code></li>
+<li>结果只有 <code>success</code> / <code>failed</code> / <code>canceled</code>，无质量维度</li>
+</ul>
+
+<h4>独立 Monitor 服务</h4>
+
+<p>Scheduler 仓库里有一个专门的监控微服务（<code>app/monitor/</code>），跑三个协程：</p>
+<ol>
+<li>消费 Kafka App 步骤事件 → 写 Prometheus（任务提交/排队/运行/完成各阶段指标）</li>
+<li>消费 Kafka Gateway 事件 → 写 Prometheus（11 个指标，覆盖 HTTP/限流/供应商/任务/计费）</li>
+<li>轮询 MongoDB → 每 15 秒查一次队列深度（Redis 分布式锁防多实例重复）</li>
+</ol>
+
+<h3>3.3 现有体系中缺失的部分</h3>
+
+<table>
+<tr><th>缺失项</th><th>说明</th></tr>
+<tr><td>GPU 显存/利用率实时监控</td><td>调度层按队列深度管理，不读 nvidia-smi 级别的硬件指标</td></tr>
+<tr><td>慢查询检测</td><td>没有显式的慢查询阈值或告警</td></tr>
+<tr><td>连接池监控</td><td>无</td></tr>
+<tr><td>熔断器</td><td>无，限流是 fail-open 但没有熔断降级</td></tr>
+<tr><td>用户满意度信号</td><td>没有 thumbs up/down、采纳率、重试率分析</td></tr>
+<tr><td>业务漏斗/转化率</td><td>没有"发起任务 → 生成完成 → 用户采纳 → 二次使用"的转化追踪</td></tr>
+<tr><td>离线质量评测</td><td>没有 CLIP score、美学评分等自动化质量评估</td></tr>
+</table>
+
+<h2>四、面试关键题：两种维度的监控</h2>
+
+<h3>4.1 维度一：工程稳定性监控</h3>
+
+<p>这是<strong>"系统有没有正常运行"</strong>的问题。DM 在这方面做得比较扎实：</p>
+
+<ul>
+<li><strong>指标层</strong>：三层 Prometheus 指标（API/调度/App）+ Gateway Kafka 事件管道 → VictoriaMetrics</li>
+<li><strong>链路层</strong>：Jaeger + OpenTelemetry 跨服务追踪，<code>ntes-trace-id</code> 统一串联</li>
+<li><strong>资源层</strong>：GPU 节点状态指标 + 自定义自动伸缩器（基于队列深度）</li>
+<li><strong>防护层</strong>：多层限流（RPM + 并发槽位）、健康检查、积分额度告警</li>
+</ul>
+
+<h3>4.2 维度二：业务数据监控</h3>
+
+<p>这是<strong>"产品有没有解决用户的问题"</strong>的问题。DM 在这方面做得比较薄：</p>
+
+<ul>
+<li><strong>已有的</strong>：任务成功率（success/failed 二元状态）、App 使用计数、灵感体验点赞（社交互动）</li>
+<li><strong>缺失的</strong>：生成质量评估、用户满意度信号、转化漏斗、重试率分析</li>
+</ul>
+
+<h3>4.3 如果要做业务层面的用户满意度监控，怎么做？</h3>
+
+<p>可以从五个层次递进：</p>
+
+<table>
+<tr><th>层次</th><th>做什么</th><th>信号类型</th><th>实现成本</th></tr>
+<tr><td>1. 任务失败原因分类</td><td>把超时、内容违规、供应商错误、参数校验失败等原因分开统计</td><td>系统信号</td><td>低（改埋点字段）</td></tr>
+<tr><td>2. 隐式行为信号</td><td>追踪用户的采纳率（是否保存/导出/下载结果）、重试率（同参数多次生成）</td><td>行为信号</td><td>中（加前端埋点）</td></tr>
+<tr><td>3. 轻量显式反馈</td><td>在生成结果旁加 👍/👎，点踩时选原因（质量差/速度慢/不符预期）</td><td>主观信号</td><td>中（前后端 + 存储）</td></tr>
+<tr><td>4. 核心漏斗转化</td><td>发起任务 → 生成完成 → 用户采纳 → 二次使用，监控每步转化率波动</td><td>漏斗信号</td><td>中高（全链路埋点）</td></tr>
+<tr><td>5. 离线质量评测</td><td>定期用 CLIP 分数、人工抽检等方式衡量模型质量变化趋势</td><td>客观评估</td><td>高（评测管线）</td></tr>
+</table>
+
+<div class="highlight-box">
+<strong>关键认知</strong>：第 2 层"隐式行为信号"是性价比最高的切入点。用户保存了生成结果 = 隐式认可，用户对同一个 prompt 连续生成 3 次 = 隐式不满。这些行为数据比主观反馈更客观、成本更低、样本量更大。
+</div>
+
+<h3>4.4 但为什么 DM 没优先做这些？</h3>
+
+<p>这就是 mentor 讲的重点：<strong>不同业务的监控侧重点不同</strong>。</p>
+
+<ul>
+<li><strong>传统 toC 产品</strong>（比如游戏、社交、电商）：稳定性是基本功，由此延伸出熔断降级、混沌演练；业务上最重要的是数据报表——日活、留存、转化漏斗、LTV——因为数据结果就是产品的 KPI，一般会有专门的 BI 团队做。</li>
+<li><strong>DM 这类内部工具平台</strong>：稳定性和业务数据当然要做，但当前阶段的汇报重心是<strong>降本</strong>——降低 GPU 调用成本、提高资源利用率、优化供应商选型。监控投入要服务于汇报目标。</li>
+</ul>
+
+<p>所以面试里讲这个话题时，不能只说"应该加什么监控"，还要展示你理解<strong>为什么当前没做、什么时候该做</strong>——这才是产品思维。</p>
+
+<h2>五、面试逐字稿</h2>
+
+<h3>Q1：你处理过比较麻烦或严重的线上问题吗？比如资源负载较大的情况？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+<p>DreamMaker 平台最典型的线上压力场景是<strong>GPU 资源负载</strong>。因为我们的核心业务是 AI 图像/视频/3D 生成，所有推理任务都跑在 GPU 上，而 GPU 节点价格贵、启动慢，不能像 CPU 服务那样随意扩缩。</p>
+
+<p><strong>在监控层面</strong>，我们有一套多层的可观测体系。Scheduler 后端暴露了三层 Prometheus 指标——API 层的请求延迟和在途请求数、调度层的任务排队时间和队列长度、App 层的计算耗时和任务成功率。这些指标被 VictoriaMetrics 抓取，在 Grafana 里做展示和告警。Gateway 那边的做法不一样，它把 HTTP 请求、供应商调用、任务生命周期、计费这些事件通过 Kafka 推给一个独立的 Monitor 服务，Monitor 服务再转成 Prometheus 指标，这样网关本身不用暴露 /metrics 端点，避免了高 QPS 场景下抓取指标对网关性能的影响。</p>
+
+<p><strong>在应对策略上</strong>，GPU Worker 的扩缩容是我们自研的自动伸缩器，不用 K8s 原生的 HPA，原因是 GPU Worker 的 CPU 利用率始终很低——瓶颈在 GPU 算力和显存，不在 CPU，所以 HPA 看 CPU 指标完全没意义。我们的自动伸缩器每 30 秒检查一次任务队列深度，队列积压超过阈值就唤醒已终止的 Pod，空闲超时就缩容，用 Redis 分布式锁防止多实例竞争。CPU 类 Worker（比如只调供应商 API 的任务）则继续用标准 HPA。</p>
+
+<p><strong>在防护层面</strong>，Gateway 做了多层限流——按 app_code + model 维度的 RPM 滑动窗口限流（Redis ZSET 实现），加上并发槽位限流（Redis Lua 原子 INCR/DECR）。限流策略是 fail-open：Redis 出问题时放行请求，保业务连续性。另外链路追踪上，Scheduler 用 Jaeger、Agent 用 OpenTelemetry，通过网易内部的 <code>ntes-trace-id</code> 头做跨服务 span 串联，排障时可以把一个任务从用户请求到 Agent 执行到 GPU 推理的完整链路拉出来。</p>
+</div>
+
+<div class="defend">
+<h4>追问防守</h4>
+<p><strong>"GPU 显存/利用率你们有监控吗？"</strong> — 说实话，我们在应用层面没有直接读 nvidia-smi 级别的 GPU 硬件指标。GPU 资源管理是在调度层面做的，用队列深度作为负载信号，而不是直接读 GPU 利用率。如果要做更精细的监控，可以在 K8s 集群层面用 DCGM Exporter 采集 GPU 指标到 Prometheus，但这块不在应用层代码里。</p>
+<p><strong>"你们有熔断吗？"</strong> — 没有。限流做了多层但没有熔断降级。我们的限流是 fail-open 策略，Redis 挂了放行请求。如果要做熔断，传统做法是用 Sentinel 或 Hystrix 之类的方案，在供应商连续报错时快速失败，避免雪崩。但 DM 的场景是内部平台、QPS 不算特别高，相比 toC 业务对熔断的需求没那么迫切。</p>
+<p><strong>"慢查询有监控吗？"</strong> — 没有显式的慢查询检测。HTTP 请求延迟有 Histogram 直方图，可以在 Grafana 里用 <code>histogram_quantile(0.99, ...)</code> 看 P99 延迟，但没有设阈值自动标记慢查询。如果要做，可以在 middleware 里记录超过阈值的请求到单独的慢查询日志，或者直接在 Prometheus 告警规则里配。</p>
+</div>
+
+<h3>Q2：你说的主动监控更多偏向工程稳定性，有没有办法主动监控业务层面用户对任务表现是否满意，而不是等用户在群里反馈？</h3>
+
+<div class="script-block">
+<span class="script-label">满分逐字稿</span>
+<h4>面试标准逐字稿</h4>
+
+<p>这个问题其实涉及<strong>两个维度的监控</strong>，需要先区分开。</p>
+
+<p><strong>第一个维度是工程稳定性</strong>——系统有没有正常运行。这块 DM 已经做了不少：三层 Prometheus 指标、Gateway 的 Kafka 事件管道、GPU 自动伸缩、多层限流、跨服务链路追踪。但这些都是回答"系统有没有坏"，不回答"用户满不满意"。</p>
+
+<p><strong>第二个维度是业务数据</strong>——产品有没有解决用户的问题。传统 toC 业务里，这块通常由专门的 BI 团队做数据报表，包括转化漏斗、留存分析、用户行为分析等，因为数据结果就是产品的 KPI。想要什么数据就去做对应的埋点上报。</p>
+
+<p>DM 现在在业务数据这个维度做得比较薄。我看了代码，目前的埋点只覆盖了<strong>任务成功/失败的二元状态</strong>和<strong>使用量统计</strong>，没有任何<strong>用户满意度信号</strong>。现有的"生成反馈"功能只是复制 taskId 给值班同学排障，不是结构化的满意度采集。</p>
+
+<p>如果要做，我觉得有五个递进的层次。</p>
+
+<p><strong>第一层是把任务失败原因分类</strong>。现在只记录 success/failed，但失败原因可以细分——超时、内容违规、供应商错误、参数校验失败。这些分开统计后才能定位瓶颈。这个改动成本最低，改埋点字段就行。</p>
+
+<p><strong>第二层是追踪隐式行为信号</strong>，这是性价比最高的方向。比如用户生成完之后有没有保存/导出/下载结果——保存了就是隐式采纳；有没有对同一个 prompt 连续生成多次——连续重试就是隐式不满意。这些行为数据比主观反馈更客观，样本量也更大，不依赖用户主动操作。</p>
+
+<p><strong>第三层是轻量的显式反馈</strong>。在每个生成结果旁边加 👍/👎，点踩时要求选原因——质量差、速度慢、不符合预期。低成本收集业务信号。</p>
+
+<p><strong>第四层是核心漏斗转化</strong>。从发起任务 → 生成完成 → 用户采纳 → 二次使用，监控每一步转化率的波动。转化率突然下降可能意味着某个模型质量退化或者某个供应商出问题。</p>
+
+<p><strong>第五层是离线质量评测</strong>。定期用 CLIP 分数、人工抽检等方式衡量模型生成质量的变化趋势，做成 Dashboard，异常波动自动告警。</p>
+
+<p>不过，<strong>为什么 DM 目前没优先做这些</strong>，有一个业务背景。不同业务的监控侧重点不同——传统 toC 产品的稳定性是基本功，业务数据是 KPI；而 DM 作为内部 AI 平台，当前阶段的核心汇报目标是<strong>降本</strong>，所以监控投入优先服务于降本相关的指标——GPU 资源利用率、供应商成本、任务单价。这不是说业务数据不重要，而是团队在当前阶段做了优先级选择。如果后续平台进入更成熟的阶段，用户满意度和质量监控一定是要补上的。</p>
+</div>
+
+<div class="defend">
+<h4>追问防守</h4>
+<p><strong>"你说的隐式行为信号具体怎么落地？"</strong> — 前端在"保存"、"导出"、"下载"、"再次生成"这些按钮上加埋点，上报时带上 taskId 和 appName。后端收到后和原始任务关联，就能算出每个 App/模型的采纳率和重试率。重试率高的模型可能质量有问题，采纳率低的 App 可能参数配置不合理。</p>
+<p><strong>"CLIP 分数是什么？"</strong> — CLIP 是 OpenAI 的多模态对齐模型，它可以给一对（文本, 图像）打一个相似度分数。用生成任务的 prompt 和生成结果算 CLIP score，分数越高说明图像和用户描述越匹配。可以用来做批量质量评测，不需要人工一张张看。但它也有局限——CLIP score 高不一定代表用户喜欢，审美是主观的。</p>
+<p><strong>"你真的做过这些吗？"</strong> — 这些是我在梳理系统可观测性时识别出的改进方向，不是我实际实现的。DM 现有的监控覆盖了工程稳定性，但业务层面的用户满意度信号确实是一个空白。我做的是理解现有体系、识别缺口、提出改进思路。</p>
+</div>
+
+<div class="highlight-box">
+<strong>回答策略</strong>：这道题的核心考察点不是你背了多少监控方案，而是你能不能<strong>区分工程监控和业务监控两个维度</strong>，并且展示你理解<strong>为什么某些东西没做、什么时候该做</strong>。最后一段关于"业务优先级"的分析是加分项——它说明你不是只会列技术方案，还能从团队和业务角度理解决策。
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad: true, theme: 'neutral', securityLevel: 'loose'});</script>
+
+<button id="toc-toggle" onclick="document.getElementById('toc-sidebar').classList.toggle('open')">&#9776; 目录</button>
+<nav id="toc-sidebar">
+  <h3>目录导航</h3>
+  <ul id="toc-list"></ul>
+</nav>
+<script>
+(function(){
+  var hs=Array.from(document.querySelectorAll('h1,h2,h3')).filter(function(h){return !h.closest('#toc-sidebar');});
+  var ul=document.getElementById('toc-list');
+  hs.forEach(function(h,i){
+    if(!h.id)h.id='sec-'+i;
+    var li=document.createElement('li');
+    var a=document.createElement('a');
+    a.href='#'+h.id; a.textContent=h.textContent;
+    a.className='toc-'+h.tagName.toLowerCase();
+    a.onclick=function(e){e.preventDefault();document.getElementById(h.id).scrollIntoView({behavior:'smooth'});document.getElementById('toc-sidebar').classList.remove('open');};
+    li.appendChild(a);ul.appendChild(li);
+  });
+  var links=ul.querySelectorAll('a');
+  var ticking=false;
+  window.addEventListener('scroll',function(){
+    if(!ticking){requestAnimationFrame(function(){
+      var cur='';
+      hs.forEach(function(h){if(h.getBoundingClientRect().top<=100)cur=h.id;});
+      links.forEach(function(a){a.classList.toggle('active',a.getAttribute('href')==='#'+cur);});
+      ticking=false;
+    });ticking=true;}
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -1,15 +1,15 @@
 [submodule "current_project/dreammaker_scheduler"]
 	path = current_project/dreammaker_scheduler
-	url = https://git-sa.nie.netease.com/tmax/dreammaker-scheduler
+	url = https://github.com/pagekiller123/DreamMaker-scheduler.git
 [submodule "current_project/dreammaker_docs"]
 	path = current_project/dreammaker_docs
-	url = https://git-sa.nie.netease.com/dreammaker/dreammaker-docs.git
+	url = https://github.com/pagekiller123/dreammaker-docs.git
 [submodule "current_project/dm-monet-agent"]
 	path = current_project/dm-monet-agent
-	url = https://git-sa.nie.netease.com/tmax/dm-monet-agent.git
+	url = https://github.com/pagekiller123/dm-monet-agent.git
 [submodule "current_project/dreammaker_gateway"]
 	path = current_project/dreammaker_gateway
-	url = https://git-sa.nie.netease.com/tmax/dreammaker-gateway.git
+	url = https://github.com/pagekiller123/dreammaker-gateway.git
 [submodule "current_project/dm-tapnow"]
 	path = current_project/dm-tapnow
-	url = https://git-sa.nie.netease.com/tmax/dm-tapnow.git
+	url = https://github.com/pagekiller123/dm-tapnow.git
